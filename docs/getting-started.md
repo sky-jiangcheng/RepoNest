@@ -5,23 +5,23 @@ order: 1
 
 # 快速开始
 
-GitBuddy 是一款本地优先的桌面应用（Wails v2，单文件、零运行时依赖），核心价值是**本地项目的上下文理解与知识沉淀**：自动发现本机 Git 仓库，快速沉淀笔记、依赖、技术栈与活跃信息，方便你和 AI 检索复用。仪表盘与统计是支持能力，不是产品主入口。
+RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行时依赖），核心价值是**本地项目的上下文理解与知识沉淀**：自动发现本机 Git 仓库，快速沉淀笔记、依赖、技术栈与活跃信息，方便你和 AI 检索复用。仪表盘与统计是支持能力，不是产品主入口。
 
 ## 下载安装
 
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/GitBuddy/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.sh | bash
 ```
 
 ### Windows
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/GitBuddy/master/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 | iex
 ```
 
-或从 [GitHub Releases](https://github.com/sky-jiangcheng/GitBuddy/releases) 下载对应平台的二进制文件。
+或从 [GitHub Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的二进制文件。
 
 ## 首次启动
 
@@ -69,9 +69,9 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/GitBuddy/master/scrip
 
 | 内容 | macOS | Windows | Linux |
 |------|-------|---------|-------|
-| 数据库 | `~/Library/Application Support/gitbuddy/dashboard.db` | `%APPDATA%\gitbuddy\dashboard.db` | `~/.config/gitbuddy/dashboard.db` |
-| 插件目录 | `…/gitbuddy/plugins/` | `…/gitbuddy\plugins\` | `…/gitbuddy/plugins/` |
-| 日志 | `~/Library/Logs/gitbuddy.log` | `%APPDATA%\gitbuddy\logs\gitbuddy.log` | `$XDG_STATE_HOME/gitbuddy/gitbuddy.log`（默认 `~/.local/state/gitbuddy/`） |
+| 数据库 | `~/Library/Application Support/reponest/dashboard.db` | `%APPDATA%\reponest\dashboard.db` | `~/.config/reponest/dashboard.db` |
+| 插件目录 | `…/reponest/plugins/` | `…/reponest\plugins\` | `…/reponest/plugins/` |
+| 日志 | `~/Library/Logs/reponest.log` | `%APPDATA%\reponest\logs\reponest.log` | `$XDG_STATE_HOME/reponest/reponest.log`（默认 `~/.local/state/reponest/`） |
 
 升级时 schema 自动迁移，数据无需手工处理。详细排障见[故障排查](troubleshooting.md)。
 
@@ -84,10 +84,10 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/GitBuddy/master/scrip
 cd web && npm install && npm run build && cd ..
 
 # 桌面应用
-go build -ldflags="-s -w" -o gitbuddy .
+go build -ldflags="-s -w" -o reponest .
 
 # MCP server
-go build -o gitbuddy-mcp ./cmd/mcp/
+go build -o reponest-mcp ./cmd/mcp/
 ```
 
 开发模式：`wails dev`（前端热更新 + Wails 绑定注入）。测试：`go test ./...`；前端 `npm test` / `npm run build`（tsc 严格检查）。

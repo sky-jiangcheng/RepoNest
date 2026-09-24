@@ -1,8 +1,8 @@
-# GitBuddy 定位与叙事重构简报
+# RepoNest 定位与叙事重构简报
 
 ## 一句话定位（对外）
 
-**GitBuddy 是本地优先的“代码项目上下文库”**：帮你快速理解本地 Git 项目最近发生了什么、沉淀了哪些可检索知识，并把它们交给 AI 继续使用。
+**RepoNest 是本地优先的“代码项目上下文库”**：帮你快速理解本地 Git 项目最近发生了什么、沉淀了哪些可检索知识，并把它们交给 AI 继续使用。
 
 ## 用户价值（做减法后的承诺）
 
@@ -42,18 +42,18 @@
 
 **中文（三句定位）**
 
-> GitBuddy 现在更聚焦：本地项目上下文库。帮你快速理解项目、沉淀知识、交给 AI 继续使用。
+> RepoNest 现在更聚焦：本地项目上下文库。帮你快速理解项目、沉淀知识、交给 AI 继续使用。
 
 **English**
 
-> GitBuddy now focuses on what it does best: a local-first project context base—understand your local repos, capture reusable knowledge, and hand it off to AI.
+> RepoNest now focuses on what it does best: a local-first project context base—understand your local repos, capture reusable knowledge, and hand it off to AI.
 
 **Release note**
 
-> Positioning and UX alignment release: GitBuddy prioritizes local project understanding and knowledge retrieval; dashboard/statistics become supporting capabilities.
+> Positioning and UX alignment release: RepoNest prioritizes local project understanding and knowledge retrieval; dashboard/statistics become supporting capabilities.
 
 ### 推荐（完整）
-> GitBuddy 帮你把本地 Git 项目从“散落在终端和记忆里”变成“可检索、可复用的上下文”。它能快速发现你关心的项目，理解每个项目当前状态，并把笔记、依赖、技术栈和活跃信息沉淀下来；随后通过导出与 MCP 提供给 AI 继续使用。
+> RepoNest 帮你把本地 Git 项目从“散落在终端和记忆里”变成“可检索、可复用的上下文”。它能快速发现你关心的项目，理解每个项目当前状态，并把笔记、依赖、技术栈和活跃信息沉淀下来；随后通过导出与 MCP 提供给 AI 继续使用。
 
 ### 暂停（容易误导）
 - “代码提交仪表盘 / 数据大盘”

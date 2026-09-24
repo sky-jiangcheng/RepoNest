@@ -1,4 +1,4 @@
-# GitBuddy
+# RepoNest
 
 本地优先的**代码项目上下文库**：自动发现本地 Git 项目，快速理解每个项目「现在发生了什么、沉淀了哪些知识」，让用户和 AI 都能记录、检索与复用项目上下文。
 
@@ -51,7 +51,7 @@
 
 | 通道 | 说明 |
 |------|------|
-| MCP Server | `gitbuddy-mcp` stdio 服务器，9 个工具（笔记 CRUD + 项目查询 + 搜索 + agent-score 自检），可接入 Claude Code / Cursor 等（AI 执行的唯一接口） |
+| MCP Server | `reponest-mcp` stdio 服务器，9 个工具（笔记 CRUD + 项目查询 + 搜索 + agent-score 自检），可接入 Claude Code / Cursor 等（AI 执行的唯一接口） |
 | llms.txt | `GenerateLLMsTxt` 生成面向 LLM 的知识库总览 Markdown |
 | 笔记导出 | 任意笔记导出为带 YAML frontmatter 的 `.md` |
 | Claude 记忆导入 | 一键将 `~/.claude/projects/*/memory/*.md` 幂等导入为知识笔记（**支持**） |
@@ -83,18 +83,18 @@
 
 ### 下载安装
 
-从 [Releases](https://github.com/sky-jiangcheng/GitBuddy/releases) 下载对应平台的最新版本。
+从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的最新版本。
 
 **方式一：直接下载**
 
-在 Releases 页面下载对应平台的二进制文件（`gitbuddy` / `gitbuddy.exe`），解压后直接运行。
+在 Releases 页面下载对应平台的二进制文件（`reponest` / `reponest.exe`），解压后直接运行。
 
 **方式二：一键安装脚本**
 
 | 平台 | 命令 |
 |------|------|
-| macOS / Linux | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/GitBuddy/master/scripts/install.sh \| bash` |
-| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/GitBuddy/master/scripts/install.ps1 \| iex` |
+| macOS / Linux | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.sh \| bash` |
+| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 \| iex` |
 
 启动后直接打开桌面窗口（Wails 应用，无需浏览器）：
 
@@ -108,9 +108,9 @@
 
 配置与数据库存储在用户应用数据目录（升级自动迁移 schema）：
 
-- **macOS**: `~/Library/Application Support/gitbuddy/dashboard.db`
-- **Windows**: `%APPDATA%/gitbuddy/dashboard.db`
-- **Linux**: `~/.config/gitbuddy/dashboard.db`
+- **macOS**: `~/Library/Application Support/reponest/dashboard.db`
+- **Windows**: `%APPDATA%/reponest/dashboard.db`
+- **Linux**: `~/.config/reponest/dashboard.db`
 
 日志路径见[故障排查](docs/troubleshooting.md)。
 
@@ -123,10 +123,10 @@
 cd web && npm install && npm run build && cd ..
 
 # 桌面应用
-go build -ldflags "-s -w" -o gitbuddy .
+go build -ldflags "-s -w" -o reponest .
 
 # MCP server
-go build -o gitbuddy-mcp ./cmd/mcp/
+go build -o reponest-mcp ./cmd/mcp/
 
 # 或使用脚本
 ./scripts/build.sh
@@ -193,7 +193,7 @@ web/src/
 | [SKILL.md](SKILL.md) | 面向 AI 代理的能力卡片 |
 | [TODO.md](TODO.md) | 已知事项与待办 |
 
-[在线文档](https://sky-jiangcheng.github.io/GitBuddy/)（GitHub Pages，随 master 自动部署）。
+[在线文档](https://sky-jiangcheng.github.io/RepoNest/)（GitHub Pages，随 master 自动部署）。
 
 ## 参与贡献
 

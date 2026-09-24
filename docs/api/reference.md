@@ -5,7 +5,7 @@ order: 22
 
 # API 参考
 
-GitBuddy 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露给前端（`window.go.main.App.<方法名>`），方法名与 JSON 载荷即契约。`docs/api/openapi.json` 以 HTTP 路径形式**镜像同一契约**，供 AI 代理与网关消费者阅读——桌面应用本身不监听 HTTP 端口。
+RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露给前端（`window.go.main.App.<方法名>`），方法名与 JSON 载荷即契约。`docs/api/openapi.json` 以 HTTP 路径形式**镜像同一契约**，供 AI 代理与网关消费者阅读——桌面应用本身不监听 HTTP 端口。
 
 > 绑定层是薄委托（`internal/app`），实现全部在 `internal/service`；CLI 与 MCP 复用同一实现。
 

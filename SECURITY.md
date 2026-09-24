@@ -13,7 +13,7 @@
 
 请勿在公开 Issue 中披露安全漏洞。请通过以下方式私下报告：
 
-- 在 GitHub 上创建 [Security Advisory](https://github.com/sky-jiangcheng/GitBuddy/security/advisories/new)（推荐）
+- 在 GitHub 上创建 [Security Advisory](https://github.com/sky-jiangcheng/RepoNest/security/advisories/new)（推荐）
 - 或向维护者发送包含漏洞细节的私信/邮件
 
 请在报告中包含：
@@ -31,7 +31,7 @@
 
 ## 安全设计
 
-GitBuddy 在开发中遵循以下安全原则：
+RepoNest 在开发中遵循以下安全原则：
 
 - 所有数据库查询使用参数化语句，防止 SQL 注入
 - 对传入 `git log` 命令的参数（date/author/branch）进行正则格式校验

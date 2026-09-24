@@ -7,7 +7,7 @@ order: 8
 
 > ⚠️ **实验性**：插件系统接口可能变更，不作为平台扩展方向（见 [ADR-0006](../adr/0006-scope-freeze.md)）。
 
-GitBuddy 支持通过 yaegi 解释执行的 Go 脚本向知识库幂等导入文档。
+RepoNest 支持通过 yaegi 解释执行的 Go 脚本向知识库幂等导入文档。
 
 ## 内置知识源
 
