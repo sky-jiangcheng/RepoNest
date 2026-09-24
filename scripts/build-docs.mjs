@@ -23,8 +23,8 @@ const { marked } = requireFromWeb('marked')
 
 const sidebar = JSON.parse(readFileSync(join(docsDir, 'sidebar.json'), 'utf8'))
 const version = JSON.parse(readFileSync(join(root, 'web', 'package.json'), 'utf8')).version
-const REPO = 'https://github.com/sky-jiangcheng/GitBuddy'
-const PAGES = 'https://sky-jiangcheng.github.io/GitBuddy/'
+const REPO = 'https://github.com/sky-jiangcheng/RepoNest'
+const PAGES = 'https://sky-jiangcheng.github.io/RepoNest/'
 
 // --- Markdown helpers ---------------------------------------------------------
 
@@ -70,7 +70,7 @@ function page(title, activeFile, contentHtml, extraHead = '') {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title ? title + ' · ' : ''}GitBuddy 文档</title>
+  <title>${title ? title + ' · ' : ''}RepoNest 文档</title>
 ${extraHead}  <style>
     :root { --bg: #f8f9fa; --text: #1a1a2e; --muted: #6c757d; --accent: #4caf50; --border: #e2e8f0; --sidebar-w: 240px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -156,7 +156,7 @@ for (const sec of sidebar.sections) {
   const quick = sidebar.sections.flatMap(s => s.items).slice(0, 7)
     .map(it => `      <a href="${it.file}.html">${it.label}</a>`).join('\n')
   const content = html.replace('<!--NAV_LINKS-->', quick)
-  writeFileSync(join(docsDir, 'index.html'), page(title || 'GitBuddy 文档', '', content))
+  writeFileSync(join(docsDir, 'index.html'), page(title || 'RepoNest 文档', '', content))
   built.push('docs/index.html')
 }
 

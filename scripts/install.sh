@@ -1,10 +1,10 @@
 #!/bin/bash
-# GitBuddy install script for macOS and Linux
+# RepoNest install script for macOS and Linux
 set -e
 
 INSTALL_DIR="/usr/local/bin"
-BINARY_NAME="gitbuddy"
-REPO="sky-jiangcheng/GitBuddy"
+BINARY_NAME="reponest"
+REPO="sky-jiangcheng/RepoNest"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
@@ -27,9 +27,9 @@ case "$OS" in
   *) echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 
-echo "Downloading GitBuddy for $TARGET..."
+echo "Downloading RepoNest for $TARGET..."
 
-DOWNLOAD_URL="https://github.com/$REPO/releases/latest/download/gitbuddy-$TARGET"
+DOWNLOAD_URL="https://github.com/$REPO/releases/latest/download/reponest-$TARGET"
 
 if [ ! -w "$INSTALL_DIR" ]; then
   echo "Need sudo to install to $INSTALL_DIR"
@@ -41,5 +41,5 @@ else
 fi
 
 echo ""
-echo "GitBuddy installed to $INSTALL_DIR/$BINARY_NAME"
-echo "Run 'gitbuddy' to start!"
+echo "RepoNest installed to $INSTALL_DIR/$BINARY_NAME"
+echo "Run 'reponest' to start!"

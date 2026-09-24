@@ -1,15 +1,15 @@
-# GitBuddy install script for Windows
-# Run in PowerShell: iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/GitBuddy/master/scripts/install.ps1 | iex
+# RepoNest install script for Windows
+# Run in PowerShell: iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
-$InstallDir = "$env:LOCALAPPDATA\GitBuddy"
-$BinaryName = "gitbuddy.exe"
-$Repo = "sky-jiangcheng/GitBuddy"
+$InstallDir = "$env:LOCALAPPDATA\RepoNest"
+$BinaryName = "reponest.exe"
+$Repo = "sky-jiangcheng/RepoNest"
 $Target = "windows-amd64"
 
-Write-Host "Downloading GitBuddy for Windows..."
-$DownloadUrl = "https://github.com/$Repo/releases/latest/download/gitbuddy-$Target.exe"
+Write-Host "Downloading RepoNest for Windows..."
+$DownloadUrl = "https://github.com/$Repo/releases/latest/download/reponest-$Target.exe"
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 
@@ -23,7 +23,7 @@ if ($UserPath -notlike "*$InstallDir*") {
 }
 
 Write-Host ""
-Write-Host "GitBuddy installed to $InstallDir"
-Write-Host "Run 'gitbuddy' in a new terminal to start!"
+Write-Host "RepoNest installed to $InstallDir"
+Write-Host "Run 'reponest' in a new terminal to start!"
 Write-Host ""
 Write-Host "You can also create a desktop shortcut to: $InstallDir\$BinaryName"
