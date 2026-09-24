@@ -1,4 +1,4 @@
-// Package runtime implements the in-process plugin runtime for GitBuddy.
+// Package runtime implements the in-process plugin runtime for RepoNest.
 //
 // Plugins are Go scripts loaded via the yaegi interpreter (see ADR 0002 and
 // issue #33). Each plugin lives in its own directory under the plugins dir
@@ -9,7 +9,7 @@
 //	func Source() string                                   // optional, defaults to Name
 //	func Import(ctx *plugin.Context) ([]plugin.ImportDoc, error) // optional knowledge source
 //
-// Scripts import "gitbuddy/internal/core/plugin" for the host-provided types.
+// Scripts import "reponest/internal/core/plugin" for the host-provided types.
 // All plugin calls are wrapped in recover() so a panicking plugin can never
 // crash the host process.
 package runtime
@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gitbuddy/internal/core/plugin"
-	"gitbuddy/internal/db"
+	"reponest/internal/core/plugin"
+	"reponest/internal/db"
 )
 
 // PluginStatus describes the load result of one plugin, surfaced on the

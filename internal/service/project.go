@@ -4,8 +4,8 @@ import (
 	"log"
 	"strconv"
 
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/domain"
+	"reponest/internal/db"
+	"reponest/internal/domain"
 )
 
 // defaultDailyCodeStandard is the fallback daily line standard used when the

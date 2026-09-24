@@ -1,6 +1,6 @@
 package db
 
-import "gitbuddy/internal/domain"
+import "reponest/internal/domain"
 
 // Row types are defined in internal/domain so business layers (service,
 // bindings, CLI, MCP) can share them without depending on the storage

@@ -1,4 +1,4 @@
-// gitbuddy-mcp is the GitBuddy MCP server: it exposes the local Git knowledge
+// reponest-mcp is the RepoNest MCP server: it exposes the local Git knowledge
 // base (notes, projects, search) to AI agents over the Model Context
 // Protocol on stdio. The database is opened once at startup and every tool
 // call shares the same service instance as the desktop app.
@@ -13,10 +13,10 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/platform"
-	"gitbuddy/internal/service"
-	"gitbuddy/internal/version"
+	"reponest/internal/db"
+	"reponest/internal/platform"
+	"reponest/internal/service"
+	"reponest/internal/version"
 )
 
 func main() {
@@ -27,10 +27,10 @@ func main() {
 	defer d.Close()
 	svc := service.New(d, platform.GetGitUserName())
 
-	mcpServer := server.NewMCPServer("gitbuddy-mcp", version.Version)
+	mcpServer := server.NewMCPServer("reponest-mcp", version.Version)
 
 	mcpServer.AddTool(mcp.Tool{
-		Name:        "gitbuddy_notes_list",
+		Name:        "reponest_notes_list",
 		Description: "List all knowledge notes across projects",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
@@ -50,7 +50,7 @@ func main() {
 	})
 
 	mcpServer.AddTool(mcp.Tool{
-		Name:        "gitbuddy_notes_search",
+		Name:        "reponest_notes_search",
 		Description: "Search notes and todos by query using FTS5 full-text search",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
@@ -70,7 +70,7 @@ func main() {
 	})
 
 	mcpServer.AddTool(mcp.Tool{
-		Name:        "gitbuddy_notes_read",
+		Name:        "reponest_notes_read",
 		Description: "Read a single note by ID",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
@@ -91,7 +91,7 @@ func main() {
 	})
 
 	mcpServer.AddTool(mcp.Tool{
-		Name:        "gitbuddy_projects_list",
+		Name:        "reponest_projects_list",
 		Description: "List all projects",
 		InputSchema: mcp.ToolInputSchema{
 			Type:       "object",
@@ -102,7 +102,7 @@ func main() {
 	})
 
 	mcpServer.AddTool(mcp.Tool{
-		Name:        "gitbuddy_projects_stats",
+		Name:        "reponest_projects_stats",
 		Description: "Get statistics for a specific project (repos, stats)",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
@@ -123,7 +123,7 @@ func main() {
 	})
 
 	mcpServer.AddTool(mcp.Tool{
-		Name:        "gitbuddy_ask",
+		Name:        "reponest_ask",
 		Description: "Ask a question against the local knowledge base (notes + todos search)",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
@@ -147,7 +147,7 @@ func main() {
 	})
 
 	mcpServer.AddTool(mcp.Tool{
-		Name:        "gitbuddy_notes_create",
+		Name:        "reponest_notes_create",
 		Description: "Create a new knowledge note",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
@@ -194,7 +194,7 @@ func main() {
 	})
 
 	mcpServer.AddTool(mcp.Tool{
-		Name:        "gitbuddy_notes_update",
+		Name:        "reponest_notes_update",
 		Description: "Update an existing note's content and/or metadata",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
@@ -248,8 +248,8 @@ func main() {
 	})
 
 	mcpServer.AddTool(mcp.Tool{
-		Name:        "gitbuddy_agent_score",
-		Description: "Check AI-readiness of the local GitBuddy installation (database, notes, search, MCP, llms.txt, SKILL.md, i18n)",
+		Name:        "reponest_agent_score",
+		Description: "Check AI-readiness of the local RepoNest installation (database, notes, search, MCP, llms.txt, SKILL.md, i18n)",
 		InputSchema: mcp.ToolInputSchema{
 			Type:       "object",
 			Properties: map[string]any{},
@@ -258,7 +258,7 @@ func main() {
 		return makeTextResult(runAgentScore(svc)), nil
 	})
 
-	log.Printf("GitBuddy MCP server v%s starting on stdio...", version.Version)
+	log.Printf("RepoNest MCP server v%s starting on stdio...", version.Version)
 	if err := server.ServeStdio(mcpServer); err != nil {
 		log.Fatalf("MCP server error: %v", err)
 	}

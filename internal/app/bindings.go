@@ -3,9 +3,9 @@ package app
 import (
 	"context"
 
-	pluginruntime "gitbuddy/internal/core/plugin/runtime"
-	"gitbuddy/internal/domain"
-	"gitbuddy/internal/service"
+	pluginruntime "reponest/internal/core/plugin/runtime"
+	"reponest/internal/domain"
+	"reponest/internal/service"
 )
 
 // --- Projects ---------------------------------------------------------------

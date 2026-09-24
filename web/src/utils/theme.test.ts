@@ -55,19 +55,19 @@ describe('getStoredTheme', () => {
   })
 
   it('returns stored theme', () => {
-    localStorage.setItem('gitbuddy-theme', 'dark')
+    localStorage.setItem('reponest-theme', 'dark')
     expect(getStoredTheme()).toBe('dark')
   })
 
   it('migrates legacy theme key', () => {
     localStorage.setItem('gitboard-theme', 'light')
     expect(getStoredTheme()).toBe('light')
-    expect(localStorage.getItem('gitbuddy-theme')).toBe('light')
+    expect(localStorage.getItem('reponest-theme')).toBe('light')
     expect(localStorage.getItem('gitboard-theme')).toBeNull()
   })
 
   it('returns system for invalid stored value', () => {
-    localStorage.setItem('gitbuddy-theme', 'invalid')
+    localStorage.setItem('reponest-theme', 'invalid')
     expect(getStoredTheme()).toBe('system')
   })
 })
@@ -75,13 +75,13 @@ describe('getStoredTheme', () => {
 describe('storeTheme', () => {
   it('stores theme in localStorage', () => {
     storeTheme('dark')
-    expect(localStorage.getItem('gitbuddy-theme')).toBe('dark')
+    expect(localStorage.getItem('reponest-theme')).toBe('dark')
   })
 
   it('overwrites previous value', () => {
     storeTheme('light')
     storeTheme('dark')
-    expect(localStorage.getItem('gitbuddy-theme')).toBe('dark')
+    expect(localStorage.getItem('reponest-theme')).toBe('dark')
   })
 })
 

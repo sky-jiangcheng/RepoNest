@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"gitbuddy/internal/core/plugin"
-	"gitbuddy/internal/db"
+	"reponest/internal/core/plugin"
+	"reponest/internal/db"
 )
 
 // fakeHome redirects os.UserHomeDir via HOME env var.

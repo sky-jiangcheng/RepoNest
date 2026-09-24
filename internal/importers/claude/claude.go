@@ -1,6 +1,6 @@
 // Package claude implements the built-in Claude memory KnowledgeImporter
 // (issue #35). It reads notes from ~/.claude/projects/*/memory/*.md, matches
-// each to a GitBuddy project by name or repository path, and produces
+// each to a RepoNest project by name or repository path, and produces
 // plugin.ImportDoc values that the plugin runtime upserts into the knowledge
 // base. Imports are idempotent: the runtime updates existing notes rather than
 // duplicating them.
@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gitbuddy/internal/core/plugin"
-	"gitbuddy/internal/db"
+	"reponest/internal/core/plugin"
+	"reponest/internal/db"
 )
 
 // SourceName is the stable knowledge-source identifier registered by this
@@ -35,7 +35,7 @@ func New(database *sql.DB) *Importer {
 func (i *Importer) Source() string { return SourceName }
 
 // Import scans ~/.claude/projects/*/memory/*.md and returns documents to
-// upsert. Files whose project cannot be matched to a GitBuddy project are
+// upsert. Files whose project cannot be matched to a RepoNest project are
 // returned with ProjectID 0, which the runtime counts as skipped.
 func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 	home, err := os.UserHomeDir()
@@ -120,7 +120,7 @@ func NoteTitle(filename string) string {
 	}
 }
 
-// MatchProject finds the GitBuddy project id for a Claude memory dir,
+// MatchProject finds the RepoNest project id for a Claude memory dir,
 // preferring exact name, then repo path suffix, then name containment.
 // Returns 0 when no project matches.
 func MatchProject(displayName string, projects []db.Project, repos []db.Repository) int64 {

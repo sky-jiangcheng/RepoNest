@@ -2,9 +2,9 @@
 // user data locations (database, plugins, log file) and git user detection.
 //
 // User data paths are stable across versions: an installation that already
-// has a "gitboard" data directory is renamed to dirName on first launch after
-// the GitBoard -> GitBuddy rename, so the database, plugins and logs carry
-// over instead of being orphaned.
+// has a legacy data directory (gitboard, then gitbuddy) is renamed to dirName
+// ("reponest") on first launch after the rename, so the database, plugins and
+// logs carry over instead of being orphaned.
 package platform
 
 import (
@@ -17,12 +17,13 @@ import (
 )
 
 // dirName is the user data directory and the log file basename.
-const dirName = "gitbuddy"
+const dirName = "reponest"
 
-// legacyDirName is the data directory used before the GitBoard -> GitBuddy
-// rename. The spelling is intentional: it names data written by older builds
-// and is only read by the migration below.
-const legacyDirName = "gitboard"
+// legacyDirName is the data directory used before the GitBuddy -> RepoNest
+// rename (which itself succeeded the GitBoard era). The spelling is
+// intentional: it names data written by older builds and is only read by the
+// migration below.
+const legacyDirName = "gitbuddy"
 
 // DefaultScanRoots returns platform-specific default scan root directories.
 // Windows: all drive letters except C: (the system drive).
@@ -131,7 +132,7 @@ func GetPluginsDir() string {
 }
 
 // migrateLegacyLog renames the log file left behind by earlier versions
-// (gitboard.log -> gitbuddy.log). It runs after the log directory is known,
+// (gitboard.log -> reponest.log). It runs after the log directory is known,
 // which covers every platform: on Windows the log lives inside the config
 // directory that migrateLegacyData already renamed, so only the file name is
 // left to fix there.
@@ -149,9 +150,9 @@ func migrateLegacyLog(dir string) {
 
 // GetLogPath returns the platform-appropriate log file path.
 //
-//	darwin:  ~/Library/Logs/gitbuddy.log
-//	windows: %APPDATA%\gitbuddy\logs\gitbuddy.log
-//	linux:   $XDG_STATE_HOME/gitbuddy/gitbuddy.log (default ~/.local/state/...)
+//	darwin:  ~/Library/Logs/reponest.log
+//	windows: %APPDATA%\reponest\logs\reponest.log
+//	linux:   $XDG_STATE_HOME/reponest/reponest.log (default ~/.local/state/...)
 func GetLogPath() string {
 	var dir string
 	switch runtime.GOOS {

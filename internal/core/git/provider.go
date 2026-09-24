@@ -6,12 +6,12 @@
 package git
 
 import (
-	"gitbuddy/internal/knowledge"
-	"gitbuddy/internal/stats"
+	"reponest/internal/knowledge"
+	"reponest/internal/stats"
 )
 
 // Provider is the single abstraction for all Git interactions used by
-// GitBuddy. Any implementation must be safe for concurrent use because the
+// RepoNest. Any implementation must be safe for concurrent use because the
 // scan engine and dashboard handlers call these methods from goroutines.
 type Provider interface {
 	// QueryStats runs a shortstat query for a single repo/date/author combo.

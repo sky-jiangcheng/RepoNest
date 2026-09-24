@@ -1,8 +1,8 @@
-// Package service contains GitBuddy's business logic: project aggregation,
+// Package service contains RepoNest's business logic: project aggregation,
 // the repository scan pipeline, stats refresh, knowledge notes, search and
 // AI-facing exports. It is the single layer that talks to the database
 // (internal/db) and the git provider (internal/core/git); the Wails binding
-// layer (internal/app), the CLI (cmd/gitbuddy) and the MCP server (cmd/mcp)
+// layer (internal/app), the CLI (cmd/reponest) and the MCP server (cmd/mcp)
 // are thin adapters over it and share one implementation.
 package service
 
@@ -13,16 +13,16 @@ import (
 	"sync"
 	"time"
 
-	"gitbuddy/internal/core/git"
-	pluginruntime "gitbuddy/internal/core/plugin/runtime"
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/version"
+	"reponest/internal/core/git"
+	pluginruntime "reponest/internal/core/plugin/runtime"
+	"reponest/internal/db"
+	"reponest/internal/version"
 )
 
 // ImportEventPayload is the data broadcast after a knowledge-source import.
 type ImportEventPayload map[string]any
 
-// Service carries all GitBuddy business logic and its runtime state (scan
+// Service carries all RepoNest business logic and its runtime state (scan
 // progress, status-bar cache). It is safe for concurrent use.
 type Service struct {
 	db    *sql.DB

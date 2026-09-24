@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/domain"
+	"reponest/internal/db"
+	"reponest/internal/domain"
 )
 
 // statsBackfillDays is how far back the range refreshers query git history.

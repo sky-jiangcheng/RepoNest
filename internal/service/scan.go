@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/grouper"
-	"gitbuddy/internal/scanner"
+	"reponest/internal/db"
+	"reponest/internal/grouper"
+	"reponest/internal/scanner"
 )
 
 // ScanResult holds the result of a scan operation.

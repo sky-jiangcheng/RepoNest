@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/service"
+	"reponest/internal/db"
+	"reponest/internal/service"
 )
 
 // Regression: the headless server is a third JSON boundary (besides Wails and

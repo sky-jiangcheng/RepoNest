@@ -1,14 +1,14 @@
-// dsh-plugin-gitbuddy
+// dsh-plugin-reponest
 //
-// Exposes GitBuddy's local git analysis to DeepSeek Harness as three model-
-// visible tools. All heavy lifting happens in GitBuddy's shared Go service
+// Exposes RepoNest's local git analysis to DeepSeek Harness as three model-
+// visible tools. All heavy lifting happens in RepoNest's shared Go service
 // (internal/service), reached through the headless HTTP server (cmd/server,
-// `gitbuddy server`). This plugin is a thin, model-facing client — it owns no
+// `reponest server`). This plugin is a thin, model-facing client — it owns no
 // analysis logic of its own, so the desktop App and Harness never diverge.
 //
 // Lifecycle (user-chosen: plugin auto-starts the server):
-//   1. On load, try the headless server at GITBUDDY_HTTP_PORT (default 18765).
-//   2. If unreachable and GITBUDDY_AUTOSTART != "0", spawn GITBUDDY_SERVER_BIN
+//   1. On load, try the headless server at REPONEST_HTTP_PORT (default 18765).
+//   2. If unreachable and REPONEST_AUTOSTART != "0", spawn REPONEST_SERVER_BIN
 //      with `server --port <port>`; kill it on plugin unload (ctx.effect).
 //   3. Tools retry the HTTP call a few times to tolerate server cold-start.
 
@@ -18,14 +18,14 @@ import { spawn, type ChildProcess } from 'node:child_process'
 
 const DEFAULT_PORT = 18765
 
-export const name = 'gitbuddy'
+export const name = 'reponest'
 export const inject = ['tools']
 
 export function apply(ctx: Context) {
-  const port = Number(process.env.GITBUDDY_HTTP_PORT || DEFAULT_PORT)
+  const port = Number(process.env.REPONEST_HTTP_PORT || DEFAULT_PORT)
   const base = `http://127.0.0.1:${port}`
-  const binary = process.env.GITBUDDY_SERVER_BIN || ''
-  const autoStart = (process.env.GITBUDDY_AUTOSTART ?? '1') !== '0'
+  const binary = process.env.REPONEST_SERVER_BIN || ''
+  const autoStart = (process.env.REPONEST_AUTOSTART ?? '1') !== '0'
 
   // Spawn the headless server if configured; the returned disposer kills it
   // when the plugin unloads (HMR / shutdown), keeping the side effect reversible.
@@ -35,14 +35,14 @@ export function apply(ctx: Context) {
         stdio: 'ignore',
         env: process.env,
       })
-      child.on('error', (e) => ctx.logger.warn(`[gitbuddy] failed to start server: ${e.message}`))
-      ctx.logger.info(`[gitbuddy] headless server spawned on ${base}`)
+      child.on('error', (e) => ctx.logger.warn(`[reponest] failed to start server: ${e.message}`))
+      ctx.logger.info(`[reponest] headless server spawned on ${base}`)
       return () => {
         child.kill('SIGTERM')
       }
     })
   } else if (autoStart && !binary) {
-    ctx.logger.warn('[gitbuddy] GITBUDDY_SERVER_BIN not set; expecting an already-running server at ' + base)
+    ctx.logger.warn('[reponest] REPONEST_SERVER_BIN not set; expecting an already-running server at ' + base)
   }
 
   // HTTP helper with retries to cover server cold-start latency.
@@ -53,7 +53,7 @@ export function apply(ctx: Context) {
         const res = await fetch(base + path, { ...init, signal })
         if (!res.ok) {
           const body = await res.text()
-          throw new Error(`gitbuddy api ${res.status}: ${body.slice(0, 200)}`)
+          throw new Error(`reponest api ${res.status}: ${body.slice(0, 200)}`)
         }
         return await res.json()
       } catch (e) {
@@ -65,9 +65,9 @@ export function apply(ctx: Context) {
   }
 
   ctx.tools.register(defineTool({
-    name: 'gitbuddy_ai_context',
+    name: 'reponest_ai_context',
     description:
-      "Return GitBuddy's AI-readable knowledge-base context (llms.txt style) for this machine: a catalog of discovered projects, their tech stacks, README excerpts and recent knowledge notes. Use when you need background on the user's local repositories before proposing changes.",
+      "Return RepoNest's AI-readable knowledge-base context (llms.txt style) for this machine: a catalog of discovered projects, their tech stacks, README excerpts and recent knowledge notes. Use when you need background on the user's local repositories before proposing changes.",
     parameters: {},
     output: {
       schema: { type: 'string' },
@@ -80,11 +80,11 @@ export function apply(ctx: Context) {
   }))
 
   ctx.tools.register(defineTool({
-    name: 'gitbuddy_repo_overview',
+    name: 'reponest_repo_overview',
     description:
-      'Get mined knowledge for a GitBuddy project: tech stack, language breakdown, dependencies, top contributors, activity/heatmap stats and recent commits. Use to understand a specific local project before modifying it.',
+      'Get mined knowledge for a RepoNest project: tech stack, language breakdown, dependencies, top contributors, activity/heatmap stats and recent commits. Use to understand a specific local project before modifying it.',
     parameters: {
-      project_id: { type: 'number', required: true, description: 'GitBuddy project ID (integer).' },
+      project_id: { type: 'number', required: true, description: 'RepoNest project ID (integer).' },
     },
     output: {
       schema: { type: 'json' },
@@ -96,9 +96,9 @@ export function apply(ctx: Context) {
   }))
 
   ctx.tools.register(defineTool({
-    name: 'gitbuddy_search',
+    name: 'reponest_search',
     description:
-      "Full-text search across the user's local GitBuddy knowledge base (notes and todos). Use to recall prior decisions, notes or tasks by keyword.",
+      "Full-text search across the user's local RepoNest knowledge base (notes and todos). Use to recall prior decisions, notes or tasks by keyword.",
     parameters: {
       query: { type: 'string', required: true, description: 'Search keywords.' },
       include_todos: { type: 'boolean', description: 'Also search todos (default false: notes only).' },

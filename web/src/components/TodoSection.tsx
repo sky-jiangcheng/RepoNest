@@ -23,8 +23,8 @@ function TodoSection({ projectId }: Props) {
   // Listen for todo-changed events (e.g. after delete from TodoDeleteButton)
   useEffect(() => {
     const handler = () => fetchTodos()
-    window.addEventListener('gitbuddy:todos-changed', handler)
-    return () => window.removeEventListener('gitbuddy:todos-changed', handler)
+    window.addEventListener('reponest:todos-changed', handler)
+    return () => window.removeEventListener('reponest:todos-changed', handler)
   }, [fetchTodos])
 
   const handleAdd = async () => {
@@ -131,7 +131,7 @@ function TodoDeleteButton({ todoId }: { todoId: number }) {
   const { armed, click } = useConfirmClick(async () => {
     try {
       await deleteTodo(todoId)
-      window.dispatchEvent(new CustomEvent('gitbuddy:todos-changed'))
+      window.dispatchEvent(new CustomEvent('reponest:todos-changed'))
     } catch { /* ignore */ }
   })
   return (

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/domain"
+	"reponest/internal/db"
+	"reponest/internal/domain"
 )
 
 // SummaryData holds the daily summary payload.

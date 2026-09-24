@@ -7,11 +7,11 @@ import (
 	"os"
 	"strings"
 
-	"gitbuddy/internal/app"
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/platform"
-	"gitbuddy/internal/service"
-	"gitbuddy/internal/version"
+	"reponest/internal/app"
+	"reponest/internal/db"
+	"reponest/internal/platform"
+	"reponest/internal/service"
+	"reponest/internal/version"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -22,7 +22,7 @@ import (
 var assets embed.FS
 
 func main() {
-	log.Printf("GitBuddy %s starting...", version.Version)
+	log.Printf("RepoNest %s starting...", version.Version)
 
 	// Open database
 	database, err := db.InitDB(platform.GetDbPath())
@@ -57,7 +57,7 @@ func main() {
 
 	// Launch Wails
 	err = wails.Run(&options.App{
-		Title:     "GitBuddy",
+		Title:     "RepoNest",
 		Width:     1280,
 		Height:    800,
 		MinWidth:  800,
@@ -152,7 +152,7 @@ func setupLogging() {
 		log.SetOutput(f)
 	}
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Printf("=== GitBuddy log started ===")
+	log.Printf("=== RepoNest log started ===")
 	log.Printf("log file: %s", logFile)
 	log.Printf("PATH=%s", os.Getenv("PATH"))
 }

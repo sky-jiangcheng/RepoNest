@@ -1,4 +1,4 @@
-module gitbuddy
+module reponest
 
 go 1.25.5
 

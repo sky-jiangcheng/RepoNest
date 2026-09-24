@@ -9,8 +9,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"gitbuddy/internal/service"
-	"gitbuddy/internal/version"
+	"reponest/internal/service"
+	"reponest/internal/version"
 )
 
 func makeTextResult(text string) *mcp.CallToolResult {
@@ -141,7 +141,7 @@ func runAgentScore(svc *service.Service) string {
 
 	// Build report
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "=== GitBuddy Agent Score (v%s) ===\n\n", version.Version)
+	fmt.Fprintf(&sb, "=== RepoNest Agent Score (v%s) ===\n\n", version.Version)
 	for _, p := range parts {
 		fmt.Fprintln(&sb, p)
 	}
@@ -151,11 +151,11 @@ func runAgentScore(svc *service.Service) string {
 	fmt.Fprintf(&sb, "AI-readiness: %.0f%%\n\n", pct)
 
 	if pct >= 75 {
-		fmt.Fprintln(&sb, "✅ GitBuddy is agent-ready! MCP and tools are functional.")
+		fmt.Fprintln(&sb, "✅ RepoNest is agent-ready! MCP and tools are functional.")
 	} else if pct >= 50 {
-		fmt.Fprintln(&sb, "⚠️  GitBuddy is partially ready. Review warnings above.")
+		fmt.Fprintln(&sb, "⚠️  RepoNest is partially ready. Review warnings above.")
 	} else {
-		fmt.Fprintln(&sb, "❌ GitBuddy needs setup before agents can use it effectively.")
+		fmt.Fprintln(&sb, "❌ RepoNest needs setup before agents can use it effectively.")
 	}
 	return sb.String()
 }

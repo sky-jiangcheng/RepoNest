@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gitbuddy/internal/scanner"
+	"reponest/internal/scanner"
 )
 
 func TestGroupRepositories_Empty(t *testing.T) {

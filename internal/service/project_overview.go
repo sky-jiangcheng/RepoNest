@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/domain"
-	"gitbuddy/internal/knowledge"
-	"gitbuddy/internal/stats"
+	"reponest/internal/db"
+	"reponest/internal/domain"
+	"reponest/internal/knowledge"
+	"reponest/internal/stats"
 )
 
 // GetProjectDetail returns a project with all its repositories and stats.

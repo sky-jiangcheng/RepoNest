@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"gitbuddy/internal/db"
-	"gitbuddy/internal/domain"
+	"reponest/internal/db"
+	"reponest/internal/domain"
 )
 
 // GenerateLLMsTxt returns an aggregated Markdown document suitable for AI
@@ -49,8 +49,8 @@ func (s *Service) GenerateLLMsTxt() string {
 	}
 
 	var b strings.Builder
-	b.WriteString("# GitBuddy Knowledge Base\n\n")
-	b.WriteString("This file is an AI-readable summary of the local GitBuddy knowledge base. ")
+	b.WriteString("# RepoNest Knowledge Base\n\n")
+	b.WriteString("This file is an AI-readable summary of the local RepoNest knowledge base. ")
 	b.WriteString("It catalogs discovered projects, their inferred technology stacks, README excerpts, and notable knowledge notes.\n\n")
 
 	// Project catalog

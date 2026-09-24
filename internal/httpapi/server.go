@@ -1,4 +1,4 @@
-// Package httpapi exposes GitBuddy's shared business logic (internal/service)
+// Package httpapi exposes RepoNest's shared business logic (internal/service)
 // over a small HTTP/JSON surface so that external runtimes — most importantly
 // the DeepSeek Harness dsh-plugin — can call the same analysis code the
 // desktop App uses, with zero logic duplication.
@@ -14,10 +14,10 @@ import (
 	"strconv"
 	"strings"
 
-	"gitbuddy/internal/service"
+	"reponest/internal/service"
 )
 
-// New returns an http.Handler (ServeMux) that serves GitBuddy's capabilities
+// New returns an http.Handler (ServeMux) that serves RepoNest's capabilities
 // as JSON endpoints. The supplied service must already be constructed with a
 // valid database; callers do not need to invoke service.Startup for read-only
 // endpoints.
