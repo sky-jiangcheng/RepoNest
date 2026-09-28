@@ -100,36 +100,77 @@ if [ "${1:-}" = "--fill-sha256" ]; then
 
   sha_for() { awk -v want="$1" '$2 ~ ("/" want "$") { print $1 }' "$SUMS" | head -1; }
 
+  # Replace the digest that belongs to a specific asset, wherever it currently
+  # sits. Keying off the asset name in the URL rather than off the placeholder
+  # string is deliberate: a manifest may already hold a digest from an earlier
+  # build of the same version (a locally-compiled artifact, say) that differs
+  # from what the release actually serves. Matching only __FILL_SHA256_*__ would
+  # leave those stale values in place and every install would fail verification.
+  #
+  # All three manifest formats put the digest on the line after the one naming
+  # the asset: Cask and Formula emit `url` then `sha256`, Scoop emits "url"
+  # then "hash". So: find the asset's line, overwrite the digest on the next
+  # non-blank line.
   fill() {
-    local file="$1" asset="$2" placeholder="$3"
+    local file="$1" asset="$2"
     local digest
     digest="$(sha_for "$asset")"
     if [ -z "$digest" ]; then
-      echo "  skip $file: $asset not in SHA256SUMS (placeholder kept)"
+      echo "  skip $file: $asset not in SHA256SUMS (left untouched)"
       return 0
     fi
-    if ! grep -q "$placeholder" "$file"; then
+    if ! grep -q "$asset" "$file"; then
+      echo "  skip $file: no reference to $asset"
       return 0
     fi
-    # Portable in-place edit; see the note above on why sed -i is avoided.
-    # The trap removes the temp file if sed or chmod fails, so an interrupted
-    # run cannot leave a `<manifest>.XXXXXX` turd in the tree.
+
     local tmp
     tmp="$(mktemp "${file}.XXXXXX")"
     trap 'rm -f "${tmp:-}"' RETURN
-    sed -E "s|$placeholder|$digest|g" "$file" > "$tmp"
+    awk -v asset="$asset" -v digest="$digest" '
+      # Inside a block already matched for this asset, the digest is the next
+      # non-blank line that mentions sha256.
+      !inblk && index($0, asset) && /url/ { inblk = 1; print; next }
+      inblk && /sha256/ {
+        if (match($0, /"sha256:[^"]*"/))   sub(/"sha256:[^"]*"/, "\"sha256:" digest "\"")
+        else if (match($0, /sha256 "[^"]*"/)) sub(/sha256 "[^"]*"/, "sha256 \"" digest "\"")
+        inblk = 0; print; next
+      }
+      # Scoop accepts the digest with or without a "sha256:" prefix, and a
+      # manifest edited by hand (or by an older revision of this script) may
+      # carry the bare form. Match it too, or the substitution silently no-ops.
+      inblk && /"hash"[[:space:]]*:/ {
+        sub(/"hash"[[:space:]]*:[[:space:]]*"[^"]*"/, "\"hash\": \"sha256:" digest "\"")
+        inblk = 0; print; next
+      }
+      inblk && NF == 0 { print; next }
+      inblk { inblk = 0 }   # blank-tolerant, but do not run away on prose
+      { print }
+    ' "$file" > "$tmp"
+
+    if cmp -s "$tmp" "$file"; then
+      rm -f "$tmp"; trap - RETURN
+      echo "  unchanged $file ($asset already current)"
+      return 0
+    fi
     chmod 0644 "$tmp"
     mv "$tmp" "$file"
     trap - RETURN
-    echo "  filled $file <- $asset ($digest)"
+    echo "  set $file <- $asset (${digest:0:12}…)"
   }
 
   echo "Filling sha256 from $SUMS"
-  fill packaging/homebrew/Casks/reponest-mcp.rb       reponest-mcp-darwin-arm64.tar.gz  __FILL_SHA256_DARWIN_ARM64_MCP_TARBALL__
-  fill packaging/homebrew/Formula/reponest-mcp.rb     reponest-mcp-linux-amd64.tar.gz   __FILL_SHA256_LINUX_AMD64_MCP_TARBALL__
-  fill packaging/scoop/reponest-mcp.json              reponest-mcp-windows-amd64.zip   sha256:__FILL_SHA256_WINDOWS_AMD64_MCP_ZIP__
-  fill packaging/homebrew/Casks/reponest.rb           reponest-darwin-arm64.dmg        __FILL_SHA256_DARWIN_ARM64_DMG__
-  fill packaging/scoop/reponest.json                  reponest-windows-amd64.zip      sha256:__FILL_SHA256_WINDOWS_AMD64_ZIP__
+  # Desktop app
+  fill packaging/homebrew/Casks/reponest.rb    reponest-darwin-arm64.dmg
+  fill packaging/homebrew/Casks/reponest.rb    reponest-darwin-amd64.dmg
+  fill packaging/scoop/reponest.json           reponest-windows-amd64.zip
+  # MCP server
+  fill packaging/homebrew/Casks/reponest-mcp.rb    reponest-mcp-darwin-arm64.tar.gz
+  fill packaging/homebrew/Casks/reponest-mcp.rb    reponest-mcp-darwin-amd64.tar.gz
+  fill packaging/homebrew/Formula/reponest-mcp.rb  reponest-mcp-darwin-arm64.tar.gz
+  fill packaging/homebrew/Formula/reponest-mcp.rb  reponest-mcp-darwin-amd64.tar.gz
+  fill packaging/homebrew/Formula/reponest-mcp.rb  reponest-mcp-linux-amd64.tar.gz
+  fill packaging/scoop/reponest-mcp.json           reponest-mcp-windows-amd64.zip
 
   echo
   echo "Any manifest still holding a __FILL_SHA256_*__ placeholder needs a"

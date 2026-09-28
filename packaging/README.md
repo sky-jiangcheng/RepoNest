@@ -83,9 +83,16 @@ git push origin master --tags
 #    __FILL_SHA256_*__ placeholders are filled.
 ```
 
-A manifest still holding `__FILL_SHA256_*__` is one Homebrew and Scoop will
-refuse to install from. That is deliberate: a missing digest should fail
-loudly, never silently install an unverified binary.
+For v1.8.0 all eight digests are filled in and match what the release
+actually serves. A manifest still holding `__FILL_SHA256_*__` is one Homebrew
+and Scoop will refuse to install from — deliberate, since a missing digest
+should fail loudly rather than silently install an unverified binary.
+
+Digests must come from the **published release**, not from a local build of
+the same version: a binary compiled on a different host (or with different
+flags) is a different file, and a manifest carrying its digest would reject
+every real download. Use the `digest` field the GitHub API returns for each
+release asset, or download the assets and run `sha256sum` on them.
 
 ## Pruning old releases
 

@@ -66,10 +66,9 @@
 - **历史 release 的资产名仍是旧品牌**：v1.7.9 及之后发的是 `gitbuddy-*`，
   v1.7.6 及之前是 `gitboard-*`。1.7.7 的更名只覆盖了仓库内容，没有传导到发布产物文件名。
   当前 `release.yml` 已统一为 `reponest-*`，从 1.8.0 起一致；历史 release 需要维护者决定是否清理。
-- `packaging/` 中桌面版清单（`Casks/reponest.rb`、`scoop/reponest.json`）的
-  `sha256` 仍是 `__FILL_SHA256_*__` 占位符，需在桌面产物发布后用
-  `./scripts/update-manifests.sh --fill-sha256` 回填。在此之前 brew / scoop 会拒绝安装——
-  这是刻意设计，宁可安装失败也不装未校验的二进制。
+- 本版本的 Homebrew / Scoop 清单摘要已用 release 实际产物回填（8/8 匹配）。
+  后续版本需在产物发布后跑 `./scripts/update-manifests.sh --fill-sha256`；
+  摘要为空的清单 brew / scoop 会拒绝安装——刻意设计，宁可安装失败也不装未校验的二进制。
 
 ## [1.7.9] - 2026-09-03
 
