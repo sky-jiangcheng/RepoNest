@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-09-27
+
 ### 修复
 
 - **`reponest_scan` 静默吞掉扫描错误**：`runCollectedScan` 此前把文件系统扫描失败、事务失败、
@@ -441,7 +443,8 @@
 
 - 首个正式版本：Wails 桌面应用骨架、GitHub Actions 多平台构建发布
 
-[Unreleased]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.8.1...v1.9.0
 [1.8.1]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.9...v1.8.0
