@@ -1,5 +1,10 @@
-# Dependabot configuration — weekly dependency updates
+# Dependabot configuration — monthly dependency updates, grouped per ecosystem
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates
+#
+# Grouping matters more than cadence here: with 10 open PRs per ecosystem the
+# dependency feed drowned the real issues (13 of 14 open issues were bumps).
+# One grouped PR per ecosystem per month keeps updates flowing while leaving
+# the issue list readable.
 
 version: 2
 updates:
@@ -7,31 +12,40 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 10
+      interval: "monthly"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "go"
+    groups:
+      go-deps:
+        patterns:
+          - "*"
 
   # npm (frontend)
   - package-ecosystem: "npm"
     directory: "/web"
     schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 10
+      interval: "monthly"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "npm"
+    groups:
+      web-deps:
+        patterns:
+          - "*"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "ci"
+    groups:
+      actions-deps:
+        patterns:
+          - "*"
