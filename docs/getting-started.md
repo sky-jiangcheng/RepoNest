@@ -29,7 +29,13 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scrip
 
 或从 [GitHub Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的归档文件（macOS `.dmg` / Linux `.tar.gz` / Windows `.zip`）手动解压。
 
-桌面应用也可用包管理器安装：macOS `brew install --cask reponest`，Windows `scoop install reponest`（Linux 桌面版只提供 tarball）。
+桌面应用也可用包管理器安装（需先添加 tap / bucket，Linux 桌面版只提供 tarball）：
+
+```bash
+brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest
+```
+
+> tap 与 bucket 仓库尚未创建；在它们上线前请用手动下载或安装脚本。
 
 ## 连接 AI 客户端
 
@@ -37,10 +43,10 @@ AI 走的是独立分发的 `reponest-mcp`（MCP stdio 服务器）。它**不�
 
 | 方式 | 平台 | 命令 |
 |------|------|------|
-| Homebrew | macOS | `brew install --cask reponest-mcp` |
-| Homebrew | Linux | `brew install reponest-mcp` |
-| Scoop | Windows | `scoop install reponest-mcp` |
-| 手动 | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
+| 手动（无需前置） | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
+| Homebrew | macOS | `brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest-mcp` |
+| Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp` |
+| Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp` |
 
 注册到 Claude Code：
 

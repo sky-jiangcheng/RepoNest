@@ -104,7 +104,12 @@
 | Linux | 同上 | `/usr/local/bin/reponest` + `/usr/local/bin/reponest-mcp` |
 | Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\RepoNest`（自动加入用户 PATH） |
 
-macOS 也可以直接用 Homebrew：`brew install --cask reponest`（见 [`packaging/`](packaging/README.md)）。
+macOS 也可以用 Homebrew（需先添加 tap，见 [`packaging/`](packaging/README.md)）：
+
+```bash
+brew tap sky-jiangcheng/repo
+brew install --cask sky-jiangcheng/repo/reponest
+```
 
 启动后直接打开桌面窗口（Wails 应用，无需浏览器）：
 
@@ -120,10 +125,10 @@ AI 客户端走的是独立分发的 `reponest-mcp`（MCP stdio 服务器），*
 
 | 方式 | 平台 | 命令 |
 |------|------|------|
-| Homebrew | macOS | `brew install --cask reponest-mcp` |
-| Homebrew | Linux | `brew install reponest-mcp` |
-| Scoop | Windows | `scoop install reponest-mcp` |
-| 手动 | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
+| 手动（无需任何前置） | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
+| Homebrew | macOS | `brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest-mcp` |
+| Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp` |
+| Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp` |
 
 装好后注册到 AI 客户端：
 
@@ -133,7 +138,9 @@ claude mcp add reponest -- "$(which reponest-mcp)"
 
 包管理器清单在 [`packaging/`](packaging/README.md)，版本号统一由 `wails.json` 派生，发布后需回填 `sha256`（Homebrew / Scoop 会在校验不通过时直接拒绝安装，这是预期行为）。
 
-> 桌面应用本身也可以用包管理器装：macOS `brew install --cask reponest`，Windows `scoop install reponest`。Linux 桌面版目前只提供 tarball。
+> 桌面应用同理：`brew install --cask sky-jiangcheng/repo/reponest`（macOS）、`scoop install repo/reponest`（Windows）。Linux 桌面版只提供 tarball。
+>
+> ⚠️ **tap 与 bucket 仓库尚未创建。** 在它们上线之前，请用上表的手动下载或 `scripts/install.sh`——未经 `brew tap` / `scoop bucket add` 直接执行 `brew install reponest` 会失败。
 
 ### 数据目录
 

@@ -48,13 +48,11 @@ MCP is the single AI execution interface (the `reponest` CLI is not shipped). st
 Install from a release (preferred), then register:
 
 ```bash
-# macOS
-brew install --cask reponest-mcp
-# Linux
-brew install reponest-mcp
-# Windows
-scoop install reponest-mcp
-# or download reponest-mcp-<target>.tar.gz / .zip from GitHub Releases
+# No prerequisites — download reponest-mcp-<target>.tar.gz / .zip from Releases
+# Package managers (their tap/bucket is not published yet; check the repo README):
+#   macOS   : brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest-mcp
+#   Linux   : brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp
+#   Windows : scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp
 ```
 
 Build from source if none of the above apply:
