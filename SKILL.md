@@ -49,7 +49,7 @@ Install from a release (preferred), then register:
 
 ```bash
 # No prerequisites — download reponest-mcp-<target>.tar.gz / .zip from Releases
-# Package managers (their tap/bucket is not published yet; check the repo README):
+# Or use a package manager:
 #   macOS   : brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest-mcp
 #   Linux   : brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp
 #   Windows : scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp

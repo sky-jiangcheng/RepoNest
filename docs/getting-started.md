@@ -29,13 +29,11 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scrip
 
 或从 [GitHub Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的归档文件（macOS `.dmg` / Linux `.tar.gz` / Windows `.zip`）手动解压。
 
-桌面应用也可用包管理器安装（需先添加 tap / bucket，Linux 桌面版只提供 tarball）：
+桌面应用也可用包管理器安装（需先添加 tap，Linux 桌面版只提供 tarball）：
 
 ```bash
 brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest
 ```
-
-> tap 与 bucket 仓库尚未创建；在它们上线前请用手动下载或安装脚本。
 
 ## 连接 AI 客户端
 

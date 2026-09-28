@@ -45,6 +45,19 @@ After publishing a release, fill them in:
 curl -sL https://github.com/sky-jiangcheng/RepoNest/releases/download/v1.7.9/reponest-mcp-linux-amd64.tar.gz | shasum -a 256
 ```
 
+## Where these are published
+
+| | Repository | User command |
+|---|---|---|
+| Homebrew | [sky-jiangcheng/homebrew-repo](https://github.com/sky-jiangcheng/homebrew-repo) | `brew tap sky-jiangcheng/repo` |
+| Scoop | [sky-jiangcheng/scoop-repo](https://github.com/sky-jiangcheng/scoop-repo) | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo` |
+
+The tap keeps its own CI (`brew tap` → `brew install` → verify the installed
+layout) so a broken manifest fails there rather than in a user's terminal. The
+bucket validates each manifest's `hash` against the digest GitHub reports for
+the release asset. Neither repository should be edited by hand: these files are
+copied here on every release.
+
 ## Trying a manifest before publishing
 
 ```bash

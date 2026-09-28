@@ -136,11 +136,12 @@ AI 客户端走的是独立分发的 `reponest-mcp`（MCP stdio 服务器），*
 claude mcp add reponest -- "$(which reponest-mcp)"
 ```
 
-包管理器清单在 [`packaging/`](packaging/README.md)，版本号统一由 `wails.json` 派生，发布后需回填 `sha256`（Homebrew / Scoop 会在校验不通过时直接拒绝安装，这是预期行为）。
+清单在 [`packaging/`](packaging/README.md)，版本号统一由 `wails.json` 派生，`sha256` 取自 release 实际提供的资产（Homebrew / Scoop 校验不通过会直接拒绝安装，这是预期行为）。已发布版本：
+
+- **Homebrew**：[sky-jiangcheng/homebrew-repo](https://github.com/sky-jiangcheng/homebrew-repo)
+- **Scoop**：[sky-jiangcheng/scoop-repo](https://github.com/sky-jiangcheng/scoop-repo)
 
 > 桌面应用同理：`brew install --cask sky-jiangcheng/repo/reponest`（macOS）、`scoop install repo/reponest`（Windows）。Linux 桌面版只提供 tarball。
->
-> ⚠️ **tap 与 bucket 仓库尚未创建。** 在它们上线之前，请用上表的手动下载或 `scripts/install.sh`——未经 `brew tap` / `scoop bucket add` 直接执行 `brew install reponest` 会失败。
 
 ### 数据目录
 
