@@ -25,16 +25,6 @@
 
 **Why RepoNest?** 现在的编码 agent 擅长读代码，却不记得**你在这些仓库里积累的判断**：为什么这么设计、上次踩过什么坑、下一个待办是什么。每个 agent 的私有记忆格式互不相通，换工具 = 从零开始。RepoNest 把这些沉淀在一个本地、可检索、任何 agent 都能读写的记忆层里——`reponest_context` 开会话一键注入，`reponest_handoff` 收会话结构化交接，中间的知识按需检索。
 
-## 截屏预览
-
-![知识库](screenshots/knowledge.png)
-
-![项目详情](screenshots/project-detail.png)
-
-![仪表盘首页](screenshots/dashboard.png)
-
-> 截图按核心能力优先排列（知识库 / 项目详情属核心，仪表盘属支持能力，见 [ADR-0006](docs/adr/0006-scope-freeze.md)）。
-
 ## 功能特性
 
 > 分级说明：**核心**（构成「发现→理解→记录→检索→AI」闭环）｜**支持**（服务闭环的可理解性）｜**实验性**（保留但不扩展）｜**暂缓**（不继续投入）。见 [ADR-0006](docs/adr/0006-scope-freeze.md)。

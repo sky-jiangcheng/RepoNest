@@ -44,7 +44,3 @@ order: 4
 ### 笔记与待办面板
 
 项目维度的知识笔记（[知识库](knowledge.md) 同源）与待办事项（增删 / 完成 / 排序）。
-
-## 截图
-
-![项目详情](../screenshots/project-detail.png)

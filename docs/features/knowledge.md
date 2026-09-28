@@ -55,7 +55,3 @@ highlight.js 代码高亮、Mermaid 图、KaTeX 数学公式、GFM Callout 与�
 ## 导出
 
 笔记卡片 **导出 .md**：带 YAML frontmatter（标题 / 标签 / 项目 / 类型 / 更新时间）的 Markdown 复制到剪贴板。批量 AI 消费见 [AI 集成](ai-integration.md) 的 llms.txt。
-
-## 截图
-
-![知识库](../screenshots/knowledge.png)
