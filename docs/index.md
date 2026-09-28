@@ -4,7 +4,7 @@ title: RepoNest 文档
 
 # RepoNest 文档
 
-<p class="subtitle"><strong>Local-first project context base for your Git repos</strong> — discover repositories, understand what changed, capture knowledge as searchable Markdown, and hand it to any AI agent via MCP.<br><strong>本地优先的代码项目上下文库</strong>：自动发现本地 Git 项目，理解每个项目「现在发生了什么、沉淀了哪些知识」，让用户和 AI 都能记录、检索与复用项目上下文。</p>
+<p class="subtitle"><strong>The local-first memory layer for AI coding agents</strong> — discover your Git repos, understand what changed, capture knowledge as searchable Markdown, and hand it to any agent in one tool call.<br><strong>本地优先的跨 agent 项目记忆层</strong>：自动发现本地 Git 项目，理解每个项目「现在发生了什么、沉淀了哪些知识」，并在会话边界自动注入与收回，让任何 agent 复用同一份项目上下文。</p>
 
 <!--NAV_LINKS-->
 
@@ -25,11 +25,13 @@ RepoNest 的核心价值是：**让本地 Git 项目从‘散落在终端和记�
 发现本地项目 → 理解项目 → 沉淀知识 → 检索知识 → 交给 AI 使用
 ```
 
+其中「交给 AI 使用」落在**会话边界**：`reponest_scan` 建立知识库，`reponest_context` 开会话一次注入全上下文，`reponest_handoff` 收会话结构化交接，跨 agent 复用。
+
 - **发现**：自动扫描本地 Git 仓库并按 Monorepo/单仓库智能分组
 - **理解**：项目详情自动挖掘 README 摘要、技术栈、依赖、贡献者与活跃度
 - **记录**：Markdown 笔记（分类/标签/版本历史），可导入 Claude 记忆
 - **检索**：FTS5 全文搜索（含短 CJK 降级），命中可定位、可解释
-- **AI 使用**：CLI / MCP / llms.txt 统一接口，供 Claude Code / Cursor 等直接消费
+- **AI 使用**：MCP 会话记忆协议（`reponest_scan` / `reponest_context` / `reponest_handoff`）+ llms.txt，供 Claude Code / Cursor 等直接消费
 
 功能分级（核心 / 支持 / 实验性 / 暂缓）与范围冻结规则见 [ADR-0006](adr/0006-scope-freeze.md)。
 

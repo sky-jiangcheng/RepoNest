@@ -30,20 +30,6 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-	// Seed default scan roots on first run. Tracked by a config flag so a user
-	// who explicitly removes all roots is not re-seeded on the next launch.
-	if seeded, _ := db.GetConfig(database, "scan_roots_seeded"); seeded == "" {
-		defaults := platform.DefaultScanRoots()
-		if len(defaults) > 0 {
-			if err := db.ReplaceScanRoots(database, defaults); err != nil {
-				log.Printf("Failed to seed default scan roots: %v", err)
-			} else {
-				log.Printf("Seeded %d default scan roots", len(defaults))
-			}
-		}
-		_ = db.SetConfig(database, "scan_roots_seeded", "1")
-	}
-
 	// Detect git user
 	gitUser := platform.GetGitUserName()
 	if gitUser != "" {
@@ -52,8 +38,12 @@ func main() {
 		log.Println("No git user detected; personal stats will be empty")
 	}
 
-	// Create the service core and the thin Wails binding layer over it.
-	a := app.New(service.New(database, gitUser))
+	// Create the service core and the thin Wails binding layer over it. Scan
+	// roots are seeded through the service (shared with the MCP server) so the
+	// first-run behaviour is identical on both entry points.
+	svc := service.New(database, gitUser)
+	svc.EnsureDefaultScanRoots()
+	a := app.New(svc)
 
 	// Launch Wails
 	err = wails.Run(&options.App{

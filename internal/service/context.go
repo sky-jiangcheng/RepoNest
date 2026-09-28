@@ -93,7 +93,7 @@ type ProjectResolution struct {
 // first because they record how the previous session ended.
 func (s *Service) BuildProjectContext(res *ProjectResolution) string {
 	if res == nil || (res.Project == nil && len(res.Candidates) == 0) {
-		return "No projects found. Open the RepoNest desktop app, add a scan root and rescan first."
+		return "No projects found yet. Call reponest_scan to discover local Git repositories (it seeds the default scan roots on first run), then call reponest_context again."
 	}
 
 	if res.Project == nil {

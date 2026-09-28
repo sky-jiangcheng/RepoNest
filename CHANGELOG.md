@@ -20,6 +20,18 @@
   - 工具注册拆分至 `cmd/mcp/tools_context.go`；测试覆盖 service 层（项目解析 / 上下文渲染 /
     交接排序 / 校验）与 MCP 工具层（经真实 server 调用），`SKILL.md` 工作流同步升级为
     「session start → context / session end → handoff」协议。
+- **MCP `reponest_scan`（headless 冷启动，工具数 12 → 13）**：此前只有桌面应用能「播种扫描根 +
+  扫描」，文档宣称的「MCP 不需要桌面应用」实际不成立——纯 MCP 安装的知识库永远是空的。
+  新增服务层 `EnsureDefaultScanRoots`（首次播种默认扫描根，已有配置不覆盖）与同步 `ScanNow`
+  （与桌面端 `TriggerScan` 共用 `scanning` 互斥，返回仓库/项目计数），暴露为 `reponest_scan`。
+  首次可用漏斗由「安装→扫描→收藏→刷新→使用」压缩为「安装→`reponest_scan`→`reponest_context`」。
+  桌面端首启改为复用同一 `EnsureDefaultScanRoots`，两端行为一致。
+
+### 变更
+
+- **定位口径统一为「跨 agent 项目记忆层」**：README / docs 首页 / 快速开始 / AI 集成 / SKILL.md /
+  定位简报同步更新（此前仅英文开篇与 ADR 用了新叙事，中文定位句仍是「代码项目上下文库」）。
+  快速开始明确「扫描后知识库即可用」，收藏与回填标注为仅影响仪表盘统计的可选步骤。
 
 ## [1.8.1] - 2026-09-28
 

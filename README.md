@@ -2,9 +2,10 @@
 
 **The local-first memory layer for AI coding agents.** Your agents (Claude Code, Cursor, OpenCode...) read code brilliantly and forget everything the moment the session ends — why a decision was made, what gotcha was discovered, what to do next. RepoNest keeps that knowledge on your machine, searchable, and hands it back to *any* agent in one tool call.
 
-本地优先的**代码项目上下文库**：自动发现本地 Git 项目，把散落在终端和记忆里的项目上下文，变成可检索、可复用、能交给 AI 的知识。
+本地优先的**跨 agent 项目记忆层**：自动发现本地 Git 项目，把散落在终端和记忆里的项目上下文，变成可检索、可复用、任何 agent 都能读写的记忆。
 
 ```
+首次安装  →  reponest_scan      一次调用发现本地仓库（纯 MCP 可用，无需桌面应用）
 会话开始  →  reponest_context   一次调用加载项目全部上下文（技术栈/README/待办/历史笔记/上次交接）
    ...
 会话结束  →  reponest_handoff   结构化记录：做了什么、为什么、踩了什么坑、下一步
@@ -57,7 +58,8 @@
 
 | 通道 | 说明 |
 |------|------|
-| MCP Server | `reponest-mcp` stdio 服务器，12 个工具（上下文注入 + 会话交接 + 笔记 CRUD + 项目查询 + 搜索 + 两个自检），可接入 Claude Code / Cursor 等（AI 执行的唯一接口） |
+| MCP Server | `reponest-mcp` stdio 服务器，13 个工具（仓库扫描 + 上下文注入 + 会话交接 + 笔记 CRUD + 项目查询 + 搜索 + 两个自检），可接入 Claude Code / Cursor 等（AI 执行的唯一接口） |
+| `reponest_scan` | 一次性冷启动：播种默认扫描根目录并同步扫描，发现本地 Git 仓库。纯 MCP 安装（不装桌面应用）也能建立知识库 |
 | `reponest_context` | 会话开始一键加载项目全上下文：技术栈 / README 摘要 / 依赖 / 最近提交 / 开放待办 / 高相关笔记（交接笔记优先），一次调用替代 3-4 次链式查询 |
 | `reponest_handoff` | 会话结束结构化交接：summary / changes / decisions / gotchas / next_steps 渲染为统一模板落库，下一个会话（任何 agent）自动读到 |
 | llms.txt | `GenerateLLMsTxt` 生成面向 LLM 的知识库总览 Markdown |
@@ -122,8 +124,10 @@ brew install --cask sky-jiangcheng/repo/reponest
 启动后直接打开桌面窗口（Wails 应用，无需浏览器）：
 
 1. 首次启动自动播种默认扫描根目录（macOS/Linux 为 HOME，Windows 为非系统盘）
-2. 仪表盘点击 **重新扫描** 发现仓库
-3. 收藏关注的仓库 → **刷新历史** 回填 365 天统计 → 开始使用知识库
+2. 仪表盘点击 **重新扫描** 发现仓库 —— 到这一步**知识库已经可用**，可直接写/搜笔记、交给 AI
+3. （可选，只影响仪表盘统计）收藏关注的仓库 → **刷新历史** 回填 365 天统计
+
+> **只想用 AI 能力？** 无需桌面应用：装好 `reponest-mcp` 后让 agent 调一次 `reponest_scan` 即可建立知识库。
 
 更多见[快速开始](docs/getting-started.md)。
 
@@ -146,7 +150,12 @@ claude mcp add reponest -- "$(which reponest-mcp)"
 
 #### 30 秒看它干活
 
-注册后，每个工作会话都是这个节奏：
+注册后，首次使用只差一步：
+
+> **首次使用**（建立知识库，无需桌面应用）：
+> Agent 调用 `reponest_scan()` — 播种默认扫描根目录并扫描，一次拿到本地仓库清单。
+
+之后每个工作会话都是这个节奏：
 
 > **会话开始**（新 agent 接手项目）：
 > “继续 auth 项目的工作。”

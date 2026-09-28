@@ -12,7 +12,7 @@ RepoNest 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 **RepoNest 不调用任何大语言模型**——代码里没有 OpenAI / Anthropic / 任何 API key 配置，没有模型选择、没有 endpoint 设置。它的 AI 功能全部是「把项目知识出口给 AI 工具用」，而不是内置聊天或生成能力。更准确地说：
 
 - RepoNest 是**数据底座**：把 git 原始信息建模成结构化、可索引、可物化的本地知识库（详见[存储结构优化与 AI 价值](../storage-optimization.md)）；
-- AI 工具（Claude Code / Cursor 等）通过 MCP 的 10 个工具来**消费**这层数据，按需取数、精确检索。
+- AI 工具（Claude Code / Cursor 等）通过 MCP 的 13 个工具来**消费**这层数据，按需取数、精确检索。
 
 这一层「为什么比让 AI 直接读 git 更优」的论证，见[存储结构优化与 AI 价值](../storage-optimization.md)。
 
@@ -29,10 +29,13 @@ RepoNest 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 
 ## MCP Server（`reponest-mcp`）
 
-MCP 是唯一的 AI 执行接口（`reponest` CLI 未随版本发布）。stdio 协议，进程内单次开库，10 个工具（含 2 个写操作）：
+MCP 是唯一的 AI 执行接口（`reponest` CLI 未随版本发布）。stdio 协议，进程内单次开库，13 个工具（含 4 个写操作：扫描 + 笔记创建/更新 + 会话交接）：
 
 | 工具 | 说明 | 读写 |
 |------|------|------|
+| `reponest_scan` | 冷启动：播种默认扫描根目录并同步扫描，发现本地 Git 仓库（纯 MCP 安装可用，无需桌面应用） | 写 |
+| `reponest_context` | 会话开始一次注入项目全上下文（技术栈 / README / 待办 / 高相关笔记，交接笔记置顶） | 读 |
+| `reponest_handoff` | 会话结束结构化交接（summary/changes/decisions/gotchas/next_steps），落库并供下次 `reponest_context` 置顶读取 | 写 |
 | `reponest_notes_list` | 全部笔记 | 读 |
 | `reponest_notes_search` | FTS5 搜索（query） | 读 |
 | `reponest_notes_read` | 按 ID 读笔记 | 读 |

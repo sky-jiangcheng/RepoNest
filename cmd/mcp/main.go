@@ -31,6 +31,11 @@ func main() {
 	mcpServer := server.NewMCPServer("reponest-mcp", version.Version)
 	registerTools(mcpServer, svc)
 	registerContextTools(mcpServer, svc)
+	registerScanTool(mcpServer, svc)
+
+	// Seed the default scan roots so a headless (MCP-only) install can discover
+	// repositories via reponest_scan without ever opening the desktop app.
+	svc.EnsureDefaultScanRoots()
 
 	log.Printf("RepoNest MCP server v%s starting on stdio...", version.Version)
 	if err := server.ServeStdio(mcpServer); err != nil {

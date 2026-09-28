@@ -9,6 +9,7 @@ import (
 
 	"reponest/internal/db"
 	"reponest/internal/grouper"
+	"reponest/internal/platform"
 	"reponest/internal/scanner"
 )
 
@@ -27,6 +28,62 @@ type ScanStatus struct {
 	Message     string `json:"message"`
 	Progress    int    `json:"progress"`
 	Total       int    `json:"total"`
+}
+
+// EnsureDefaultScanRoots seeds the platform default scan roots on first run,
+// tracked by the scan_roots_seeded config flag so a user who deliberately
+// removes every root is not re-seeded on the next launch.
+//
+// Shared by the desktop app and the MCP server: a headless (MCP-only) install
+// must be able to discover repositories without ever opening the GUI, which is
+// what turns the cold start from install→scan→star→refresh into install→scan.
+func (s *Service) EnsureDefaultScanRoots() {
+	if seeded, _ := db.GetConfig(s.db, "scan_roots_seeded"); seeded != "" {
+		return
+	}
+	// Never clobber roots that are already configured: seeding is a first-run
+	// convenience, not a reset. A database with roots but no flag (set by an
+	// older build, or by configuration) keeps what it has.
+	if existing, _ := db.GetScanRoots(s.db); len(existing) > 0 {
+		_ = db.SetConfig(s.db, "scan_roots_seeded", "1")
+		return
+	}
+	if defaults := platform.DefaultScanRoots(); len(defaults) > 0 {
+		if err := db.ReplaceScanRoots(s.db, defaults); err != nil {
+			log.Printf("seed default scan roots error: %v", err)
+		} else {
+			log.Printf("seeded %d default scan root(s)", len(defaults))
+		}
+	}
+	_ = db.SetConfig(s.db, "scan_roots_seeded", "1")
+}
+
+// ScanNow runs the full scan pipeline synchronously and reports how much it
+// found. Unlike TriggerScan (fire-and-forget, for the desktop UI's background
+// job) this blocks until discovery and stats refresh finish, so an AI agent
+// gets a deterministic answer from a single tool call.
+//
+// Concurrency is guarded by the same flag TriggerScan uses: a headless scan
+// must not race an in-flight desktop scan.
+func (s *Service) ScanNow() (*ScanResult, error) {
+	s.scanMu.Lock()
+	if s.scanning {
+		s.scanMu.Unlock()
+		return nil, fmt.Errorf("scan already in progress")
+	}
+	s.scanning = true
+	s.scanMu.Unlock()
+
+	defer func() {
+		s.scanMu.Lock()
+		s.scanning = false
+		s.scanProgress = 0
+		s.scanTotal = 0
+		s.scanMu.Unlock()
+	}()
+
+	repos, projects := s.runCollectedScan(context.Background())
+	return &ScanResult{Success: true, ReposFound: repos, Projects: projects}, nil
 }
 
 // TriggerScan starts an async full repository scan and returns immediately.
@@ -81,8 +138,10 @@ func (s *Service) GetScanStatus() *ScanStatus {
 // runCollectedScan is the single scan pipeline: filesystem scan → grouping →
 // transactional sync of projects/repos → stale cleanup → stats refresh for
 // collected projects. Collected ids are re-read after the transaction commits
-// so projects discovered by this scan are included.
-func (s *Service) runCollectedScan(ctx context.Context) {
+// so projects discovered by this scan are included. It returns how many
+// repositories were found and how many projects they grouped into, so a
+// synchronous caller (ScanNow) can report the outcome.
+func (s *Service) runCollectedScan(ctx context.Context) (int, int) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("panic in collected scan: %v", r)
@@ -99,7 +158,7 @@ func (s *Service) runCollectedScan(ctx context.Context) {
 	repos, err := scanner.ScanRepositories(roots, maxDepth)
 	if err != nil {
 		log.Printf("scan error: %v", err)
-		return
+		return 0, 0
 	}
 
 	// Group discovered repositories into projects. Repositories returned by
@@ -120,14 +179,14 @@ func (s *Service) runCollectedScan(ctx context.Context) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		log.Printf("scan transaction begin error: %v", err)
-		return
+		return 0, 0
 	}
 	defer tx.Rollback() //nolint:errcheck
 
 	for i, group := range groups {
 		select {
 		case <-ctx.Done():
-			return
+			return 0, 0
 		default:
 		}
 		s.scanMu.Lock()
@@ -153,12 +212,12 @@ func (s *Service) runCollectedScan(ctx context.Context) {
 
 	if err := db.CleanupStaleDataTx(tx, scannedPaths); err != nil {
 		log.Printf("cleanup stale data error: %v", err)
-		return
+		return 0, 0
 	}
 
 	if err := tx.Commit(); err != nil {
 		log.Printf("scan transaction commit error: %v", err)
-		return
+		return 0, 0
 	}
 
 	// Re-read after commit: projects found by this scan were just marked
@@ -167,7 +226,7 @@ func (s *Service) runCollectedScan(ctx context.Context) {
 	collectedIDs, err := db.GetCollectedProjectIDs(ctx, s.db)
 	if err != nil {
 		log.Printf("load collected projects error: %v", err)
-		return
+		return len(repos), len(groups)
 	}
 	s.refreshCollectedStats(ctx, collectedIDs)
 	_ = db.SetConfig(s.db, "last_stats_backfill", s.git.GetTodayDate())
@@ -177,4 +236,5 @@ func (s *Service) runCollectedScan(ctx context.Context) {
 			"repos_found": len(repos), "projects": len(groups),
 		})
 	}
+	return len(repos), len(groups)
 }

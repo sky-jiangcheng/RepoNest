@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -121,6 +123,7 @@ func TestToolsRegistered(t *testing.T) {
 		"reponest_integrity",
 		"reponest_context",
 		"reponest_handoff",
+		"reponest_scan",
 	}
 	for _, name := range want {
 		st := ts.s.GetTool(name)
@@ -384,5 +387,37 @@ func TestIntegrityReportFindsSeededDrift(t *testing.T) {
 	// The report must not come back clean when the index is provably wrong.
 	if !strings.Contains(out, "FTS") {
 		t.Errorf("expected an FTS-related finding:\n%s", out)
+	}
+}
+
+// TestScanToolDiscoversRepositories covers the headless cold start: with no
+// desktop app and an empty database, reponest_scan alone must discover repos
+// and make reponest_context usable in the very next call.
+func TestScanToolDiscoversRepositories(t *testing.T) {
+	ts := newTestServer(t)
+	tmp := t.TempDir()
+	// Two repositories under one parent: the grouper collapses them into a
+	// single (monorepo) project.
+	for _, name := range []string{"alpha", "beta"} {
+		if err := os.MkdirAll(filepath.Join(tmp, name, ".git"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.ReplaceScanRoots(ts.db, []string{tmp}); err != nil {
+		t.Fatalf("seed scan root: %v", err)
+	}
+
+	res := ts.call("reponest_scan", nil)
+	payload := ts.jsonPayload(res)
+	if got, _ := payload["repos_found"].(float64); int(got) != 2 {
+		t.Fatalf("repos_found = %v, want 2\n%s", payload["repos_found"], ts.text(res))
+	}
+	if got, _ := payload["projects"].(float64); int(got) != 1 {
+		t.Fatalf("projects = %v, want 1 (both repos share a parent)", payload["projects"])
+	}
+
+	// The point of the scan: the next context call works with zero parameters.
+	if text := ts.text(ts.call("reponest_context", nil)); !strings.Contains(text, "# Project Context:") {
+		t.Errorf("context after scan should render a project\n%s", text)
 	}
 }

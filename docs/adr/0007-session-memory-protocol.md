@@ -15,7 +15,7 @@ ADR-0006 将核心闭环定为「发现 → 理解 → 记录 → 检索 → AI 
 
 ## 决策
 
-新增两个 MCP 工具，构成会话记忆协议：
+新增三个 MCP 工具，构成会话记忆协议（含冷启动）：
 
 ### `reponest_context`（会话开始）
 
@@ -34,11 +34,21 @@ ADR-0006 将核心闭环定为「发现 → 理解 → 记录 → 检索 → AI 
 
 固定模板是刻意的：标题结构是写入方与所有未来读者（人类 + agent）之间的契约，`reponest_context` 靠 `handoff` 标签将其排序置顶。
 
+### `reponest_scan`（冷启动）
+
+会话记忆协议要成立，前提是数据库里已有项目。原先只有桌面应用能完成「播种扫描根 + 扫描」，导致文档宣称的「MCP 不需要桌面应用」是空话——纯 MCP 安装的 `reponest_context` 只会返回「无项目」。为此把扫描能力下沉到服务层并暴露为第三个工具：
+
+- `Service.EnsureDefaultScanRoots`：首次运行播种平台默认扫描根（`scan_roots_seeded` 标记；已有扫描根时不覆盖）；
+- `Service.ScanNow`：同步执行完整扫描管线并返回仓库/项目计数（`TriggerScan` 保留给桌面端的后台异步场景，二者共用 `scanning` 互斥）；
+- `reponest_scan`：调用两者，使首次可用漏斗从「安装→扫描→收藏→刷新→使用」压缩为「安装→`reponest_scan`→`reponest_context`」。
+
+桌面端首启也改为复用 `Service.EnsureDefaultScanRoots`，两端行为一致。
+
 ## 理由
 
 - **零参数即可用**：单项目安装直接 `reponest_context()` 拿全上下文，把「记忆加载」的成本降到一次调用。
 - **跨 agent**：交接落在本地 SQLite 而非任何 agent 私有记忆格式，Claude Code 写的交接 Cursor 直接读。
-- **服务层共享**：两个工具实现在 `internal/service`（`context.go` / `handoff.go`），桌面端未来可直接复用同一实现（ADR-0005 分层）。
+- **服务层共享**：三个工具实现在 `internal/service`（`context.go` / `handoff.go` / `scan.go`），桌面端复用同一实现（ADR-0005 分层）。
 - **多匹配不猜测**：错误上下文比没有上下文更危险，歧义时返回目录由 agent 二次选择。
 
 ## 后续方向（未决）
