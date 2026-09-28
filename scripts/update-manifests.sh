@@ -98,7 +98,7 @@ if [ "${1:-}" = "--fill-sha256" ]; then
     exit 1
   fi
 
-  sha_for() { awk -v want="$1" '$2 ~ ("/" want "$") { print $1 }' "$SUMS" | head -1; }
+  sha_for() { awk -v want="$1" '$2 ~ ("(^|/)" want "$") { print $1 }' "$SUMS" | head -1; }
 
   # Replace the digest that belongs to a specific asset, wherever it currently
   # sits. Keying off the asset name in the URL rather than off the placeholder

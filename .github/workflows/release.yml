@@ -323,9 +323,15 @@ jobs:
       - name: Generate SHA256SUMS
         run: |
           set -euo pipefail
-          cd "assets/releases/v${{ steps.ver.outputs.version }}"
-          sha256sum * > SHA256SUMS
-          cat SHA256SUMS
+          VER="${{ steps.ver.outputs.version }}"
+          # From repo root so filenames carry the assets/releases/v<ver>/ prefix,
+          # which is what scripts/update-manifests.sh sha_for() matches on.
+          # Exclude SHA256SUMS itself from its own checksum list.
+          cd "$GITHUB_WORKSPACE"
+          find "assets/releases/v$VER" -type f ! -name SHA256SUMS -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > "assets/releases/v$VER/SHA256SUMS"
+          cat "assets/releases/v$VER/SHA256SUMS"
 
       - name: Fill sha256 in packaging manifests
         run: ./scripts/update-manifests.sh --fill-sha256
