@@ -43,6 +43,20 @@ func main() {
 	}
 }
 
+// notesListLimit reads the optional limit argument for reponest_notes_list,
+// defaulting to 50 and clamped to 500 so a single call cannot dump the whole
+// knowledge base over the wire.
+func notesListLimit(req mcp.CallToolRequest) int {
+	limit := 50
+	if v, ok := req.GetArguments()["limit"].(float64); ok && v > 0 {
+		limit = int(v)
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	return limit
+}
+
 // registerTools wires every MCP tool onto the server. Split out of main so
 // tests can build a real server over a fixture service and invoke handlers
 // through the same path a client does, instead of reaching for unexported
@@ -56,15 +70,15 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 			Properties: map[string]any{
 				"limit": map[string]any{
 					"type":        "number",
-					"description": "Max notes to return (default: 50)",
+					"description": "Max notes to return (default: 50, max: 500)",
 				},
 			},
 		},
 	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		notes := svc.ListAllNotes()
-		if v, ok := req.GetArguments()["limit"].(float64); ok && v > 0 && int(v) < len(notes) {
-			notes = notes[:int(v)]
-		}
+		// The limit is pushed into the SQL query: an agent asking for 50
+		// notes on a 10k-note knowledge base used to receive all 10k over
+		// the wire first.
+		notes := svc.ListAllNotesLimited(notesListLimit(req))
 		return makeJSONResult("notes_list", notes)
 	})
 

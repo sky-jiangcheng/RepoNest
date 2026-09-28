@@ -11,6 +11,17 @@ import (
 // reads the previous one's exit record before anything else.
 const handoffTag = "handoff"
 
+// Handoff write bounds. A handoff is agent-authored JSON arriving over MCP,
+// so it is untrusted input: without caps a runaway agent could write a
+// multi-megabyte summary or thousands of bullets in one call, and the next
+// reponest_context would embed all of it. The note-level bounds still apply
+// on top of these (the rendered Markdown is written through CreateNoteWithMeta).
+const (
+	maxHandoffSummaryLen = 4_000
+	maxHandoffItems      = 20   // items per section
+	maxHandoffItemLen    = 1_000 // bytes per bullet
+)
+
 // HandoffInput is the structured record of what an AI session accomplished.
 // Sections are optional except Summary, but an empty record carries no value
 // for the next session, so at least one section must be non-empty.
@@ -41,6 +52,9 @@ func (s *Service) CreateHandoffNote(in HandoffInput) (*HandoffResult, error) {
 	if !handoffHasContent(in) {
 		return nil, fmt.Errorf("at least one of changes, decisions, gotchas, next_steps must be non-empty")
 	}
+	if err := validateHandoffBounds(in, summary); err != nil {
+		return nil, err
+	}
 
 	title := fmt.Sprintf("Session Handoff %s", time.Now().Format("2006-01-02 15:04"))
 	tags := handoffTag
@@ -53,6 +67,29 @@ func (s *Service) CreateHandoffNote(in HandoffInput) (*HandoffResult, error) {
 		return nil, err
 	}
 	return &HandoffResult{NoteID: note.ID, Title: note.Title, Tags: tags}, nil
+}
+
+// validateHandoffBounds caps the structured sections before rendering, so
+// the failure message names the section and the limit the agent hit.
+func validateHandoffBounds(in HandoffInput, summary string) error {
+	if len(summary) > maxHandoffSummaryLen {
+		return fmt.Errorf("summary too long: %d bytes (max %d)", len(summary), maxHandoffSummaryLen)
+	}
+	for name, section := range map[string][]string{
+		"changes": in.Changes, "decisions": in.Decisions,
+		"gotchas": in.Gotchas, "next_steps": in.NextSteps,
+	} {
+		items := nonEmptyLines(section)
+		if len(items) > maxHandoffItems {
+			return fmt.Errorf("%s has too many items: %d (max %d)", name, len(items), maxHandoffItems)
+		}
+		for _, item := range items {
+			if len(item) > maxHandoffItemLen {
+				return fmt.Errorf("%s item too long: %d bytes (max %d)", name, len(item), maxHandoffItemLen)
+			}
+		}
+	}
+	return nil
 }
 
 // HandoffResult reports what was persisted so the calling agent can confirm

@@ -16,6 +16,23 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 
 ---
 
+## Headless HTTP 服务（`reponest server`）
+
+面向 DeepSeek Harness dsh-plugin 等外部运行时的 JSON API，与桌面应用、CLI、MCP 共用同一 `internal/service` 实现和同一个 SQLite 数据库。
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 服务与数据库健康状态 |
+| `/api/ai_context` | GET/POST | 全知识库 Markdown（llms.txt 风格） |
+| `/api/search?q=...&all=1` | GET | FTS5 全文搜索（默认仅笔记，`all=1` 含待办） |
+| `/api/project/{id}/detail` | GET | 项目 + 仓库及历史统计 |
+| `/api/project/{id}/overview` | GET | 知识挖掘结果（README/技术栈/依赖等） |
+| `/api/project/{id}/stats?date=` | GET | 某日项目统计 |
+
+> **信任边界**：该服务**无认证**，返回内容即用户完整本地知识库。安全性完全依赖 `cmd/server` 只绑定 `127.0.0.1`——可达性等价于「本机上的另一个进程」。**禁止**改为 `0.0.0.0` 或经反代暴露到网络；需要远程访问时应先补认证方案并提交 ADR。
+
+---
+
 ## 项目
 
 | 方法 | 签名 | 说明 |

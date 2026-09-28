@@ -250,6 +250,19 @@ jobs:
       - name: List release files
         run: ls -lhR
 
+      - name: Generate SHA256SUMS
+        run: |
+          set -euo pipefail
+          # This job has no checkout step, so everything at the workspace root
+          # is a downloaded release artifact. Exclude SHA256SUMS itself from
+          # its own list. scripts/install.sh and install.ps1 verify every
+          # download against this file (and skip gracefully when it is
+          # absent, so pre-checksum releases keep installing).
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > SHA256SUMS
+          cat SHA256SUMS
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
@@ -260,6 +273,7 @@ jobs:
             *.msi
             *.zip
             *.tar.gz
+            SHA256SUMS
           generate_release_notes: true
 
   # After the release is published, the sha256 of every shipped asset is a

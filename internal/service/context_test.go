@@ -111,6 +111,60 @@ func TestBuildProjectContextAmbiguousReturnsCatalog(t *testing.T) {
 	}
 }
 
+func TestBuildProjectContextLatestHandoffFullOlderCompressed(t *testing.T) {
+	s, _ := setupService(t)
+	pid := seedProject(t, s.db, "demo", "/home/me/demo")
+
+	older, err := s.CreateHandoffNote(HandoffInput{
+		ProjectID: pid,
+		Agent:     "claude-code",
+		Summary:   "first session set up CI",
+		Gotchas:   []string{"OLDER-UNIQUE-GOTCHA"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	newer, err := s.CreateHandoffNote(HandoffInput{
+		ProjectID: pid,
+		Agent:     "cursor",
+		Summary:   "second session shipped search",
+		NextSteps: []string{"NEWER-UNIQUE-NEXT-STEP"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Pin the timestamps so "latest" is not decided by insert speed.
+	if _, err := s.db.Exec("UPDATE project_notes SET updated_at = '2026-09-01 10:00:00.000' WHERE id = ?", older.NoteID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.Exec("UPDATE project_notes SET updated_at = '2026-09-02 10:00:00.000' WHERE id = ?", newer.NoteID); err != nil {
+		t.Fatal(err)
+	}
+
+	doc := s.BuildProjectContext(s.ResolveProject("demo"))
+
+	// The latest handoff is the exit record: it must survive complete.
+	for _, want := range []string{"second session shipped search", "NEWER-UNIQUE-NEXT-STEP"} {
+		if !strings.Contains(doc, want) {
+			t.Errorf("latest handoff should render in full, missing %q\n%s", want, doc)
+		}
+	}
+	// Older handoffs collapse into the timeline: recognizable summary only,
+	// none of their detail bullets.
+	if !strings.Contains(doc, "### Earlier Handoffs") {
+		t.Errorf("older handoffs should render as a timeline\n%s", doc)
+	}
+	if !strings.Contains(doc, "first session set up CI") {
+		t.Errorf("timeline should keep the older handoff's summary line\n%s", doc)
+	}
+	if strings.Contains(doc, "OLDER-UNIQUE-GOTCHA") {
+		t.Errorf("older handoff detail should be compressed away\n%s", doc)
+	}
+	if fullIdx, timelineIdx := strings.Index(doc, "second session shipped search"), strings.Index(doc, "### Earlier Handoffs"); fullIdx > timelineIdx {
+		t.Errorf("latest handoff should render before the timeline\n%s", doc)
+	}
+}
+
 func TestCreateHandoffNoteValidationAndTemplate(t *testing.T) {
 	s, _ := setupService(t)
 	pid := seedProject(t, s.db, "demo", "/home/me/demo")
@@ -163,5 +217,48 @@ func TestCreateHandoffNoteValidationAndTemplate(t *testing.T) {
 	}
 	if strings.Contains(note.Content, "- \n") {
 		t.Errorf("blank items must be dropped\n%s", note.Content)
+	}
+}
+
+func TestNoteAndHandoffWriteBounds(t *testing.T) {
+	s, _ := setupService(t)
+	pid := seedProject(t, s.db, "demo", "/home/me/demo")
+
+	if _, err := s.CreateNote(pid, strings.Repeat("x", maxNoteContentLen+1)); err == nil {
+		t.Error("oversized note content must be rejected")
+	}
+	if _, err := s.CreateNoteWithMeta(pid, strings.Repeat("t", maxNoteTitleLen+1), "body", "", "knowledge", "manual"); err == nil {
+		t.Error("oversized note title must be rejected")
+	}
+	if _, err := s.CreateNoteWithMeta(pid, "t", "body", strings.Repeat("a,", maxNoteTagCount+1), "knowledge", "manual"); err == nil {
+		t.Error("too many note tags must be rejected")
+	}
+	if _, err := s.CreateHandoffNote(HandoffInput{
+		ProjectID: pid,
+		Summary:   strings.Repeat("s", maxHandoffSummaryLen+1),
+		Changes:   []string{"x"},
+	}); err == nil {
+		t.Error("oversized handoff summary must be rejected")
+	}
+	items := make([]string, maxHandoffItems+1)
+	for i := range items {
+		items[i] = "item"
+	}
+	if _, err := s.CreateHandoffNote(HandoffInput{ProjectID: pid, Summary: "ok", Changes: items}); err == nil {
+		t.Error("too many handoff items must be rejected")
+	}
+	if _, err := s.CreateHandoffNote(HandoffInput{
+		ProjectID: pid,
+		Summary:   "ok",
+		Changes:   []string{strings.Repeat("i", maxHandoffItemLen+1)},
+	}); err == nil {
+		t.Error("oversized handoff item must be rejected")
+	}
+	if _, err := s.CreateHandoffNote(HandoffInput{
+		ProjectID: pid,
+		Summary:   "ok",
+		Changes:   []string{"within bounds"},
+	}); err != nil {
+		t.Errorf("in-bounds handoff should pass: %v", err)
 	}
 }

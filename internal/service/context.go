@@ -14,6 +14,15 @@ import (
 // heavily-used project stays within a single-shot context window budget.
 const contextNotesLimit = 10
 
+// contextHandoffFullLen bounds the latest handoff's content. It is larger
+// than the per-note cap because the latest handoff is the session's exit
+// record and must survive complete, not truncated.
+const contextHandoffFullLen = 4000
+
+// contextHandoffTimelineLen bounds each older handoff's compressed
+// one-liner in the history timeline.
+const contextHandoffTimelineLen = 140
+
 // contextCommitLimit matches the overview payload's recent-commit window.
 const contextCommitLimit = 8
 
@@ -204,8 +213,33 @@ func (s *Service) BuildProjectContext(res *ProjectResolution) string {
 
 	b.WriteString("## Knowledge Notes\n\n")
 	handoffNotes, plainNotes := splitHandoffNotes(notes)
+	// The latest handoff is the previous session's exit record: it renders
+	// in full because truncating it loses exactly the information the next
+	// session needs. Older handoffs collapse into a one-line timeline — they
+	// are history, not working state — which keeps the context budget for
+	// current notes.
+	if len(handoffNotes) > 0 {
+		var older []domain.Note
+		latest := handoffNotes[0]
+		for _, n := range handoffNotes[1:] {
+			if noteUpdatedAfter(n, latest) {
+				older = append(older, latest)
+				latest = n
+			} else {
+				older = append(older, n)
+			}
+		}
+		renderHandoffFull(&b, latest)
+		if len(older) > 0 {
+			b.WriteString("### Earlier Handoffs\n\n")
+			for _, n := range older {
+				b.WriteString(fmt.Sprintf("- %s (%s) — %s\n", firstNonEmpty(n.Title, "Untitled"), n.UpdatedAt, oneLineSummary(n.Content, contextHandoffTimelineLen)))
+			}
+			b.WriteString("\n")
+		}
+	}
 	shown := 0
-	for _, n := range append(handoffNotes, plainNotes...) {
+	for _, n := range plainNotes {
 		if shown >= contextNotesLimit {
 			break
 		}
@@ -219,7 +253,7 @@ func (s *Service) BuildProjectContext(res *ProjectResolution) string {
 		b.WriteString("\n\n")
 		shown++
 	}
-	if shown == 0 {
+	if shown == 0 && len(handoffNotes) == 0 {
 		b.WriteString("_No notes yet. Record what this session learns so the next one starts ahead._\n\n")
 	}
 
@@ -250,6 +284,54 @@ func splitHandoffNotes(notes []domain.Note) (handoff, plain []domain.Note) {
 		}
 	}
 	return handoff, plain
+}
+
+// renderHandoffFull writes one handoff note with a larger content budget
+// than plain notes, because a truncated exit record is worse than useless:
+// the next session would act on half a summary.
+func renderHandoffFull(b *strings.Builder, n domain.Note) {
+	b.WriteString(fmt.Sprintf("### %s\n\n", firstNonEmpty(n.Title, "Untitled")))
+	b.WriteString(fmt.Sprintf("- Tags: %s | Updated: %s\n\n", n.Tags, n.UpdatedAt))
+	content := strings.TrimSpace(n.Content)
+	if len(content) > contextHandoffFullLen {
+		content = content[:contextHandoffFullLen] + "\n\n..."
+	}
+	b.WriteString(content)
+	b.WriteString("\n\n")
+}
+
+// noteUpdatedAfter compares note timestamps. The column stores
+// 'YYYY-MM-DD HH:MM:SS.f' strings, which sort lexicographically.
+func noteUpdatedAfter(a, b domain.Note) bool {
+	return a.UpdatedAt > b.UpdatedAt
+}
+
+// handoffBoilerplate lists the headings renderHandoffMarkdown writes. The
+// compressed timeline wants the sentence under them, not the heading itself.
+var handoffBoilerplate = map[string]bool{
+	"session handoff": true, "summary": true, "changes": true,
+	"decisions": true, "gotchas": true, "next steps": true,
+}
+
+// oneLineSummary flattens a note's first meaningful line into a single
+// bounded line for the compressed handoff timeline: enough to recognize the
+// session, not enough to eat the context budget.
+func oneLineSummary(content string, maxLen int) string {
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, ">") {
+			continue
+		}
+		text := strings.TrimSpace(strings.TrimLeft(line, "#-*"))
+		if text == "" || handoffBoilerplate[strings.ToLower(text)] {
+			continue
+		}
+		if len(text) > maxLen {
+			return text[:maxLen] + "..."
+		}
+		return text
+	}
+	return "(no summary)"
 }
 
 // noteIsHandoff checks the note's tag list for the "handoff" tag. Tags are

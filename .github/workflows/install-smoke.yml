@@ -58,6 +58,10 @@ jobs:
           tar -czf dist/reponest-linux-amd64.tar.gz -C dist reponest
           tar -czf dist/reponest-mcp-linux-amd64.tar.gz -C dist reponest-mcp
           rm -f dist/reponest
+          # Same manifest shape release.yml uploads, so install.sh's verify
+          # path runs for real (not just its "no manifest" skip path).
+          (cd dist && sha256sum reponest-linux-amd64.tar.gz reponest-mcp-linux-amd64.tar.gz > SHA256SUMS)
+          cat dist/SHA256SUMS
 
       - name: Serve fixtures over HTTP
         run: |
@@ -85,6 +89,32 @@ jobs:
           echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
             | "$RUNNER_TEMP/bin/reponest-mcp" 2>/dev/null | grep -q 'reponest-mcp' || {
             echo "reponest-mcp did not answer initialize" >&2; exit 1; }
+
+      # The positive run above proves verification *runs*; this proves it can
+      # *fail*. Without it, a bug that always skipped verification would pass
+      # the whole suite.
+      - name: Corrupted checksum is rejected
+        env:
+          RELEASES: http://127.0.0.1:8080
+        run: |
+          # Flip the first hex digit of the desktop asset's digest in the
+          # manifest the fixture server is serving (it reads from disk per
+          # request), then install.sh must abort instead of installing.
+          python3 - <<'EOF'
+          import pathlib
+          p = pathlib.Path("dist/SHA256SUMS")
+          lines = p.read_text().splitlines()
+          digest = lines[0].split()[0]
+          lines[0] = lines[0].replace(digest, ("1" if digest[0] == "0" else "0") + digest[1:], 1)
+          p.write_text("\n".join(lines) + "\n")
+          EOF
+          export INSTALL_DIR="$RUNNER_TEMP/bin-bad"
+          mkdir -p "$INSTALL_DIR"
+          if bash scripts/install.sh >/dev/null 2>&1; then
+            echo "install.sh accepted a corrupted SHA256SUMS" >&2
+            exit 1
+          fi
+          echo "corrupted checksum correctly rejected"
 
   macos:
     name: install.sh (macOS)
@@ -119,6 +149,10 @@ jobs:
           hdiutil create -volname RepoNest -srcfolder stage -ov -format UDZO \
             "dist/reponest-$TARGET.dmg"
           tar -czf "dist/reponest-mcp-$TARGET.tar.gz" -C dist reponest-mcp
+          # Same manifest shape release.yml uploads, so install.sh's verify
+          # path runs for real (not just its "no manifest" skip path).
+          (cd dist && shasum -a 256 "reponest-$TARGET.dmg" "reponest-mcp-$TARGET.tar.gz" > SHA256SUMS)
+          cat dist/SHA256SUMS
 
       - name: Serve fixtures over HTTP
         run: |
@@ -177,6 +211,13 @@ jobs:
             -DestinationPath dist/reponest-windows-amd64.zip -Force
           Compress-Archive -Path dist/reponest-mcp.exe `
             -DestinationPath dist/reponest-mcp-windows-amd64.zip -Force
+          # Same manifest shape release.yml uploads, so install.ps1's verify
+          # path runs for real (not just its "no manifest" skip path).
+          $lines = foreach ($f in @("dist/reponest-windows-amd64.zip", "dist/reponest-mcp-windows-amd64.zip")) {
+            "$((Get-FileHash -Path $f -Algorithm SHA256).Hash.ToLower())  $(Split-Path $f -Leaf)"
+          }
+          Set-Content -Path dist/SHA256SUMS -Value ($lines -join "`r`n") -Encoding ascii -NoNewline
+          Get-Content dist/SHA256SUMS
 
       - name: Serve fixtures over HTTP
         shell: pwsh

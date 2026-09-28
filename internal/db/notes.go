@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
 // CreateNote inserts a new note for a project.
 func CreateNote(db *sql.DB, projectID int64, content string) (*Note, error) {
@@ -174,10 +177,26 @@ func GetNoteBySourceTitle(db *sql.DB, projectID int64, source, title string) (*N
 	return n, nil
 }
 
-// ListAllNotes returns every note across all projects joined with project name.
-func ListAllNotes(db *sql.DB) ([]NoteWithProject, error) {
-	rows, err := db.Query(
-		"SELECT n.id, n.project_id, n.title, n.content, n.tags, n.kind, n.pinned, n.source, n.sort_order, n.created_at, n.updated_at, p.name FROM project_notes n JOIN projects p ON p.id = n.project_id ORDER BY n.pinned DESC, n.updated_at DESC")
+// ListAllNotes returns notes across all projects joined with project name,
+// ordered pinned first then most recently updated. A positive limit caps the
+// rows (<= 0 means no limit) so callers that display a bounded window (MCP
+// notes_list, llms.txt) never load the whole knowledge base into memory; a
+// non-empty kind filters to that note kind.
+func ListAllNotes(db *sql.DB, limit int, kind string) ([]NoteWithProject, error) {
+	query := "SELECT n.id, n.project_id, n.title, n.content, n.tags, n.kind, n.pinned, n.source, n.sort_order, n.created_at, n.updated_at, p.name FROM project_notes n JOIN projects p ON p.id = n.project_id"
+	args := []any{}
+	if kind != "" {
+		query += " WHERE n.kind = ?"
+		args = append(args, kind)
+	}
+	query += " ORDER BY n.pinned DESC, n.updated_at DESC"
+	if limit > 0 {
+		// limit is a validated int from Go code, not user input, so
+		// interpolating it keeps the query shape static (SQLite has no
+		// parameter placeholder for LIMIT in every build).
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -191,6 +210,15 @@ func ListAllNotes(db *sql.DB) ([]NoteWithProject, error) {
 		notes = append(notes, np)
 	}
 	return notes, rows.Err()
+}
+
+// CountNotes returns the total number of notes across all projects, without
+// loading any rows: a count is aggregate work for SQLite but a full scan of
+// every note's content for the caller.
+func CountNotes(db *sql.DB) (int, error) {
+	var n int
+	err := db.QueryRow("SELECT COUNT(*) FROM project_notes").Scan(&n)
+	return n, err
 }
 
 // ListAllTags returns the distinct set of non-empty tag strings.

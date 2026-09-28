@@ -6,6 +6,15 @@
 // The desktop Wails App, the (future) CLI and this headless server are all thin
 // adapters over internal/service. They share one implementation and one SQLite
 // database.
+//
+// Trust boundary: this API has NO authentication — it serves the complete
+// local knowledge base (notes, todos, mined repo knowledge). It is safe only
+// because cmd/server binds it to 127.0.0.1, so reachability is equivalent to
+// "another process on this machine". Anyone embedding this handler (tests,
+// plugins, future transports) must preserve that property: loopback-only,
+// never 0.0.0.0, and never documented as a network service. Exposing it
+// beyond loopback would publish the user's private code knowledge to the
+// network.
 package httpapi
 
 import (

@@ -44,7 +44,9 @@ func runAgentScore(svc *service.Service) string {
 		}
 	}
 
-	noteCount := len(svc.ListAllNotes())
+	// Count, not load: len(ListAllNotes()) used to materialize every note's
+	// full content just to report how many there are.
+	noteCount := svc.CountNotes()
 
 	// 1. Database reachable. This used to be `noteCount > 0`, identical to
 	// check 2 below — the same signal counted twice, inflating the score of an

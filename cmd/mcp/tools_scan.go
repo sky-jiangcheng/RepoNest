@@ -26,7 +26,10 @@ func registerScanTool(mcpServer *server.MCPServer, svc *service.Service) {
 		},
 	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		svc.EnsureDefaultScanRoots()
-		res, err := svc.ScanNow()
+		// Pass the request context through: if the agent client disconnects
+		// mid-scan the work cancels instead of running to completion for
+		// nobody.
+		res, err := svc.ScanNow(ctx)
 		if err != nil {
 			return makeTextResult("error: " + err.Error()), nil
 		}

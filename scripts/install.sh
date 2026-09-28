@@ -69,6 +69,73 @@ install_binary() {
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+# --- Checksum verification -----------------------------------------------------
+#
+# Every release publishes a SHA256SUMS asset listing the digest of each
+# shipped file (see .github/workflows/release.yml). Verifying against it turns
+# a corrupt mirror or a tampered download into a loud failure instead of a
+# silently broken binary.
+#
+# The manifest is optional on purpose: releases published before it existed
+# do not have the asset, and a missing manifest must not fail an otherwise
+# healthy install. A digest MISMATCH is always fatal — that is the whole point
+# of the check.
+
+SHA256SUMS_FILE="$TMP_DIR/SHA256SUMS"
+SHA256SUMS_LOADED="no" # no | failed | yes
+
+# sha256_of <file> prints the file's SHA-256 digest with whichever tool the
+# platform ships: shasum on macOS, sha256sum on Linux.
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    sha256sum "$1" | awk '{print $1}'
+  fi
+}
+
+# load_sha256sums fetches the release's SHA256SUMS manifest once. Any failure
+# (404 on an older release, network hiccup) downgrades to "unavailable" and
+# verification is skipped downstream.
+load_sha256sums() {
+  [ "$SHA256SUMS_LOADED" != "no" ] && return 0
+  SHA256SUMS_LOADED="failed"
+  if curl -fsSL --retry 2 -o "$SHA256SUMS_FILE" "$RELEASES/SHA256SUMS" 2>/dev/null \
+    && [ -s "$SHA256SUMS_FILE" ]; then
+    SHA256SUMS_LOADED="yes"
+    echo "Found SHA256SUMS manifest — downloads will be verified."
+  else
+    echo "WARNING: this release has no SHA256SUMS asset, skipping checksum verification." >&2
+  fi
+}
+
+# verify_sha256 <file> <asset-name> checks a downloaded release asset against
+# the manifest and exits on mismatch. An asset missing from the manifest is
+# only a warning (a partial manifest must not block an install either).
+verify_sha256() {
+  load_sha256sums
+  [ "$SHA256SUMS_LOADED" = "yes" ] || return 0
+
+  local expected
+  # sub() strips a CR from CRLF manifests so a Windows-generated SHA256SUMS
+  # still matches; the "*name" form covers binary-mode digest listings.
+  expected=$(awk -v name="$2" '{sub(/\r$/, "")} $2 == name || $2 == "*"name {print $1; exit}' "$SHA256SUMS_FILE")
+  if [ -z "$expected" ]; then
+    echo "WARNING: $2 is not listed in SHA256SUMS, skipping its verification." >&2
+    return 0
+  fi
+
+  local actual
+  actual=$(sha256_of "$1")
+  if [ "$actual" != "$expected" ]; then
+    echo "ERROR: SHA256 mismatch for $2 — refusing to install." >&2
+    echo "  expected: $expected" >&2
+    echo "  actual:   $actual" >&2
+    exit 1
+  fi
+  echo "Verified $2 (sha256)."
+}
+
 # --- Desktop app --------------------------------------------------------------
 
 # APP_INSTALL_DIR is where the .app lands. Overridable (like INSTALL_DIR)
@@ -80,6 +147,7 @@ if [ "$OS" = "darwin" ]; then
   APP_NAME="RepoNest.app"
   echo "Downloading RepoNest for $TARGET (dmg)..."
   fetch "$RELEASES/reponest-$TARGET.dmg" "$DMG"
+  verify_sha256 "$DMG" "reponest-$TARGET.dmg"
 
   MOUNT_DIR=$(hdiutil attach "$DMG" -nobrowse -readonly | tail -1 | sed -E 's|.*(/Volumes/.*)|\1|')
   trap 'rm -rf "$TMP_DIR"; [ -n "${MOUNT_DIR:-}" ] && hdiutil detach "$MOUNT_DIR" -quiet' EXIT
@@ -100,6 +168,7 @@ else
   TARBALL="$TMP_DIR/reponest.tar.gz"
   echo "Downloading RepoNest for $TARGET (tar.gz)..."
   fetch "$RELEASES/reponest-$TARGET.tar.gz" "$TARBALL"
+  verify_sha256 "$TARBALL" "reponest-$TARGET.tar.gz"
   tar -xzf "$TARBALL" -C "$TMP_DIR" "$BINARY_NAME"
   install_binary "$TMP_DIR/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
 
@@ -116,14 +185,27 @@ echo "Downloading RepoNest MCP server for $TARGET..."
 
 MCP_ASSET="reponest-mcp-$TARGET.tar.gz"
 MCP_URL="$RELEASES/$MCP_ASSET"
-if fetch "$MCP_URL" "$TMP_DIR/$MCP_ASSET" \
-  && tar -xzf "$TMP_DIR/$MCP_ASSET" -C "$TMP_DIR" "$MCP_BINARY_NAME" \
-  && install_binary "$TMP_DIR/$MCP_BINARY_NAME" "$INSTALL_DIR/$MCP_BINARY_NAME"; then
-  echo "RepoNest MCP server installed to $INSTALL_DIR/$MCP_BINARY_NAME"
-  echo "Register it with an AI client: claude mcp add reponest -- $INSTALL_DIR/$MCP_BINARY_NAME"
-else
-  echo "WARNING: could not install reponest-mcp (no asset for $TARGET, or download failed)." >&2
+
+# Recovery hint shared by both failure paths (no asset / extract failure).
+mcp_install_hint() {
+  echo "WARNING: could not install reponest-mcp ($1)." >&2
   echo "         The desktop app is installed and working; install the MCP server manually:" >&2
   echo "         $MCP_URL" >&2
   echo "         then: tar -xzf $MCP_ASSET && sudo install -m 0755 $MCP_BINARY_NAME $INSTALL_DIR/" >&2
+}
+
+if ! fetch "$MCP_URL" "$TMP_DIR/$MCP_ASSET"; then
+  mcp_install_hint "no asset for $TARGET, or download failed"
+else
+  # Verified outside an if-condition on purpose: a checksum mismatch exits
+  # from inside verify_sha256, and must abort the install rather than fall
+  # through to the non-fatal hint below.
+  verify_sha256 "$TMP_DIR/$MCP_ASSET" "$MCP_ASSET"
+  if tar -xzf "$TMP_DIR/$MCP_ASSET" -C "$TMP_DIR" "$MCP_BINARY_NAME" \
+    && install_binary "$TMP_DIR/$MCP_BINARY_NAME" "$INSTALL_DIR/$MCP_BINARY_NAME"; then
+    echo "RepoNest MCP server installed to $INSTALL_DIR/$MCP_BINARY_NAME"
+    echo "Register it with an AI client: claude mcp add reponest -- $INSTALL_DIR/$MCP_BINARY_NAME"
+  else
+    mcp_install_hint "extract or install failed"
+  fi
 fi

@@ -6,6 +6,38 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **`reponest_scan` 静默吞掉扫描错误**：`runCollectedScan` 此前把文件系统扫描失败、事务失败、
+  panic 一律降级为日志并返回 `0, 0`，`ScanNow` 再包一层 `Success: true`——agent 收到的是
+  「扫描完成：发现 0 个仓库」而不是错误，空知识基被伪装成成功。现在硬失败以 `error` 返回，
+  单个项目组同步失败保持非致命（一条坏路径不拖垮全量扫描），全部组失败才报错；panic 也转换为
+  错误而不是"恢复后继续报告成功"。`ScanNow` 同时接受 MCP 请求 context，客户端断连即取消扫描。
+- **`reponest_context` 交接记录被截断**：最新 handoff、旧 handoff 与普通笔记混排争用同一个
+  10 条 / 1200 字预算，上一次会话的退出记录可能被砍半——恰是下次会话最需要的信息。现在最新
+  handoff 完整渲染（4000 字上限），更早的 handoff 压缩为「标题 + 日期 + 摘要一行」的时间线，
+  普通笔记预算不变。
+- **写入缺少长度/数量上限**：note/handoff 写入无边界，agent 一次调用即可写入超长内容或上百条
+  子弹，直接撑爆下一次 `reponest_context` 的上下文预算。service 层新增校验（覆盖桌面 UI /
+  MCP / 插件导入全部写入路径）：笔记内容 100KB、标题 200 字节、标签 20 个；handoff summary
+  4KB、每节 20 条、每条 1KB。超出即拒绝并说明限制。
+- **`ListAllNotes` 无 limit 下推**：`reponest_notes_list` 显示 50 条却先全量载入所有笔记全文，
+  llms.txt 生成同样全表扫描后只取 20 条。DB 层 `ListAllNotes` 新增 `limit`/`kind` 参数
+  （SQL 层 `LIMIT`），MCP `limit` 钳制在 [1, 500]；`agent_score` 的笔记计数改走新增的
+  `CountNotes` 聚合查询。
+
+### 安全
+
+- **安装脚本 SHA256 校验**：`install.sh` / `install.ps1` 此前直接安装下载的二进制，损坏或
+  篡改的资产无从发现。现在 release.yml 生成并上传 `SHA256SUMS` 资产，安装脚本下载后校验
+  Digest（`shasum` / `sha256sum` / `Get-FileHash` 三平台适配）：不符即中止安装；旧 release
+  没有清单时跳过并告警，不阻断安装。冒烟测试新增「清单损坏必须被拒绝」负路径，防止校验
+  逻辑退化为永远跳过。
+- **Headless HTTP 信任边界文档化**：`reponest server` 是无认证、返回全量知识库的 API，
+  此前只在 `cmd/server` 注释里提了一句 loopback。`internal/httpapi` 包注释与
+  `docs/api/reference.md` 现在明确：该 API 仅因绑定 `127.0.0.1` 而安全，可达性等价于
+  「本机上的另一个进程」，禁止改为 `0.0.0.0` 或经反代暴露。
+
 ## [1.9.0] - 2026-09-28
 
 ### 新增

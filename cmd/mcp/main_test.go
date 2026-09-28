@@ -44,6 +44,7 @@ func newTestServer(t *testing.T) *testServer {
 	s := server.NewMCPServer("reponest-mcp", "test")
 	registerTools(s, svc)
 	registerContextTools(s, svc)
+	registerScanTool(s, svc)
 	return &testServer{t: t, s: s, svc: svc, db: database}
 }
 
