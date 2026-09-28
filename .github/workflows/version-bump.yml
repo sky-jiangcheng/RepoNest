@@ -1,0 +1,148 @@
+# Version bump + tag + push / 版本号升级并打 tag 推送
+#
+# Rationale / 背景: 版本升级此前靠本地手动跑 scripts/bump-version.sh + 改
+# CHANGELOG + commit + tag + push, 步骤多且容易漏 (CHANGELOG compare 链接、
+# 包管理器清单同步)。本工作流把整套流程固化下来, 在 Actions 页面一键触发,
+# 产出可推到远端的 commit + tag, 随后 release.yml 自动接手构建发布。
+#
+# 凭证: 默认用 GITHUB_TOKEN 推送。若希望 tag 推送自动触发 release.yml
+# (GITHUB_TOKEN 推送不会触发其他 workflow), 请在仓库 Settings → Secrets
+# 中添加一个有 contents:write 权限的 PAT, 命名为 REPO_PUSH_TOKEN, 本工作流
+# 会优先使用它; 未配置时回退到 GITHUB_TOKEN (此时需手动再触发 release.yml)。
+name: Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '目标版本 (X.Y.Z), 留空则按 bump_type 递增'
+        required: false
+      bump_type:
+        description: '递增类型 (version 留空时生效)'
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # 用可推送的 token: 优先 REPO_PUSH_TOKEN (PAT, 能触发 release.yml),
+          # 回退到 GITHUB_TOKEN。fetch-depth=0 保证 git tag 能正确指向历史。
+          token: ${{ secrets.REPO_PUSH_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - name: Compute target version
+        id: ver
+        run: |
+          set -euo pipefail
+          CUR=$(grep -oE '"productVersion"[[:space:]]*:[[:space:]]*"[^"]+"' wails.json | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+          echo "current=$CUR"
+          IN="${{ inputs.version }}"
+          if [ -z "$IN" ]; then
+            IFS='.' read -r MAJOR MINOR PATCH <<<"$CUR"
+            case "${{ inputs.bump_type }}" in
+              major) NEW="$((MAJOR+1)).0.0" ;;
+              minor) NEW="$MAJOR.$((MINOR+1)).0" ;;
+              patch) NEW="$MAJOR.$MINOR.$((PATCH+1))" ;;
+            esac
+          else
+            NEW="${IN#v}"
+          fi
+          # 校验 semver-ish
+          if ! [[ "$NEW" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::invalid version '$NEW', must be X.Y.Z"
+            exit 1
+          fi
+          if [ "$NEW" = "$CUR" ]; then
+            echo "::error::target '$NEW' equals current, nothing to bump"
+            exit 1
+          fi
+          echo "current=$CUR" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "date=$(date +%F)" >> "$GITHUB_OUTPUT"
+          echo "Resolved $CUR -> $NEW"
+
+      - name: Bump version across files
+        run: |
+          set -euo pipefail
+          ./scripts/bump-version.sh "${{ steps.ver.outputs.new }}"
+
+      - name: Update CHANGELOG (Unreleased -> version)
+        env:
+          NEW: ${{ steps.ver.outputs.new }}
+          CUR: ${{ steps.ver.outputs.current }}
+          DATE: ${{ steps.ver.outputs.date }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re, sys
+          new = os.environ["NEW"]; cur = os.environ["CUR"]; date = os.environ["DATE"]
+          path = "CHANGELOG.md"
+          with open(path, encoding="utf-8") as f:
+              text = f.read()
+
+          # 1) 把 ## [Unreleased] 后面接一个空行 -> 插入新版本标题
+          #    仅匹配第一个出现, 避免误改底部链接区。
+          marker = "## [Unreleased]\n\n"
+          if marker not in text:
+              sys.exit("::error::cannot find '## [Unreleased]\\n\\n' heading in CHANGELOG.md")
+          text = text.replace(marker, f"## [Unreleased]\n\n## [{new}] - {date}\n\n", 1)
+
+          # 2) 更新底部 compare 链接: 旧的 [Unreleased]: ...v<cur>...HEAD
+          #    拆成 [Unreleased]: ...v<new>...HEAD  并新增 [new]: ...v<cur>...v<new>
+          unreleased_re = re.compile(
+              r"^\[Unreleased\]:\s+(https://github\.com/[^/]+/[^/]+/compare/)v"
+              + re.escape(cur) + r"(\.\.\.HEAD)$", re.MULTILINE)
+          m = unreleased_re.search(text)
+          if not m:
+              sys.exit("::error::cannot find [Unreleased] compare link for v" + cur)
+          base, suffix = m.group(1), m.group(2)
+          new_unreleased = f"[Unreleased]: {base}v{new}{suffix}"
+          new_link = f"[{new}]: {base}v{cur}...v{new}"
+          text = unreleased_re.sub(new_unreleased + "\n" + new_link, text, count=1)
+
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(text)
+          print("CHANGELOG updated: Unreleased ->", new)
+          PY
+
+      - name: Commit and tag
+        id: commit
+        run: |
+          set -euo pipefail
+          NEW="${{ steps.ver.outputs.new }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: bump version to $NEW" \
+                     -m "Automated by version-bump workflow."
+          git tag -a "v$NEW" -m "Release v$NEW"
+          SHA=$(git rev-parse HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Push branch and tag
+        run: |
+          set -euo pipefail
+          NEW="${{ steps.ver.outputs.new }}"
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          git push origin "$BRANCH"
+          git push origin "v$NEW"
+          echo "Pushed $BRANCH and tag v$NEW"
+          if [ -z "${{ secrets.REPO_PUSH_TOKEN }}" ]; then
+            echo "::notice::Used GITHUB_TOKEN to push; release.yml will NOT auto-trigger. " \
+                 "Set REPO_PUSH_TOKEN secret for auto-trigger, or run release.yml manually."
+          fi
