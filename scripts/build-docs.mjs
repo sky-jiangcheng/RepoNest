@@ -114,7 +114,7 @@ ${extraHead}  <style>
 <body>
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <h1>Git<span>Buddy</span></h1>
+      <h1>Repo<span>Nest</span></h1>
       <small>用户文档 · v${version}</small>
     </div>
     <nav>${navHtml}
