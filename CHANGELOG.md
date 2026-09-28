@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-09-28
+
 ### 新增
 
 - **会话记忆协议（ADR-0007）**：MCP 工具从 10 个扩展到 12 个，补齐 agent 会话边界的记忆两端：
@@ -407,7 +409,10 @@
 
 - 首个正式版本：Wails 桌面应用骨架、GitHub Actions 多平台构建发布
 
-[Unreleased]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.9...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.8.1...v1.9.0
+[1.8.1]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.8.0...v1.8.1
+[1.8.0]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.9...v1.8.0
 [1.7.9]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.8...v1.7.9
 [1.7.8]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.7...v1.7.8
 [1.7.7]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.6...v1.7.7
