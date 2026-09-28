@@ -9,46 +9,13 @@ import (
 	"reponest/internal/domain"
 )
 
-// Write-size guards for notes. Every writer (desktop UI, MCP tools, plugin
-// imports) goes through the service layer, so validating here covers all
-// entry paths at once. A single unbounded write from an agent would
-// otherwise bloat the context document (reponest_context embeds notes) and
-// the SQLite row itself.
-const (
-	maxNoteContentLen = 100_000 // ~100 KB of Markdown per note
-	maxNoteTitleLen   = 200
-	maxNoteTagsLen    = 500
-	maxNoteTagCount   = 20
-)
-
 // validateNoteBounds rejects oversized note fields before they reach the
-// database, with limits generous enough for real Markdown notes.
+// database. The enforcement lives in internal/db (the chokepoint every writer
+// converges on, including the plugin runtime's direct db upserts); the service
+// keeps calling it first so the desktop UI and MCP callers get the friendly
+// message before a raw DB error surfaces.
 func validateNoteBounds(title, content, tags string) error {
-	if len(content) > maxNoteContentLen {
-		return fmt.Errorf("content too long: %d bytes (max %d)", len(content), maxNoteContentLen)
-	}
-	if len(title) > maxNoteTitleLen {
-		return fmt.Errorf("title too long: %d bytes (max %d)", len(title), maxNoteTitleLen)
-	}
-	if len(tags) > maxNoteTagsLen {
-		return fmt.Errorf("tags too long: %d bytes (max %d)", len(tags), maxNoteTagsLen)
-	}
-	if n := countTags(tags); n > maxNoteTagCount {
-		return fmt.Errorf("too many tags: %d (max %d)", n, maxNoteTagCount)
-	}
-	return nil
-}
-
-// countTags counts comma-separated tag entries, ignoring blanks so ",a,,b,"
-// counts as two tags.
-func countTags(tags string) int {
-	n := 0
-	for _, t := range strings.Split(tags, ",") {
-		if strings.TrimSpace(t) != "" {
-			n++
-		}
-	}
-	return n
+	return db.ValidateNoteBounds(title, content, tags)
 }
 
 // ListNotes returns all notes for a project.

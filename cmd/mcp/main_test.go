@@ -284,6 +284,110 @@ func TestProjectsStatsMissingProject(t *testing.T) {
 	}
 }
 
+// TestNotesUpdatePartialKeepsMetadata is the regression test for the
+// partial-update data loss: reponest_notes_update with only "category" went
+// through UpdateNoteMeta, which replaces title/tags/kind/pinned wholesale —
+// silently wiping the title and tags and unpinning the note.
+func TestNotesUpdatePartialKeepsMetadata(t *testing.T) {
+	ts := newTestServer(t)
+	pid := ts.seedProject("demo", "/tmp/demo")
+
+	created := ts.jsonPayload(ts.call("reponest_notes_create", map[string]any{
+		"project_id": float64(pid),
+		"title":      "FTS5 quirk",
+		"content":    "external-content FTS5 tables answer content queries from the content table",
+		"category":   "knowledge",
+		"tags":       "sqlite,search",
+	}))
+	noteID, _ := created["id"].(float64)
+
+	// No MCP pin tool exists, so pin through the service to cover pin
+	// preservation as well.
+	if err := ts.svc.PinNote(int64(noteID), true); err != nil {
+		t.Fatalf("pin: %v", err)
+	}
+
+	// The documented partial-update use: change only the category.
+	ts.call("reponest_notes_update", map[string]any{
+		"id":       noteID,
+		"category": "log",
+	})
+
+	got := ts.jsonPayload(ts.call("reponest_notes_read", map[string]any{"id": noteID}))
+	if title, _ := got["title"].(string); title != "FTS5 quirk" {
+		t.Errorf("category-only update wiped the title: %q", title)
+	}
+	if tags, _ := got["tags"].(string); tags != "sqlite,search" {
+		t.Errorf("category-only update wiped the tags: %q", tags)
+	}
+	if kind, _ := got["kind"].(string); kind != "log" {
+		t.Errorf("kind = %q, want log", kind)
+	}
+	if pinned, _ := got["pinned"].(bool); !pinned {
+		t.Error("category-only update unpinned the note")
+	}
+	if content, _ := got["content"].(string); !strings.Contains(content, "FTS5 tables") {
+		t.Errorf("content changed by a category-only update: %q", content)
+	}
+}
+
+func TestNotesUpdateMissingNote(t *testing.T) {
+	ts := newTestServer(t)
+	res := ts.call("reponest_notes_update", map[string]any{
+		"id":      float64(424242),
+		"content": "attached to nothing",
+	})
+	if res.IsError {
+		t.Fatal("not-found should be a text result, not a protocol error")
+	}
+	if got := ts.text(res); !strings.Contains(got, "note not found") {
+		t.Errorf("message = %q, want it to say note not found", got)
+	}
+}
+
+func TestNotesUpdateNothingToUpdate(t *testing.T) {
+	ts := newTestServer(t)
+	pid := ts.seedProject("demo", "/tmp/demo")
+	created := ts.jsonPayload(ts.call("reponest_notes_create", map[string]any{
+		"project_id": float64(pid), "title": "t", "content": "body",
+	}))
+	noteID, _ := created["id"].(float64)
+
+	// No updatable field: the call must say so instead of silently
+	// succeeding without touching anything.
+	res := ts.call("reponest_notes_update", map[string]any{"id": noteID})
+	if got := ts.text(res); !strings.Contains(got, "nothing to update") {
+		t.Errorf("message = %q, want it to say nothing to update", got)
+	}
+}
+
+func TestSearchQueryLengthCap(t *testing.T) {
+	ts := newTestServer(t)
+	long := strings.Repeat("q", maxArgQueryLen+1)
+	for _, name := range []string{"reponest_notes_search", "reponest_ask"} {
+		res := ts.call(name, map[string]any{"query": long})
+		if res.IsError {
+			t.Errorf("%s: expected a text result, not a protocol error", name)
+		}
+		if got := ts.text(res); !strings.Contains(got, "query too long") {
+			t.Errorf("%s: message = %q, want it to mention the length cap", name, got)
+		}
+	}
+}
+
+func TestContextProjectNameLengthCap(t *testing.T) {
+	ts := newTestServer(t)
+	res := ts.call("reponest_context", map[string]any{
+		"project_name": strings.Repeat("p", maxProjectNameLen+1),
+	})
+	if res.IsError {
+		t.Fatal("expected a text result, not a protocol error")
+	}
+	if got := ts.text(res); !strings.Contains(got, "project_name too long") {
+		t.Errorf("message = %q, want it to mention the length cap", got)
+	}
+}
+
 func TestAgentScoreOnFreshInstall(t *testing.T) {
 	ts := newTestServer(t)
 	out := ts.text(ts.call("reponest_agent_score", nil))

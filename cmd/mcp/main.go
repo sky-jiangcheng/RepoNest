@@ -43,6 +43,12 @@ func main() {
 	}
 }
 
+// maxArgQueryLen bounds the query argument of reponest_notes_search and
+// reponest_ask. The query is escaped before it reaches SQLite, so this is not
+// an injection guard — it stops a multi-megabyte argument from turning every
+// FTS/LIKE match into a multi-second scan on each call.
+const maxArgQueryLen = 1000
+
 // notesListLimit reads the optional limit argument for reponest_notes_list,
 // defaulting to 50 and clamped to 500 so a single call cannot dump the whole
 // knowledge base over the wire.
@@ -98,6 +104,9 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 		query, _ := req.GetArguments()["query"].(string)
 		if query == "" {
 			return makeTextResult("query is required"), nil
+		}
+		if len(query) > maxArgQueryLen {
+			return makeTextResult(fmt.Sprintf("query too long: %d bytes (max %d)", len(query), maxArgQueryLen)), nil
 		}
 		return makeJSONResult("notes_search", svc.SearchAll(query))
 	})
@@ -180,6 +189,9 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 		if query == "" {
 			return makeTextResult("query is required"), nil
 		}
+		if len(query) > maxArgQueryLen {
+			return makeTextResult(fmt.Sprintf("query too long: %d bytes (max %d)", len(query), maxArgQueryLen)), nil
+		}
 		hits := svc.SearchAll(query)
 		if len(hits) == 0 {
 			return makeTextResult("No results found for: " + query), nil
@@ -236,7 +248,7 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 
 	mcpServer.AddTool(mcp.Tool{
 		Name:        "reponest_notes_update",
-		Description: "Update an existing note's content and/or metadata",
+		Description: "Update an existing note's content and/or metadata. Omitted fields keep their current value (there is deliberately no way to clear the title or tags — write a new note instead).",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
 			Properties: map[string]any{
@@ -271,21 +283,45 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 		tags, _ := args["tags"].(string)
 		category, _ := args["category"].(string)
 
+		if content == "" && title == "" && tags == "" && category == "" {
+			return makeTextResult("nothing to update: provide at least one of content, title, tags, category"), nil
+		}
+
+		// Load the stored note first: this is a partial-update tool, so every
+		// omitted field must merge into the existing value. UpdateNoteMeta
+		// replaces title/tags/kind/pinned wholesale, so calling it with only
+		// "category" (a documented use) used to silently wipe the title and
+		// tags and unpin the note — data loss through a normal tool call.
+		note, err := svc.GetNote(int64(id))
+		if err != nil {
+			return makeTextResult(fmt.Sprintf("note not found: %v", err)), nil
+		}
+
 		if content != "" {
-			if err := svc.UpdateNote(int64(id), content); err != nil {
+			if err := svc.UpdateNote(note.ID, content); err != nil {
 				return makeTextResult(fmt.Sprintf("error: %v", err)), nil
 			}
 		}
 		if title != "" || tags != "" || category != "" {
-			if err := svc.UpdateNoteMeta(int64(id), title, tags, category, false); err != nil {
+			mergedTitle, mergedTags, mergedKind := note.Title, note.Tags, note.Kind
+			if title != "" {
+				mergedTitle = title
+			}
+			if tags != "" {
+				mergedTags = tags
+			}
+			if category != "" {
+				mergedKind = category
+			}
+			if err := svc.UpdateNoteMeta(note.ID, mergedTitle, mergedTags, mergedKind, note.Pinned); err != nil {
 				return makeTextResult(fmt.Sprintf("error updating metadata: %v", err)), nil
 			}
 		}
-		note, err := svc.GetNote(int64(id))
+		updated, err := svc.GetNote(note.ID)
 		if err != nil {
 			return makeTextResult(fmt.Sprintf("error fetching note: %v", err)), nil
 		}
-		return makeJSONResult("note_updated", note)
+		return makeJSONResult("note_updated", updated)
 	})
 
 	mcpServer.AddTool(mcp.Tool{

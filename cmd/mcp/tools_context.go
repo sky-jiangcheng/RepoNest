@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -9,6 +10,11 @@ import (
 
 	"reponest/internal/service"
 )
+
+// maxProjectNameLen bounds the fuzzy project_name argument. Project names and
+// root paths are short; a multi-megabyte value only exists to burn cycles in
+// the LIKE match, so it is rejected instead of searched.
+const maxProjectNameLen = 200
 
 // registerContextTools wires the session memory loop: reponest_context loads
 // a project's full working context in one call (session cold start) and
@@ -39,6 +45,9 @@ func registerContextTools(mcpServer *server.MCPServer, svc *service.Service) {
 		query, _ := args["project_name"].(string)
 		if id, ok := args["project_id"].(float64); ok {
 			query = formatFloatID(id)
+		}
+		if len(query) > maxProjectNameLen {
+			return makeTextResult(fmt.Sprintf("project_name too long: %d bytes (max %d)", len(query), maxProjectNameLen)), nil
 		}
 		res := svc.ResolveProject(query)
 		return makeTextResult(svc.BuildProjectContext(res)), nil

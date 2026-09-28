@@ -6,6 +6,25 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **`reponest_notes_update` 部分更新清空元数据**：只传 `category`（文档化的合法用法）时 handler 调用
+  `UpdateNoteMeta`，而后者整体覆写 title/tags/kind/pinned——笔记标题与标签被静默清空、置顶状态丢失。
+  handler 改为「先读后合并」：只覆写显式提供的字段，pinned 保持原值；未提供任何可更新字段时返回明确
+  提示而非无声成功。工具描述同步注明「省略的字段保持原值，标题/标签无法通过本工具清空」。
+- **note 写入边界被插件导入路径绕过**：1.9.1 的校验只放在 service 层，但插件 runtime 的导入 upsert
+  （`runtime.upsertDoc`）与持有 `ctx.DB()` 的脚本插件直写 `internal/db`，可写入无边界内容，随后被
+  `reponest_context` 全量嵌入。边界校验下沉到 db 层（`CreateNoteEx` / `UpdateNote` / `UpdateNoteFull` /
+  `UpdateNoteMeta` 全覆盖，附 db 层回归测试），service 层保留前置校验以给出友好错误信息。
+- **Claude 导入器整文件读入内存**：`os.ReadFile` 无上限，单个超大 memory 文件在任何边界校验生效前
+  即已 OOM。改为 `io.LimitReader` 限长读取（`MaxNoteContentLen+1`），超限文件跳过并记日志。
+
+### 安全
+
+- **MCP 查询参数长度上限**：`reponest_notes_search` / `reponest_ask` 的 query 与 `reponest_context` 的
+  `project_name` 此前无长度上限。输入本身有 FTS/LIKE 转义保护（无注入面），但超长参数会把每次匹配变成
+  全表级扫描。现分别限制 1000 / 200 字节，超限返回明确提示并附回归测试。
+
 ## [1.9.1] - 2026-09-27
 
 ### 修复

@@ -224,13 +224,13 @@ func TestNoteAndHandoffWriteBounds(t *testing.T) {
 	s, _ := setupService(t)
 	pid := seedProject(t, s.db, "demo", "/home/me/demo")
 
-	if _, err := s.CreateNote(pid, strings.Repeat("x", maxNoteContentLen+1)); err == nil {
+	if _, err := s.CreateNote(pid, strings.Repeat("x", db.MaxNoteContentLen+1)); err == nil {
 		t.Error("oversized note content must be rejected")
 	}
-	if _, err := s.CreateNoteWithMeta(pid, strings.Repeat("t", maxNoteTitleLen+1), "body", "", "knowledge", "manual"); err == nil {
+	if _, err := s.CreateNoteWithMeta(pid, strings.Repeat("t", db.MaxNoteTitleLen+1), "body", "", "knowledge", "manual"); err == nil {
 		t.Error("oversized note title must be rejected")
 	}
-	if _, err := s.CreateNoteWithMeta(pid, "t", "body", strings.Repeat("a,", maxNoteTagCount+1), "knowledge", "manual"); err == nil {
+	if _, err := s.CreateNoteWithMeta(pid, "t", "body", strings.Repeat("a,", db.MaxNoteTagCount+1), "knowledge", "manual"); err == nil {
 		t.Error("too many note tags must be rejected")
 	}
 	if _, err := s.CreateHandoffNote(HandoffInput{

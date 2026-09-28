@@ -3,7 +3,53 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 )
+
+// Note write bounds, enforced here because this package is the chokepoint
+// every writer converges on: the service layer (desktop UI, MCP tools), the
+// plugin runtime's import upserts (runtime.upsertDoc calls this package
+// directly), and script plugins holding ctx.DB(). Validating only in the
+// service layer left the import path unbounded — a plugin could upsert a
+// multi-megabyte doc that the next reponest_context would embed in full.
+// The limits are generous enough for real Markdown notes.
+const (
+	MaxNoteContentLen = 100_000 // ~100 KB of Markdown per note
+	MaxNoteTitleLen   = 200
+	MaxNoteTagsLen    = 500
+	MaxNoteTagCount   = 20
+)
+
+// ValidateNoteBounds rejects oversized note fields before they reach the
+// database. Content may legitimately be empty on metadata-only updates
+// (UpdateNoteMeta does not touch content) — it is still bounded when present.
+func ValidateNoteBounds(title, content, tags string) error {
+	if len(content) > MaxNoteContentLen {
+		return fmt.Errorf("content too long: %d bytes (max %d)", len(content), MaxNoteContentLen)
+	}
+	if len(title) > MaxNoteTitleLen {
+		return fmt.Errorf("title too long: %d bytes (max %d)", len(title), MaxNoteTitleLen)
+	}
+	if len(tags) > MaxNoteTagsLen {
+		return fmt.Errorf("tags too long: %d bytes (max %d)", len(tags), MaxNoteTagsLen)
+	}
+	if n := countTags(tags); n > MaxNoteTagCount {
+		return fmt.Errorf("too many tags: %d (max %d)", n, MaxNoteTagCount)
+	}
+	return nil
+}
+
+// countTags counts comma-separated tag entries, ignoring blanks so ",a,,b,"
+// counts as two tags.
+func countTags(tags string) int {
+	n := 0
+	for _, t := range strings.Split(tags, ",") {
+		if strings.TrimSpace(t) != "" {
+			n++
+		}
+	}
+	return n
+}
 
 // CreateNote inserts a new note for a project.
 func CreateNote(db *sql.DB, projectID int64, content string) (*Note, error) {
@@ -12,6 +58,9 @@ func CreateNote(db *sql.DB, projectID int64, content string) (*Note, error) {
 
 // CreateNoteEx inserts a new note with explicit metadata.
 func CreateNoteEx(db *sql.DB, projectID int64, title, content, tags, kind, source string) (*Note, error) {
+	if err := ValidateNoteBounds(title, content, tags); err != nil {
+		return nil, err
+	}
 	res, err := db.Exec(
 		"INSERT INTO project_notes (project_id, title, content, tags, kind, source) VALUES (?, ?, ?, ?, ?, ?)",
 		projectID, title, content, tags, kind, source)
@@ -63,6 +112,9 @@ func ListNotes(db *sql.DB, projectID int64) ([]Note, error) {
 
 // UpdateNote updates the content of a note. An absent id yields an error.
 func UpdateNote(db *sql.DB, noteID int64, content string) error {
+	if err := ValidateNoteBounds("", content, ""); err != nil {
+		return err
+	}
 	res, err := db.Exec(
 		"UPDATE project_notes SET content = ?, updated_at = strftime('%Y-%m-%d %H:%M:%f','now') WHERE id = ?",
 		content, noteID)
@@ -82,6 +134,9 @@ func UpdateNote(db *sql.DB, noteID int64, content string) error {
 // UpdateNoteFull updates both content and metadata in a single transaction,
 // ensuring the note_versions snapshot trigger fires once with consistent data.
 func UpdateNoteFull(db *sql.DB, noteID int64, content, title, tags, kind string, pinned bool) error {
+	if err := ValidateNoteBounds(title, content, tags); err != nil {
+		return err
+	}
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -112,6 +167,9 @@ func DeleteNote(db *sql.DB, noteID int64) error {
 
 // UpdateNoteMeta updates a note's editable metadata.
 func UpdateNoteMeta(db *sql.DB, noteID int64, title, tags, kind string, pinned bool) error {
+	if err := ValidateNoteBounds(title, "", tags); err != nil {
+		return err
+	}
 	res, err := db.Exec(
 		"UPDATE project_notes SET title = ?, tags = ?, kind = ?, pinned = ?, updated_at = strftime('%Y-%m-%d %H:%M:%f','now') WHERE id = ?",
 		title, tags, kind, pinned, noteID)
