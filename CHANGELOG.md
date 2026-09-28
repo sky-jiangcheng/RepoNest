@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [1.9.2] - 2026-09-27
+
 ### 修复
 
 - **`reponest_notes_update` 部分更新清空元数据**：只传 `category`（文档化的合法用法）时 handler 调用
@@ -462,7 +464,8 @@
 
 - 首个正式版本：Wails 桌面应用骨架、GitHub Actions 多平台构建发布
 
-[Unreleased]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.1...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.2...HEAD
+[1.9.2]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.8.1...v1.9.0
 [1.8.1]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.8.0...v1.8.1
