@@ -4,7 +4,7 @@ title: RepoNest 文档
 
 # RepoNest 文档
 
-<p class="subtitle">本地优先的代码项目上下文库：自动发现本地 Git 项目，理解每个项目「现在发生了什么、沉淀了哪些知识」，让用户和 AI 都能快速记录、检索与复用项目知识。</p>
+<p class="subtitle"><strong>Local-first project context base for your Git repos</strong> — discover repositories, understand what changed, capture knowledge as searchable Markdown, and hand it to any AI agent via MCP.<br><strong>本地优先的代码项目上下文库</strong>：自动发现本地 Git 项目，理解每个项目「现在发生了什么、沉淀了哪些知识」，让用户和 AI 都能记录、检索与复用项目上下文。</p>
 
 <!--NAV_LINKS-->
 

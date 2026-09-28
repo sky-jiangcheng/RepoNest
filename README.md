@@ -1,6 +1,10 @@
 # RepoNest
 
+**Local-first project context base for your Git repos** — auto-discover repositories, understand what changed, capture knowledge as searchable Markdown, and hand it to any AI agent via MCP. Think "Obsidian for your codebases", or a memory layer that Claude Code / Cursor can read.
+
 本地优先的**代码项目上下文库**：自动发现本地 Git 项目，快速理解每个项目「现在发生了什么、沉淀了哪些知识」，让用户和 AI 都能记录、检索与复用项目上下文。
+
+一句话：**把散落在终端和记忆里的项目上下文，变成可检索、可复用、能交给 AI 的知识。**
 
 优先级声明：本项目当前以**本地知识理解与 AI 上下文出口**为核心；仪表盘与统计是支持能力，插件/PWA/Web-only 能力不再默认扩展（见 [ADR-0006](docs/adr/0006-scope-freeze.md)）。
 
@@ -15,8 +19,11 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
-> 单文件 Wails v2 桌面应用（Go + React，SQLite 内嵌，零 CGO）。macOS / Windows / Linux。
+> 单文件 Wails v2 桌面应用（Go + React，SQLite 内嵌，零 CGO），跨平台 **macOS / Windows / Linux**。
+> 离线可用，无云端依赖；AI 通过独立分发的 [`reponest-mcp`](#安装-ai-执行接口reponest-mcp) MCP server 读取同一本地数据库。
 > 定位优先级、功能分级与范围冻结规则见 [ADR-0006](docs/adr/0006-scope-freeze.md) 与 [定位简报](docs/positioning-brief.md)。
+
+**Why RepoNest?** 现在的编码 agent（Claude Code / Cursor / OpenCode）擅长读代码，却不记得**你在这些仓库里积累的判断**：为什么这么设计、上次踩过什么坑、下一个待办是什么。RepoNest 把这些沉淀在本地、可检索、可由 AI 直接读取的地方——不依赖某个 agent 的私有记忆格式，换工具不丢上下文。
 
 ## 截屏预览
 
@@ -135,6 +142,21 @@ AI 客户端走的是独立分发的 `reponest-mcp`（MCP stdio 服务器），*
 ```bash
 claude mcp add reponest -- "$(which reponest-mcp)"
 ```
+
+#### 30 秒看它干活
+
+注册后，直接在 Claude Code / Cursor 里问，无需手动整理上下文：
+
+> “我本地有哪些项目？关于 auth 那个项目我之前记了什么？”
+
+Agent 会调用：
+
+1. `reponest_projects_list` — 列出扫描到的项目
+2. `reponest_notes_search({ query: "auth" })` — 全文检索历史笔记
+3. `reponest_notes_read({ id: ... })` — 读具体笔记
+4. `reponest_notes_create({ project_id, title, content })` — 把新结论写回知识库
+
+也可以从任意笔记导出带 YAML frontmatter 的 `.md`，或生成面向 LLM 的 `llms.txt` 总览。完整工具清单与工作流见 [SKILL.md](SKILL.md)。
 
 清单在 [`packaging/`](packaging/README.md)，版本号统一由 `wails.json` 派生，`sha256` 取自 release 实际提供的资产（Homebrew / Scoop 校验不通过会直接拒绝安装，这是预期行为）。已发布版本：
 
