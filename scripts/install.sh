@@ -12,7 +12,10 @@ set -e
 BINARY_NAME="reponest"
 MCP_BINARY_NAME="reponest-mcp"
 REPO="sky-jiangcheng/RepoNest"
-RELEASES="https://github.com/$REPO/releases/latest/download"
+# RELEASES is the base URL for release assets. Overridable so CI can point it
+# at a local fixture server and exercise the real download/extract/install
+# path without a published release (see .github/workflows/install-smoke.yml).
+RELEASES="${RELEASES:-https://github.com/$REPO/releases/latest/download}"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
@@ -24,17 +27,22 @@ case "$ARCH" in
 esac
 
 case "$OS" in
-  linux)   TARGET="linux-amd64"; INSTALL_DIR="/usr/local/bin" ;;
+  linux)   TARGET="linux-amd64"; DEFAULT_INSTALL_DIR="/usr/local/bin" ;;
   darwin)
     if [ "$ARCH" = "arm64" ]; then
       TARGET="darwin-arm64"
     else
       TARGET="darwin-amd64"
     fi
-    INSTALL_DIR="/usr/local/bin"
+    DEFAULT_INSTALL_DIR="/usr/local/bin"
     ;;
   *) echo "Unsupported OS: $OS" >&2; exit 1 ;;
 esac
+
+# INSTALL_DIR is overridable so CI can install into a scratch directory
+# without sudo and verify the script end-to-end (see
+# .github/workflows/install-smoke.yml). Defaults to the system path above.
+INSTALL_DIR="${INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
 
 # Run a command with sudo only when the install dir is not writable.
 # Usage: as_root <cmd...>
@@ -63,6 +71,10 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 # --- Desktop app --------------------------------------------------------------
 
+# APP_INSTALL_DIR is where the .app lands. Overridable (like INSTALL_DIR)
+# so CI can verify the script without writing to the real /Applications.
+APP_INSTALL_DIR="${APP_INSTALL_DIR:-/Applications}"
+
 if [ "$OS" = "darwin" ]; then
   DMG="$TMP_DIR/reponest.dmg"
   APP_NAME="RepoNest.app"
@@ -75,14 +87,15 @@ if [ "$OS" = "darwin" ]; then
     echo "ERROR: $APP_NAME not found inside the dmg" >&2
     exit 1
   fi
-  as_root rm -rf "/Applications/$APP_NAME"
-  as_root cp -R "$MOUNT_DIR/$APP_NAME" /Applications/
+  as_root mkdir -p "$APP_INSTALL_DIR"
+  as_root rm -rf "$APP_INSTALL_DIR/$APP_NAME"
+  as_root cp -R "$MOUNT_DIR/$APP_NAME" "$APP_INSTALL_DIR/"
   hdiutil detach "$MOUNT_DIR" -quiet
   MOUNT_DIR=""
 
   echo ""
-  echo "RepoNest installed to /Applications/$APP_NAME"
-  echo "Run 'open -a \"$APP_NAME\"' to start!"
+  echo "RepoNest installed to $APP_INSTALL_DIR/$APP_NAME"
+  echo "Run 'open -a \"$APP_INSTALL_DIR/$APP_NAME\"' to start!"
 else
   TARBALL="$TMP_DIR/reponest.tar.gz"
   echo "Downloading RepoNest for $TARGET (tar.gz)..."

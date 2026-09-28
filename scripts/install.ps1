@@ -10,6 +10,13 @@ $McpBinaryName = "reponest-mcp.exe"
 $Repo = "sky-jiangcheng/RepoNest"
 $Target = "windows-amd64"
 
+# ReleaseBase is the base URL for release assets. Overridable so CI can point
+# it at a local fixture server and exercise the real download/extract/install
+# path without a published release (see .github/workflows/install-smoke.yml).
+$ReleaseBase = if ($env:REPO_NEST_RELEASE_BASE) { $env:REPO_NEST_RELEASE_BASE } else { "https://github.com/$Repo/releases/latest/download" }
+$DesktopUrl = "$ReleaseBase/reponest-$Target.zip"
+$McpUrl = "$ReleaseBase/reponest-mcp-$Target.zip"
+
 Write-Host "Downloading RepoNest for Windows..."
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
@@ -19,7 +26,7 @@ New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 # rather than pointing at a .exe URL that 404s.
 $DesktopZip = "$env:TEMP\reponest-$Target.zip"
 try {
-    Invoke-WebRequest -Uri "https://github.com/$Repo/releases/latest/download/reponest-$Target.zip" -OutFile $DesktopZip
+    Invoke-WebRequest -Uri $DesktopUrl -OutFile $DesktopZip
     Expand-Archive -Path $DesktopZip -DestinationPath $InstallDir -Force
     if (-not (Test-Path "$InstallDir\$BinaryName")) {
         throw "archive did not contain $BinaryName"
@@ -31,7 +38,6 @@ try {
 # MCP server: separate release asset, so AI clients can run it without the desktop
 # app. Non-fatal: older releases may not have the asset yet.
 Write-Host "Downloading RepoNest MCP server for Windows..."
-$McpUrl = "https://github.com/$Repo/releases/latest/download/reponest-mcp-$Target.zip"
 $McpZip = "$env:TEMP\reponest-mcp-$Target.zip"
 try {
     Invoke-WebRequest -Uri $McpUrl -OutFile $McpZip
