@@ -8,6 +8,37 @@
 
 暂无未发布变更。
 
+## [1.8.1] - 2026-09-28
+
+### 修复
+
+- **MCP `reponest_projects_list` 空库返回 `null` 而非 `[]`**：`ListProjects()` 在无项目时返回
+  nil 切片，`makeJSONResult` 直接序列化成 `null`，与 httpapi 层已有的空集合回归测试
+  （`server_test.go`）口径不一致。新注册的项目列表 handler 先归一化为空切片再编码。
+  同时捕获了同病灶的检索路径（搜索空结果本就已归一化，此处仅补充断言）。
+
+### 新增
+
+- **MCP 工具测试**（`cmd/mcp/main_test.go`，13 个用例）：此前 566 行、作为 AI 唯一执行入口的
+  `cmd/mcp` 零覆盖。测试经 `registerTools()` 构造真实 server、通过 `GetTool()` 调用 handler，
+  与客户端同一路径。覆盖：工具注册与 schema、参数校验（空 query 返回提示而非协议错误）、
+  笔记创建/读取/更新/搜索全回环（含 FTS5 索引写入后可检索——正是 1.8.0 修复的静默漏搜路径）、
+  not-found 文案、`agent_score` 不再重复计分（DB 连通与“无笔记”是两个独立信号）、
+  `integrity` 新库无误报、以及**注入 FTS 索引漂移后 integrity 必须报出 FTS 项**。
+- **安装脚本冒烟测试**（`.github/workflows/install-smoke.yml`，Linux/macOS/Windows 三平台）：
+  `install.sh` / `install.ps1` 此前从 `releases/latest/download` 下载，错误的资产名只会在
+  用户侧失败且无从发现（1.8.0 之前三个平台的一键安装均从未成功）。现在脚本的下载根可被
+  `RELEASES` / `REPO_NEST_RELEASE_BASE`、安装目录可被 `INSTALL_DIR` / `APP_INSTALL_DIR` 覆盖，
+  CI 用本地 fixture 服务器跑真实下载→解压→安装路径，MCP 二进制是 `./cmd/mcp` 的真实构建
+  并实际执行 initialize 握手验证。macOS 侧用 `hdiutil` 构造真实 dmg，覆盖挂载/卸载分支。
+- **Dependabot 分组合并**（`.github/dependabot.yml`）：三个生态均由 weekly/10 PR 改为
+  monthly + `groups` 全量合并，避免依赖升级淹没有真实议题（此前 14 个 open issue 里 13 个是 bump）。
+
+### 变更
+
+- 删除根目录残留的 `package-lock.json`（87 字节，`web/package-lock.json` 才是真锁文件，
+  ci.yml 注释中已标注其为 stray）。
+
 ## [1.8.0] - 2026-09-28
 
 ### 修复

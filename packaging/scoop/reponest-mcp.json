@@ -1,9 +1,9 @@
 {
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "MCP stdio server exposing the RepoNest local knowledge base to AI agents",
   "homepage": "https://github.com/sky-jiangcheng/RepoNest",
   "license": "MIT",
-  "url": "https://github.com/sky-jiangcheng/RepoNest/releases/download/v1.8.0/reponest-mcp-windows-amd64.zip",
+  "url": "https://github.com/sky-jiangcheng/RepoNest/releases/download/v1.8.1/reponest-mcp-windows-amd64.zip",
   "hash": "sha256:d0ddfa5fb27da3bba2064db91ce3ad1b808d73348b74bd9b64634f2dc79c679b",
   "bin": "reponest-mcp.exe",
   "checkver": {
