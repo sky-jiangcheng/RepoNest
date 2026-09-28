@@ -4,7 +4,7 @@
   "homepage": "https://github.com/sky-jiangcheng/RepoNest",
   "license": "MIT",
   "url": "https://github.com/sky-jiangcheng/RepoNest/releases/download/v1.9.3/reponest-mcp-windows-amd64.zip",
-  "hash": "sha256:f1e7f963dd954effeecb7b43f132fcd590a4d4ddd87b9e2de8bf1462862bff4f",
+  "hash": "sha256:fa90b54926eb6907f0b60a24f18c54bac474463560b79baea4fb79a906932a41",
   "bin": "reponest-mcp.exe",
   "checkver": {
     "url": "https://api.github.com/repos/sky-jiangcheng/RepoNest/releases/latest",
