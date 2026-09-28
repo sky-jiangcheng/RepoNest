@@ -51,10 +51,11 @@
 
 | 通道 | 说明 |
 |------|------|
-| MCP Server | `reponest-mcp` stdio 服务器，9 个工具（笔记 CRUD + 项目查询 + 搜索 + agent-score 自检），可接入 Claude Code / Cursor 等（AI 执行的唯一接口） |
+| MCP Server | `reponest-mcp` stdio 服务器，10 个工具（笔记 CRUD + 项目查询 + 搜索 + 两个自检），可接入 Claude Code / Cursor 等（AI 执行的唯一接口） |
 | llms.txt | `GenerateLLMsTxt` 生成面向 LLM 的知识库总览 Markdown |
 | 笔记导出 | 任意笔记导出为带 YAML frontmatter 的 `.md` |
 | Claude 记忆导入 | 一键将 `~/.claude/projects/*/memory/*.md` 幂等导入为知识笔记（**支持**） |
+| 数据可信度审计 | `reponest_integrity` 6 项只读检查：FTS 索引漂移、孤儿行、schema 形状 vs 版本戳、扫描覆盖率、知识缓存新鲜度、版本快照孤儿。索引漂移会让搜索**静默漏结果**且无任何机制发现，这是唯一能发现它的手段 |
 
 ### 仪表盘与统计（支持）
 
@@ -87,14 +88,23 @@
 
 **方式一：直接下载**
 
-在 Releases 页面下载对应平台的二进制文件（`reponest` / `reponest.exe`），解压后直接运行。
+从 Releases 页面下载对应平台的归档文件，解压后运行：
 
-**方式二：一键安装脚本**
-
-| 平台 | 命令 |
+| 平台 | 资产 |
 |------|------|
-| macOS / Linux | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.sh \| bash` |
-| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 \| iex` |
+| macOS | `reponest-darwin-arm64.dmg` / `reponest-darwin-amd64.dmg` |
+| Linux | `reponest-linux-amd64.tar.gz` |
+| Windows | `reponest-windows-amd64.zip` |
+
+**方式二：一键安装脚本**（桌面应用 + `reponest-mcp` 一起装）
+
+| 平台 | 命令 | 装到哪 |
+|------|------|--------|
+| macOS | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.sh \| bash` | `/Applications/RepoNest.app` + `/usr/local/bin/reponest-mcp` |
+| Linux | 同上 | `/usr/local/bin/reponest` + `/usr/local/bin/reponest-mcp` |
+| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\RepoNest`（自动加入用户 PATH） |
+
+macOS 也可以直接用 Homebrew：`brew install --cask reponest`（见 [`packaging/`](packaging/README.md)）。
 
 启动后直接打开桌面窗口（Wails 应用，无需浏览器）：
 
@@ -103,6 +113,27 @@
 3. 收藏关注的仓库 → **刷新历史** 回填 365 天统计 → 开始使用知识库
 
 更多见[快速开始](docs/getting-started.md)。
+
+### 安装 AI 执行接口（`reponest-mcp`）
+
+AI 客户端走的是独立分发的 `reponest-mcp`（MCP stdio 服务器），**不需要装桌面应用**——它直接读同一个本地数据库。上一节的安装脚本会一并装上；也可以单独安装：
+
+| 方式 | 平台 | 命令 |
+|------|------|------|
+| Homebrew | macOS | `brew install --cask reponest-mcp` |
+| Homebrew | Linux | `brew install reponest-mcp` |
+| Scoop | Windows | `scoop install reponest-mcp` |
+| 手动 | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
+
+装好后注册到 AI 客户端：
+
+```bash
+claude mcp add reponest -- "$(which reponest-mcp)"
+```
+
+包管理器清单在 [`packaging/`](packaging/README.md)，版本号统一由 `wails.json` 派生，发布后需回填 `sha256`（Homebrew / Scoop 会在校验不通过时直接拒绝安装，这是预期行为）。
+
+> 桌面应用本身也可以用包管理器装：macOS `brew install --cask reponest`，Windows `scoop install reponest`。Linux 桌面版目前只提供 tarball。
 
 ### 数据目录
 

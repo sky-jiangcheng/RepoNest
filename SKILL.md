@@ -11,7 +11,14 @@ RepoNest is a local-first code project context base. It discovers local Git repo
 4. Create knowledge → reponest_notes_create          → capture new insights
 5. Update knowledge → reponest_notes_update          → refine existing notes
 6. Check readiness  → reponest_agent_score           → verify AI integration health
+7. Check the data   → reponest_integrity             → when results look incomplete
 ```
+
+**When search comes back suspiciously thin**, run `reponest_integrity` before
+concluding the knowledge base is thin. An FTS index that drifted out of sync
+with the notes table makes every search silently under-report, and
+`reponest_agent_score` will still say everything is fine — it checks
+installation readiness, not whether the data is true.
 
 **Typical scenario**: "Help me understand project X"
 1. `reponest_projects_list` — find the project and its ID
@@ -36,7 +43,21 @@ RepoNest is a local-first code project context base. It discovers local Git repo
 
 ## MCP Server (`reponest-mcp`)
 
-MCP is the single AI execution interface (the `reponest` CLI is not shipped). stdio server, opens the database once per process. Build and register:
+MCP is the single AI execution interface (the `reponest` CLI is not shipped). stdio server, opens the database once per process. The desktop app is **not** required — `reponest-mcp` reads the same local SQLite database.
+
+Install from a release (preferred), then register:
+
+```bash
+# macOS
+brew install --cask reponest-mcp
+# Linux
+brew install reponest-mcp
+# Windows
+scoop install reponest-mcp
+# or download reponest-mcp-<target>.tar.gz / .zip from GitHub Releases
+```
+
+Build from source if none of the above apply:
 
 ```bash
 go build -o /usr/local/bin/reponest-mcp ./cmd/mcp/
@@ -57,6 +78,7 @@ go build -o /usr/local/bin/reponest-mcp ./cmd/mcp/
 | `reponest_projects_list` | List all projects with stats | `starred_only?` | `{ starred_only: true }` |
 | `reponest_projects_stats` | Get stats for one project | `id` (number) | `{ id: 1 }` |
 | `reponest_agent_score` | Check AI-readiness score (0-100) | none | `{}` |
+| `reponest_integrity` | Audit data trustworthiness (index drift, orphans, staleness) | none | `{}` |
 
 ### Registering with clients
 

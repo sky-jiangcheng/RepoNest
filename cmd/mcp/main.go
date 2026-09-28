@@ -258,6 +258,26 @@ func main() {
 		return makeTextResult(runAgentScore(svc)), nil
 	})
 
+	// Deliberately separate from reponest_agent_score, which answers "is this
+	// install set up well enough to be used" (notes present, MCP reachable,
+	// locales shipped). This one answers the question that tool cannot: "is the
+	// data in it still true" — has the FTS index drifted out of sync with the
+	// notes, are there rows pointing at projects that no longer exist, is the
+	// mined repository cache stale. An agent that suspects a search returned
+	// too few results should run this before concluding anything about the
+	// knowledge base.
+	mcpServer.AddTool(mcp.Tool{
+		Name: "reponest_integrity",
+		Description: "Audit how much the local RepoNest knowledge base can be trusted: FTS index drift, orphan rows, schema shape vs version stamp, scan coverage, mined-cache freshness. " +
+			"Use when search results look incomplete or you need to know whether the data is current. Complements reponest_agent_score, which checks installation readiness, not data integrity.",
+		InputSchema: mcp.ToolInputSchema{
+			Type:       "object",
+			Properties: map[string]any{},
+		},
+	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		return makeTextResult(runIntegrityReport(svc)), nil
+	})
+
 	log.Printf("RepoNest MCP server v%s starting on stdio...", version.Version)
 	if err := server.ServeStdio(mcpServer); err != nil {
 		log.Fatalf("MCP server error: %v", err)

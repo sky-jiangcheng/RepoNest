@@ -9,11 +9,15 @@ RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行
 
 ## 下载安装
 
+安装脚本会同时装上桌面应用和 `reponest-mcp`（AI 客户端用的 MCP 服务器）。
+
 ### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.sh | bash
 ```
+
+macOS 装到 `/Applications/RepoNest.app`，Linux 装到 `/usr/local/bin/reponest`；两者都会把 `reponest-mcp` 放进 `/usr/local/bin`。
 
 ### Windows
 
@@ -21,7 +25,38 @@ curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scri
 iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 | iex
 ```
 
-或从 [GitHub Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的二进制文件。
+装到 `%LOCALAPPDATA%\RepoNest` 并自动加入用户 PATH。
+
+或从 [GitHub Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的归档文件（macOS `.dmg` / Linux `.tar.gz` / Windows `.zip`）手动解压。
+
+桌面应用也可用包管理器安装：macOS `brew install --cask reponest`，Windows `scoop install reponest`（Linux 桌面版只提供 tarball）。
+
+## 连接 AI 客户端
+
+AI 走的是独立分发的 `reponest-mcp`（MCP stdio 服务器）。它**不需要桌面应用**——直接读同一个本地数据库，两端行为一致。安装脚本会顺带装上；也可以单独装：
+
+| 方式 | 平台 | 命令 |
+|------|------|------|
+| Homebrew | macOS | `brew install --cask reponest-mcp` |
+| Homebrew | Linux | `brew install reponest-mcp` |
+| Scoop | Windows | `scoop install reponest-mcp` |
+| 手动 | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
+
+注册到 Claude Code：
+
+```bash
+claude mcp add reponest -- "$(which reponest-mcp)"
+```
+
+Cursor 等客户端在 **Settings → MCP → Add Server** 里填同样的 `command` 路径。
+
+注册后可自检安装是否就绪：
+
+```json
+{"tool": "reponest_agent_score"}
+```
+
+包管理器清单见 [`packaging/`](../packaging/README.md)，版本号由 `wails.json` 统一派生，发布后需回填 `sha256`。
 
 ## 首次启动
 

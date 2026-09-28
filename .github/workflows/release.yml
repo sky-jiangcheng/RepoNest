@@ -126,12 +126,34 @@ jobs:
             wails build -platform ${{ matrix.goos }}/${{ matrix.goarch }} -clean -ldflags "$LDFLAGS"
           fi
 
+      # reponest-mcp is the AI execution interface (MCP stdio server) and ships as
+      # its own release asset so `claude mcp add reponest -- ...` works without
+      # building from source. Pure Go / zero CGO, so the matrix target builds
+      # natively. Version is injected from wails.json (SSOT), same as the app.
+      - name: Build MCP server
+        shell: bash
+        run: |
+          set -e
+          APP_VERSION=$(grep -oE '"productVersion"[[:space:]]*:[[:space:]]*"[^"]+"' wails.json | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+          echo "Building reponest-mcp version: $APP_VERSION"
+          LDFLAGS="-X reponest/internal/version.Version=$APP_VERSION"
+          mkdir -p build/mcp
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -ldflags "$LDFLAGS" -o build/mcp/reponest-mcp ./cmd/mcp/
+          # `go build -o name` uses the name verbatim, so add the Windows suffix
+          # ourselves — release assets / manifests / scoop all expect reponest-mcp.exe.
+          if [ "${{ runner.os }}" = "Windows" ] && [ -f build/mcp/reponest-mcp ]; then
+            mv build/mcp/reponest-mcp build/mcp/reponest-mcp.exe
+          fi
+          ls -lh build/mcp/
+
       - name: Package Linux
         if: runner.os == 'Linux'
         run: |
-          cd build/bin
-          mkdir -p release
-          tar -czf "release/reponest-linux-amd64.tar.gz" reponest
+          set -e
+          mkdir -p build/bin/release
+          tar -czf "build/bin/release/reponest-linux-amd64.tar.gz" -C build/bin reponest
+          tar -czf "build/bin/release/reponest-mcp-linux-amd64.tar.gz" -C build/mcp reponest-mcp
           echo "RELEASE_DIR=build/bin/release" >> $GITHUB_ENV
 
       - name: Package macOS
@@ -185,6 +207,11 @@ jobs:
               xcrun stapler staple "release/reponest-${{ matrix.target }}.dmg" 2>&1 || true
             fi
           fi
+
+          # MCP server: separate archive, same release, no codesign/notary impact
+          # on the .dmg above.
+          tar -czf "release/reponest-mcp-${{ matrix.target }}.tar.gz" -C build/mcp reponest-mcp
+
           echo "RELEASE_DIR=release" >> $GITHUB_ENV
 
       - name: Package Windows
@@ -194,6 +221,9 @@ jobs:
           mkdir -p release
           if [ -f "build/bin/reponest.exe" ]; then
             powershell Compress-Archive -Path "build/bin/reponest.exe" -DestinationPath "release/reponest-windows-amd64.zip"
+          fi
+          if [ -f "build/mcp/reponest-mcp.exe" ]; then
+            powershell Compress-Archive -Path "build/mcp/reponest-mcp.exe" -DestinationPath "release/reponest-mcp-windows-amd64.zip"
           fi
           echo "RELEASE_DIR=release" >> "$GITHUB_ENV"
 

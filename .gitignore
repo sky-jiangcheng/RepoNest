@@ -50,3 +50,9 @@ docs/**/*.html
 .trae-html-share-packages/
 .workbuddy/
 .zcode/
+
+# Release artifacts / 发布产物
+# Built by scripts/build-release-assets.sh; ~40MB of cross-compiled binaries.
+# Regenerate per release rather than committing them. The MCP server has no
+# build-time input beyond this repo, so nothing is lost.
+assets/releases/

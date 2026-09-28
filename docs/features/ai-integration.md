@@ -12,7 +12,7 @@ RepoNest 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 **RepoNest 不调用任何大语言模型**——代码里没有 OpenAI / Anthropic / 任何 API key 配置，没有模型选择、没有 endpoint 设置。它的 AI 功能全部是「把项目知识出口给 AI 工具用」，而不是内置聊天或生成能力。更准确地说：
 
 - RepoNest 是**数据底座**：把 git 原始信息建模成结构化、可索引、可物化的本地知识库（详见[存储结构优化与 AI 价值](../storage-optimization.md)）；
-- AI 工具（Claude Code / Cursor 等）通过 MCP 的 9 个工具来**消费**这层数据，按需取数、精确检索。
+- AI 工具（Claude Code / Cursor 等）通过 MCP 的 10 个工具来**消费**这层数据，按需取数、精确检索。
 
 这一层「为什么比让 AI 直接读 git 更优」的论证，见[存储结构优化与 AI 价值](../storage-optimization.md)。
 
@@ -29,7 +29,7 @@ RepoNest 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 
 ## MCP Server（`reponest-mcp`）
 
-MCP 是唯一的 AI 执行接口（`reponest` CLI 未随版本发布）。stdio 协议，进程内单次开库，9 个工具（含 2 个写操作）：
+MCP 是唯一的 AI 执行接口（`reponest` CLI 未随版本发布）。stdio 协议，进程内单次开库，10 个工具（含 2 个写操作）：
 
 | 工具 | 说明 | 读写 |
 |------|------|------|
@@ -42,6 +42,20 @@ MCP 是唯一的 AI 执行接口（`reponest` CLI 未随版本发布）。stdio 
 | `reponest_projects_stats` | 项目统计（按 id） | 读 |
 | `reponest_ask` | 问答式检索，Top-5 文本 | 读 |
 | `reponest_agent_score` | 检查本地 AI 就绪度（DB/笔记/搜索/MCP/llms.txt/SKILL.md/i18n） | 读 |
+| `reponest_integrity` | 审计数据可信度（FTS 索引漂移 / 孤儿行 / 缓存新鲜度 / 覆盖率） | 读 |
+
+### 就绪度 vs 数据可信度
+
+两个自检工具问的是**不同的问题**，不要混用：
+
+| 工具 | 回答的问题 | 不能回答的问题 |
+|------|-----------|----------------|
+| `reponest_agent_score` | 这个安装配置好了吗？（有没有笔记、MCP 通不通、i18n 齐不齐） | 数据本身对不对 |
+| `reponest_integrity` | 数据还能信吗？（索引有没有漂移、有没有孤儿行、缓存新不新鲜） | 配置齐不齐 |
+
+**为什么需要第二个**：FTS5 索引一旦与 `project_notes` 失配，搜索会**静默少返回结果**，而 `agent_score` 依然会报「Search operational」——它测的是通路，不是内容。`reponest_integrity` 用 FTS5 的 `_docsize` 影子表（external-content 表的 `SELECT rowid` 读的是内容表，比不出来）对比索引真实文档数，并检查同步触发器是否齐全。详见 [`internal/integrity` 的检查清单](../../internal/integrity/integrity.go)。
+
+当 AI 发现「搜出来的东西好像不全」时，应该先跑 `reponest_integrity`，而不是直接下结论说知识库内容少。
 
 ### 接入 Claude Code
 

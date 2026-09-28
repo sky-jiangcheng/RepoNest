@@ -1,0 +1,129 @@
+# CI test gate / CI 测试门禁
+#
+# Rationale / 背景: release.yml only runs on tags and pages.yml only runs on
+# docs/** changes, so neither of them executes a single test. This workflow is
+# the gate: every push to master and every pull request (any branch) must pass
+# both the Go suite and the web suite before it can land.
+#
+# 两个 job 互相独立、可并行；失败时 GitHub UI 上能一眼看出是 Go 挂了还是前端挂了。
+# 完整桌面应用构建（含 macOS 签名/公证）仍然由 release.yml 负责，本文件不碰它。
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  # Manual re-run for debugging a red main branch.
+  workflow_dispatch:
+
+# 同一分支上的重复推送 / PR 更新只保留最新一次运行，旧的在跑的任务会被取消。
+# 防止 force-push 连打时排队堆积，也让 required check 的结果保持新鲜。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# The gate only needs to read the repo. Least privilege, and it keeps the
+# token from being usable as a write credential inside untrusted PR code.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------- Go ----
+  go-test:
+    name: Go build & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          # go.mod declares `go 1.25.5`; setup-go resolves the newest 1.25.x.
+          go-version: '1.25'
+          # Cache GOMODCACHE keyed on go.sum, so unchanged deps are not
+          # re-downloaded on every run.
+          cache: true
+
+      # main.go:21 has `//go:embed all:web/dist`, but web/dist is a build
+      # artifact and is .gitignore'd — a fresh checkout has no web/dist at all,
+      # so the root package fails to compile with
+      # "pattern all:web/dist: no matching files found".
+      # We only need the embed pattern to *resolve*; no JavaScript is linked
+      # into the test binaries, so a one-line placeholder is enough. An empty
+      # directory would NOT work — go:embed requires at least one matching file.
+      # The real assets are produced by the web-test job / release.yml.
+      - name: Stub web/dist for the embed directive
+        run: mkdir -p web/dist && printf '<!doctype html>\n' > web/dist/index.html
+
+      # Compile-only pass: catches type errors and broken imports across every
+      # package (including main) without running anything. Fails fast and is
+      # much faster than discovering the same error via `go test`.
+      #
+      # NOTE: no GTK/WebKit system packages are installed here, and none are needed.
+      # internal/db uses modernc.org/sqlite (pure Go, zero CGO) and the service
+      # layer tests drive a fake git provider. internal/app does import
+      # github.com/wailsapp/wails/v2/pkg/runtime, but that package compiles and
+      # links on a stock ubuntu-latest image — verified with `go build .` on plain
+      # Linux. The GTK/WebKit dev headers are only required by `wails build` in
+      # release.yml, which this gate does not run.
+      - name: Build all packages
+        run: go build ./...
+
+      # Full test suite: 18 test files across service/db/knowledge/scanner/
+      # diff/httpapi/...
+      #
+      # `-race` is on because the service layer fans out goroutines during scans
+      # and knowledge indexing; without it a data race that only shows up under CI
+      # parallelism ships silently. The one caveat: the race detector itself needs
+      # cgo and a C toolchain. That is gcc from the stock ubuntu-latest image —
+      # preinstalled, nothing to add — and it is unrelated to the Wails/GTK
+      # dependencies discussed above.
+      - name: Run Go tests
+        run: go test -race -timeout 10m ./...
+
+  # --------------------------------------------------------------- Web ----
+  web-test:
+    name: Web typecheck, test & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        # The frontend package lives in web/, and the real lockfile is
+        # web/package-lock.json (180KB). The repo root also carries an 87-byte
+        # leftover package-lock.json, so every step must be pinned to web/ or it
+        # would install from / resolve against the wrong manifest.
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          # web deps require Node >= 20.19; the bare '20' major resolves to the
+          # newest 20.x, which satisfies that. Matches release.yml / pages.yml.
+          node-version: '20'
+          # npm cache keyed on web/package-lock.json. cache-dependency-path is
+          # required because the default lookup stops at the repo root and
+          # would key on the stray 87-byte root lockfile instead.
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # `npm ci` (not `npm install`) so the job fails loudly when
+      # web/package-lock.json is out of sync with web/package.json instead of
+      # silently rewriting the lockfile.
+      - name: Install dependencies
+        run: npm ci
+
+      # 10 vitest files under web/src/**. The vite.config.ts `test` block
+      # supplies the jsdom environment, so no extra setup step is required.
+      - name: Run unit tests (vitest)
+        run: npm test
+
+      # `tsc && vite build`. tsconfig.json is strict, with noUnusedLocals and
+      # noUnusedParameters on, so this step is the real TypeScript gate.
+      - name: Typecheck and build (tsc && vite build)
+        run: npm run build

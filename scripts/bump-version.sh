@@ -77,12 +77,44 @@ update_file "internal/version/version.go" \
   '(const Version[[:space:]]*=[[:space:]]*)"[^"]+"' \
   "\1\"$VERSION\""
 
-# 4. docs 站版本徽章随生成脚本读取 web/package.json，无需手工更新：
+# 3. web/package-lock.json  ->  the two root "version" fields.
+#
+#    npm keeps these in sync with package.json, but a version bump does not run
+#    an install, so they go stale. The trap: the root entry (packages[""]) and
+#    every dependency entry are BOTH indented six spaces, so indentation cannot
+#    tell them apart. What does distinguish them is that the root version is
+#    the only one in the file carrying the old version string alongside the root
+#    "name" - so we assert the count before rewriting, and refuse to touch the
+#    file if the assumption is wrong rather than silently stamping 380
+#    dependency entries with the project version.
+if [ -f web/package-lock.json ]; then
+  # Read the lockfile's own version - package.json above has already been
+  # rewritten, so it can no longer tell us what the lockfile currently holds.
+  LOCK_CUR="$(grep -m1 -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' web/package-lock.json | sed -E 's/.*"([^"]+)"$/\1/')"
+  if [ -n "$LOCK_CUR" ] && [ "$LOCK_CUR" != "$VERSION" ]; then
+    HITS=$(grep -c "\"version\"[[:space:]]*:[[:space:]]*\"$LOCK_CUR\"" web/package-lock.json || true)
+    if [ "$HITS" -ne 2 ]; then
+      echo "ERROR: web/package-lock.json has $HITS occurrences of version $LOCK_CUR, expected 2." >&2
+      echo "       Refusing to rewrite it — a dependency may share that version." >&2
+      echo "       Update the lockfile with 'cd web && npm install --package-lock-only'." >&2
+      exit 1
+    fi
+    update_file "web/package-lock.json" \
+      "(\"version\"[[:space:]]*:[[:space:]]*)\"$LOCK_CUR\"" \
+      "\1\"$VERSION\""
+  fi
+fi
+
+# 4. packaging manifests (Homebrew Cask / Formula, Scoop) — delegated so the
+#    Ruby + JSON rewriting rules live in exactly one place.
+./scripts/update-manifests.sh
+
+# 5. docs 站版本徽章随生成脚本读取 web/package.json，无需手工更新：
 #    node scripts/build-docs.mjs
 
 echo
 echo "Done. Verify with:"
-echo "  grep -rn '$VERSION' wails.json web/package.json internal/version/version.go docs/index.html"
+echo "  grep -rn '$VERSION' wails.json web/package.json web/package-lock.json internal/version/version.go packaging/ docs/index.html"
 echo "  go build ./... && (cd web && npm run build)"
 echo
 echo "Then commit & tag:"

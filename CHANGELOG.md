@@ -8,6 +8,69 @@
 
 暂无未发布变更。
 
+## [1.8.0] - 2026-09-28
+
+### 修复
+
+- **FTS5 索引回填是永久空操作（`migrate.go` v7）**：v7 用
+  `WHERE id NOT IN (SELECT rowid FROM project_notes_fts)` 回填索引，但
+  `project_notes_fts` 是 external-content 表，该子查询由**内容表**回答，条件恒为假。
+  凡是 v7 执行时已有笔记的数据库，索引都是空的，且**没有任何机制能修复**。
+  症状是静默的：`SearchNotes` 只在 FTS 查询**报错**时降级 LIKE，查询匹配不到时不报错也不返回结果，
+  于是搜索一直只返回笔记的一个子集。新增迁移 **v12** 用 FTS5 官方 `'rebuild'` 命令重建两个索引，
+  存量库下次启动自动修复。v7 保持原样（迁移不可变），已在代码中标注该缺陷并说明不可照抄。
+  回归测试 `internal/db/migrate_fts_repair_test.go` 直接构造"索引空、内容表有数据"的损坏态；
+  已验证移除 v12 后该测试必然失败。
+- **`scripts/install.sh` 用 HTTP 下载函数拷贝本地文件**：提取出的 MCP 二进制是经
+  `curl -fsSL <本地路径>` 拷过去的，真实 curl 会以 `Protocol not supported` 失败，
+  结果装到用户机器上的是一个压缩包而不是可执行文件。拆出 `install_binary()` 走 `install -m 0755`。
+- **Windows 一键安装从未成功过**：`install.ps1` 下载 `reponest-windows-amd64.exe`，
+  而发布流程只产出 `.zip`。改为下载 zip → `Expand-Archive` → 校验 exe 存在。
+- **macOS / Linux 一键安装从未成功过**：`install.sh` 下载无扩展名的 `reponest-$TARGET`，
+  实际资产是 `.tar.gz`（Linux）和 `.dmg`（macOS）。Linux 改为解压 tar.gz，
+  macOS 改为 `hdiutil attach` 后拷贝 `RepoNest.app` 到 `/Applications`。
+- **`reponest_agent_score` 两项检查重复计分**：第 1、2 项判据都是 `noteCount > 0`，
+  同一信号被数了两遍，抬高分数。第 1 项改为真正检查数据库连通性（`Health()`）。
+
+### 新增
+
+- **CI 测试门禁**（`.github/workflows/ci.yml`）：push 到 master 与所有 PR 触发，
+  Go 与 Web 两个独立 job（`go build ./...` + `go test -race`；`npm ci` + `npm test` + `npm run build`）。
+  此前 `release.yml` 只在打 tag 时跑、`pages.yml` 只在文档变更时跑，**仓库里 18 个 Go 测试文件
+  和 10 个前端测试文件一个都没有进过 CI**。
+  门禁同时解决了 `//go:embed all:web/dist` 在干净检出上无法解析的问题（`web/dist` 被 gitignore）。
+- **数据可信度审计**（`internal/integrity` + MCP 工具 `reponest_integrity`）：6 项**只读**检查——
+  FTS 索引漂移、孤儿行、schema 形状 vs 版本戳、扫描覆盖率、知识缓存新鲜度、版本快照孤儿，
+  输出带人类可读证据与 0-100 可信度分数。动机：项目承诺"把知识建模成可被 AI 依赖的结构化数据"，
+  此前没有任何机制能回答"这个库还能信吗"。
+  与 `reponest_agent_score` 分工明确——后者答"配置好了吗"，前者答"数据还对吗"。
+  该工具上线即复现了 v7 的索引漂移 bug。
+- **`reponest-mcp` 独立分发**：此前 release.yml **从未构建过 MCP 二进制**，
+  README 只能让用户自己 `go build`。现在四个平台的 MCP 产物随 release 一起发布。
+- **包管理器支持**（`packaging/`）：Homebrew Cask（macOS 桌面 / macOS MCP）、
+  Homebrew Formula（Linux MCP）、Scoop（Windows 桌面 / Windows MCP）。
+- **`scripts/build-release-assets.sh`**：本地构建发布产物到 `assets/releases/v<version>/`。
+  MCP 是纯 Go 零 CGO，任意宿主都能交叉编译四平台；桌面壳需要各自平台的原生工具链，
+  脚本检测到无法构建时会明确说明跳过了什么，而不是半途失败留下一个看起来完整的目录。
+- **`scripts/update-manifests.sh`**：把 `wails.json` 的版本号同步到全部包管理器清单
+  （已接入 `bump-version.sh`）；`--fill-sha256` 从 `SHA256SUMS` 自动回填校验值。
+
+### 变更
+
+- 笔记导出的 MCP 工具数 9 → 10。
+- 安装文档（README / getting-started / SKILL.md）三处统一，并说明各平台实际安装位置。
+- `docs/features/ai-integration.md` 补充"就绪度 vs 数据可信度"的分工说明。
+
+### 已知问题
+
+- **历史 release 的资产名仍是旧品牌**：v1.7.9 及之后发的是 `gitbuddy-*`，
+  v1.7.6 及之前是 `gitboard-*`。1.7.7 的更名只覆盖了仓库内容，没有传导到发布产物文件名。
+  当前 `release.yml` 已统一为 `reponest-*`，从 1.8.0 起一致；历史 release 需要维护者决定是否清理。
+- `packaging/` 中桌面版清单（`Casks/reponest.rb`、`scoop/reponest.json`）的
+  `sha256` 仍是 `__FILL_SHA256_*__` 占位符，需在桌面产物发布后用
+  `./scripts/update-manifests.sh --fill-sha256` 回填。在此之前 brew / scoop 会拒绝安装——
+  这是刻意设计，宁可安装失败也不装未校验的二进制。
+
 ## [1.7.9] - 2026-09-03
 
 ### 修复

@@ -134,6 +134,13 @@ func upgradeSchema(db *sql.DB) error {
 		// with the trigram tokenizer power substring + relevance search over
 		// notes and todos; triggers keep the index in sync. Existing rows are
 		// backfilled idempotently.
+		//
+		// KNOWN DEFECT in the backfill below, fixed retroactively by v12: the
+		// `NOT IN (SELECT rowid FROM project_notes_fts)` predicate reads the
+		// content table, not the index, so it matches nothing and the backfill
+		// never runs. Do not copy this pattern to a new migration — use the
+		// FTS5 'rebuild' command as v12 does. Left as shipped so that databases
+		// which already recorded v7 keep a truthful migration history.
 		{id: 7, sql: append(append([]string{}, ftsSchemaStatements...),
 			`INSERT INTO project_notes_fts(rowid, title, content) `+
 				`SELECT id, COALESCE(title, ''), content FROM project_notes `+
@@ -203,6 +210,33 @@ func upgradeSchema(db *sql.DB) error {
 				`  INSERT INTO note_versions(note_id, title, content, tags, kind)` +
 				`  VALUES (new.id, COALESCE(new.title, ''), new.content, new.tags, new.kind);` +
 				` END`,
+		}},
+		// v12: repair the FTS5 indexes that migration v7 left empty.
+		//
+		// v7 backfilled with
+		//
+		//	... FROM project_notes
+		//	WHERE id NOT IN (SELECT rowid FROM project_notes_fts)
+		//
+		// which is a permanent no-op: project_notes_fts is an external-content
+		// table, so `SELECT rowid FROM project_notes_fts` is answered by the
+		// CONTENT table (project_notes), not by the index. The predicate is
+		// therefore "id not in project_notes", which is never true, and the
+		// index stays empty on every database that had rows when v7 ran.
+		//
+		// The visible symptom is silent: SearchNotes falls back to LIKE only
+		// when the FTS query *errors*, not when it matches nothing, so search
+		// keeps returning a subset of the notes with no error anywhere. v7 is
+		// left untouched on purpose — migrations are immutable and already
+		// shipped — so this rebuild is what repairs the damage.
+		//
+		// 'rebuild' is FTS5's own command for this: it drops and repopulates
+		// the index from the content table. It is idempotent, and cheap enough
+		// to run once on open (a personal knowledge base is thousands of
+		// notes, not millions).
+		{id: 12, sql: []string{
+			`INSERT INTO project_notes_fts(project_notes_fts) VALUES('rebuild')`,
+			`INSERT INTO project_todos_fts(project_todos_fts) VALUES('rebuild')`,
 		}},
 	}
 
