@@ -261,3 +261,86 @@ jobs:
             *.zip
             *.tar.gz
           generate_release_notes: true
+
+  # After the release is published, the sha256 of every shipped asset is a
+  # known fact. Homebrew and Scoop hard-fail on a missing/wrong digest, so the
+  # manifests ship with `__FILL_SHA256_*__` placeholders (or a stale digest from
+  # the previous release) and get stamped here. This job downloads the published
+  # assets, generates assets/releases/v<ver>/SHA256SUMS, runs
+  # scripts/update-manifests.sh --fill-sha256 and commits the packaging/ changes
+  # back to master so the downstream tap/bucket can pick them up.
+  fill-sha256:
+    name: Fill manifest sha256
+    needs: create-release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v7
+        with:
+          # Check out the default branch, not the tag, so the manifest commit
+          # can be pushed back. REPO_PUSH_TOKEN (PAT) lets the push itself
+          # trigger downstream workflows; GITHUB_TOKEN is the fallback.
+          token: ${{ secrets.REPO_PUSH_TOKEN || github.token }}
+          ref: master
+
+      - name: Compute version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download published release assets
+        run: |
+          set -euo pipefail
+          VER="${{ steps.ver.outputs.version }}"
+          DIR="assets/releases/v$VER"
+          mkdir -p "$DIR"
+          cd "$DIR"
+          BASE="https://github.com/sky-jiangcheng/RepoNest/releases/download/v$VER"
+          # Every asset the manifests reference. Missing ones are skipped:
+          # update-manifests.sh --fill-sha256 only rewrites a manifest line when
+          # the exact asset is present in SHA256SUMS, so a partial release leaves
+          # the remaining placeholders untouched instead of writing a wrong hash.
+          for asset in \
+            reponest-darwin-arm64.dmg \
+            reponest-darwin-amd64.dmg \
+            reponest-windows-amd64.zip \
+            reponest-mcp-darwin-arm64.tar.gz \
+            reponest-mcp-darwin-amd64.tar.gz \
+            reponest-mcp-linux-amd64.tar.gz \
+            reponest-mcp-windows-amd64.zip ; do
+            if curl -fsSL -o "$asset" "$BASE/$asset"; then
+              echo "downloaded $asset"
+            else
+              echo "WARN: $asset not published, leaving its digest untouched"
+              rm -f "$asset"
+            fi
+          done
+          ls -lh
+
+      - name: Generate SHA256SUMS
+        run: |
+          set -euo pipefail
+          cd "assets/releases/v${{ steps.ver.outputs.version }}"
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Fill sha256 in packaging manifests
+        run: ./scripts/update-manifests.sh --fill-sha256
+
+      - name: Commit and push manifests
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packaging/
+          if git diff --cached --quiet; then
+            echo "no manifest changes (all digests current)"
+            exit 0
+          fi
+          git commit -m "chore(packaging): fill sha256 for v${{ steps.ver.outputs.version }}" \
+                     -m "Automated by release.yml fill-sha256 job."
+          git push origin HEAD:master
+          echo "pushed packaging/ manifest updates to master"
