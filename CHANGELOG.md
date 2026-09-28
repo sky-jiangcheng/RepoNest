@@ -6,7 +6,20 @@
 
 ## [Unreleased]
 
-暂无未发布变更。
+### 新增
+
+- **会话记忆协议（ADR-0007）**：MCP 工具从 10 个扩展到 12 个，补齐 agent 会话边界的记忆两端：
+  - `reponest_context`（会话开始）：一次调用返回项目完整上下文 Markdown——技术栈 / README 摘要 /
+    语言占比 / 依赖 / 贡献者 / 活跃度（`repo_meta` 缓存，未缓存时后台异步挖掘）、最近提交、开放待办、
+    高相关知识笔记（`handoff` 标签笔记排序置顶）。项目解析支持 `project_id` 精确 → `project_name`
+    模糊 → 单项目无参自动解析；多匹配返回项目目录供 agent 二次选择，绝不猜测注入。
+    实现于 `internal/service/context.go`（`ResolveProject` / `BuildProjectContext`）。
+  - `reponest_handoff`（会话结束）：结构化会话交接协议，`summary` 必填 + `changes` / `decisions` /
+    `gotchas` / `next_steps` 至少一项非空，渲染为固定 Markdown 模板落库（`handoff` 标签自动附加），
+    下一个会话经 `reponest_context` 自动读到。实现于 `internal/service/handoff.go`。
+  - 工具注册拆分至 `cmd/mcp/tools_context.go`；测试覆盖 service 层（项目解析 / 上下文渲染 /
+    交接排序 / 校验）与 MCP 工具层（经真实 server 调用），`SKILL.md` 工作流同步升级为
+    「session start → context / session end → handoff」协议。
 
 ## [1.8.1] - 2026-09-28
 

@@ -30,6 +30,7 @@ func main() {
 
 	mcpServer := server.NewMCPServer("reponest-mcp", version.Version)
 	registerTools(mcpServer, svc)
+	registerContextTools(mcpServer, svc)
 
 	log.Printf("RepoNest MCP server v%s starting on stdio...", version.Version)
 	if err := server.ServeStdio(mcpServer); err != nil {

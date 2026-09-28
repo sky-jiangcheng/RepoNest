@@ -41,6 +41,7 @@ func newTestServer(t *testing.T) *testServer {
 	svc := service.New(database, "tester")
 	s := server.NewMCPServer("reponest-mcp", "test")
 	registerTools(s, svc)
+	registerContextTools(s, svc)
 	return &testServer{t: t, s: s, svc: svc, db: database}
 }
 
@@ -118,6 +119,8 @@ func TestToolsRegistered(t *testing.T) {
 		"reponest_notes_update",
 		"reponest_agent_score",
 		"reponest_integrity",
+		"reponest_context",
+		"reponest_handoff",
 	}
 	for _, name := range want {
 		st := ts.s.GetTool(name)

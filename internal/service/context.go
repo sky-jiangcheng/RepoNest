@@ -1,0 +1,264 @@
+package service
+
+import (
+	"fmt"
+	"log"
+	"strconv"
+	"strings"
+
+	"reponest/internal/db"
+	"reponest/internal/domain"
+)
+
+// contextNotesLimit caps how many notes BuildProjectContext embeds so a
+// heavily-used project stays within a single-shot context window budget.
+const contextNotesLimit = 10
+
+// contextCommitLimit matches the overview payload's recent-commit window.
+const contextCommitLimit = 8
+
+// contextExcerptLen bounds mined README excerpts embedded in the context doc.
+const contextExcerptLen = 400
+
+// ResolveProject maps an optional project hint (numeric ID or fuzzy name/path
+// substring) to a concrete project. The zero-match and multi-match cases are
+// reported to the caller through ProjectResolution.Candidates so an agent can
+// pick the right project from the returned catalog instead of guessing.
+//
+// An empty query resolves only when exactly one project exists: with a fresh
+// install that is the friendliest behaviour (the agent gets context with zero
+// parameters), and with multiple projects an ambiguous guess would inject the
+// wrong project's knowledge into a session, which is worse than asking.
+func (s *Service) ResolveProject(query string) *ProjectResolution {
+	projects, err := db.GetAllProjects(s.db)
+	if err != nil {
+		log.Printf("resolve project error: %v", err)
+		return &ProjectResolution{}
+	}
+	if len(projects) == 0 {
+		return &ProjectResolution{}
+	}
+
+	if strings.TrimSpace(query) == "" {
+		if len(projects) == 1 {
+			return &ProjectResolution{Project: &projects[0]}
+		}
+		return &ProjectResolution{Candidates: projects}
+	}
+
+	if id, err := strconv.ParseInt(strings.TrimSpace(query), 10, 64); err == nil {
+		for _, p := range projects {
+			if p.ID == id {
+				return &ProjectResolution{Project: &p}
+			}
+		}
+	}
+
+	needle := strings.ToLower(strings.TrimSpace(query))
+	var matches []domain.Project
+	for _, p := range projects {
+		if strings.Contains(strings.ToLower(p.Name), needle) ||
+			strings.Contains(strings.ToLower(p.RootPath), needle) {
+			matches = append(matches, p)
+		}
+	}
+	switch len(matches) {
+	case 1:
+		return &ProjectResolution{Project: &matches[0]}
+	case 0:
+		return &ProjectResolution{Candidates: projects}
+	default:
+		// Ambiguous match: injecting the wrong project's knowledge into a
+		// session is worse than asking, so surface the candidates instead.
+		return &ProjectResolution{Candidates: matches}
+	}
+}
+
+// ProjectResolution is the outcome of ResolveProject: exactly one of Project
+// (resolved) or Candidates (needs a human/agent choice) is populated. An empty
+// struct means the database has no projects at all.
+type ProjectResolution struct {
+	Project    *domain.Project
+	Candidates []domain.Project
+}
+
+// BuildProjectContext renders a project's complete working context as a
+// Markdown document an AI agent can consume in one tool call: mined repo
+// knowledge (tech stack, README excerpt, languages, dependencies, activity),
+// recent commits, open todos and the most relevant knowledge notes.
+//
+// This is the session-cold-start entry point: instead of chaining
+// projects_list → notes_search → notes_read, an agent calls this once and
+// starts working with full context. Notes carrying the "handoff" tag sort
+// first because they record how the previous session ended.
+func (s *Service) BuildProjectContext(res *ProjectResolution) string {
+	if res == nil || (res.Project == nil && len(res.Candidates) == 0) {
+		return "No projects found. Open the RepoNest desktop app, add a scan root and rescan first."
+	}
+
+	if res.Project == nil {
+		return renderProjectCatalog(res.Candidates)
+	}
+
+	p := res.Project
+	overview, err := s.GetProjectOverview(p.ID)
+	if err != nil {
+		log.Printf("build project context overview error: %v", err)
+	}
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("# Project Context: %s\n\n", p.Name))
+	b.WriteString(fmt.Sprintf("- Root path: `%s`\n", p.RootPath))
+
+	notes := s.ListNotes(p.ID)
+	todos := s.ListTodos(p.ID)
+	open := 0
+	for _, t := range todos {
+		if !t.Completed {
+			open++
+		}
+	}
+	b.WriteString(fmt.Sprintf("- Knowledge notes: %d | Open todos: %d\n\n", len(notes), open))
+
+	if overview != nil {
+		if overview.Mining && !overview.Cached {
+			b.WriteString("> Repo knowledge mining is running in the background; tech stack and README sections may be empty on this first call.\n\n")
+		}
+		if len(overview.TechStack) > 0 {
+			b.WriteString("## Tech Stack\n\n")
+			for _, t := range overview.TechStack {
+				b.WriteString(fmt.Sprintf("- %s\n", t.Name))
+			}
+			b.WriteString("\n")
+		}
+		if len(overview.Languages) > 0 {
+			b.WriteString("## Languages\n\n")
+			for i, l := range overview.Languages {
+				if i >= 8 {
+					break
+				}
+				b.WriteString(fmt.Sprintf("- %s: %d LOC\n", l.Language, l.Count))
+			}
+			b.WriteString("\n")
+		}
+		if excerpt := strings.TrimSpace(overview.ReadmeExcerpt); excerpt != "" {
+			if len(excerpt) > contextExcerptLen {
+				excerpt = excerpt[:contextExcerptLen] + "..."
+			}
+			b.WriteString("## README Excerpt\n\n")
+			b.WriteString(excerpt)
+			b.WriteString("\n\n")
+		}
+		if len(overview.Dependencies) > 0 {
+			b.WriteString("## Dependencies\n\n")
+			for i, d := range overview.Dependencies {
+				if i >= 15 {
+					break
+				}
+				b.WriteString(fmt.Sprintf("- %s %s\n", d.Name, d.Version))
+			}
+			b.WriteString("\n")
+		}
+		if len(overview.TopContributors) > 0 {
+			b.WriteString("## Top Contributors\n\n")
+			for i, c := range overview.TopContributors {
+				if i >= 5 {
+					break
+				}
+				b.WriteString(fmt.Sprintf("- %s (%d commits)\n", c.Author, c.Count))
+			}
+			b.WriteString("\n")
+		}
+		if activity := overview.Activity; activity != nil && activity.TotalCommits > 0 {
+			b.WriteString("## Activity\n\n")
+			b.WriteString(fmt.Sprintf("- Total commits: %d | Active days: %d | Commits (30d): %d | Last commit: %s\n\n",
+				activity.TotalCommits, activity.ActiveDays, activity.CommitRate30d, activity.LastCommitDate))
+		}
+		if len(overview.RecentCommits) > 0 {
+			b.WriteString("## Recent Commits\n\n")
+			for i, c := range overview.RecentCommits {
+				if i >= contextCommitLimit {
+					break
+				}
+				b.WriteString(fmt.Sprintf("- [%s] %s (%s, %s)\n", c.Branch, c.Message, c.Author, c.Time))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	if open > 0 {
+		b.WriteString("## Open Todos\n\n")
+		shown := 0
+		for _, t := range todos {
+			if t.Completed {
+				continue
+			}
+			b.WriteString(fmt.Sprintf("- [ ] %s\n", t.Title))
+			shown++
+			if shown >= 10 {
+				break
+			}
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString("## Knowledge Notes\n\n")
+	handoffNotes, plainNotes := splitHandoffNotes(notes)
+	shown := 0
+	for _, n := range append(handoffNotes, plainNotes...) {
+		if shown >= contextNotesLimit {
+			break
+		}
+		b.WriteString(fmt.Sprintf("### %s\n\n", firstNonEmpty(n.Title, "Untitled")))
+		b.WriteString(fmt.Sprintf("- Tags: %s | Updated: %s\n\n", n.Tags, n.UpdatedAt))
+		content := strings.TrimSpace(n.Content)
+		if len(content) > 1200 {
+			content = content[:1200] + "\n\n..."
+		}
+		b.WriteString(content)
+		b.WriteString("\n\n")
+		shown++
+	}
+	if shown == 0 {
+		b.WriteString("_No notes yet. Record what this session learns so the next one starts ahead._\n\n")
+	}
+
+	return strings.TrimRight(b.String(), "\n") + "\n"
+}
+
+// renderProjectCatalog lists projects when a context request is ambiguous, so
+// the agent can re-call with the right ID instead of receiving wrong context.
+func renderProjectCatalog(projects []domain.Project) string {
+	var b strings.Builder
+	b.WriteString("Multiple projects match. Re-call with one of these project IDs:\n\n")
+	b.WriteString("| ID | Project | Root path |\n|----|---------|-----------|\n")
+	for _, p := range projects {
+		b.WriteString(fmt.Sprintf("| %d | %s | `%s` |\n", p.ID, p.Name, p.RootPath))
+	}
+	return b.String()
+}
+
+// splitHandoffNotes separates handoff-tagged notes (the previous session's
+// exit record) from the rest. Handoffs lead the context document because they
+// describe the freshest state of the work.
+func splitHandoffNotes(notes []domain.Note) (handoff, plain []domain.Note) {
+	for _, n := range notes {
+		if noteIsHandoff(n) {
+			handoff = append(handoff, n)
+		} else {
+			plain = append(plain, n)
+		}
+	}
+	return handoff, plain
+}
+
+// noteIsHandoff checks the note's tag list for the "handoff" tag. Tags are
+// stored as a comma-separated string, so the check compares each element.
+func noteIsHandoff(n domain.Note) bool {
+	for _, tag := range strings.Split(n.Tags, ",") {
+		if strings.EqualFold(strings.TrimSpace(tag), "handoff") {
+			return true
+		}
+	}
+	return false
+}

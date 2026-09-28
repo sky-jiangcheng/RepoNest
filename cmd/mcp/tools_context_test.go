@@ -1,0 +1,99 @@
+package main
+
+import (
+	"strings"
+	"testing"
+)
+
+// The session memory loop is the product's headline capability, so the tests
+// exercise it exactly the way an agent does: through the registered tool
+// table, over a real in-memory database.
+
+func TestContextToolSingleProject(t *testing.T) {
+	ts := newTestServer(t)
+	pid := ts.seedProject("auth-service", "/home/me/auth-service")
+	if _, err := ts.svc.CreateNoteWithMeta(pid, "Token refresh design", "uses sliding window", "auth", "knowledge", "manual"); err != nil {
+		t.Fatal(err)
+	}
+
+	res := ts.call("reponest_context", nil)
+	text := ts.text(res)
+	for _, want := range []string{
+		"# Project Context: auth-service",
+		"Token refresh design",
+		"sliding window",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("context missing %q\n%s", want, text)
+		}
+	}
+}
+
+func TestContextToolMultipleProjectsReturnsCatalog(t *testing.T) {
+	ts := newTestServer(t)
+	ts.seedProject("alpha", "/home/me/alpha")
+	ts.seedProject("beta", "/home/me/beta")
+
+	text := ts.text(ts.call("reponest_context", nil))
+	if !strings.Contains(text, "| 1 | alpha |") || !strings.Contains(text, "| 2 | beta |") {
+		t.Errorf("ambiguous context call should return a project catalog\n%s", text)
+	}
+}
+
+func TestContextToolFuzzyNameMatch(t *testing.T) {
+	ts := newTestServer(t)
+	ts.seedProject("payments-core", "/home/me/payments-core")
+	ts.seedProject("web", "/home/me/web")
+
+	text := ts.text(ts.call("reponest_context", map[string]any{"project_name": "payments"}))
+	if !strings.Contains(text, "# Project Context: payments-core") {
+		t.Errorf("fuzzy name should resolve to payments-core\n%s", text)
+	}
+}
+
+func TestHandoffToolCreatesNote(t *testing.T) {
+	ts := newTestServer(t)
+	pid := ts.seedProject("demo", "/home/me/demo")
+
+	res := ts.call("reponest_handoff", map[string]any{
+		"project_id": float64(pid),
+		"agent":      "claude-code",
+		"summary":    "fixed the FTS drift bug",
+		"changes":    []any{"rebuilt the index"},
+		"gotchas":    []any{"rebuild takes minutes on big libraries"},
+	})
+	payload := ts.jsonPayload(res)
+	if payload["note_id"] == nil || payload["note_id"].(float64) <= 0 {
+		t.Fatalf("handoff should return the created note_id, got %v", payload)
+	}
+
+	// The handoff must be visible to the very next context call, tagged
+	// first — that ordering is the whole point of the memory loop.
+	text := ts.text(ts.call("reponest_context", map[string]any{"project_id": float64(pid)}))
+	if !strings.Contains(text, "Session Handoff") || !strings.Contains(text, "fixed the FTS drift bug") {
+		t.Errorf("context should surface the fresh handoff\n%s", text)
+	}
+	handoffIdx := strings.Index(text, "Session Handoff")
+	knowledgeIdx := strings.Index(text, "## Knowledge Notes")
+	if knowledgeIdx == -1 || handoffIdx < knowledgeIdx {
+		t.Errorf("handoff should render inside the Knowledge Notes section\n%s", text)
+	}
+}
+
+func TestHandoffToolValidation(t *testing.T) {
+	ts := newTestServer(t)
+	pid := ts.seedProject("demo", "/home/me/demo")
+
+	if got := ts.text(ts.call("reponest_handoff", map[string]any{
+		"project_id": float64(pid),
+	})); !strings.Contains(got, "summary is required") {
+		t.Errorf("missing summary should be reported\n%s", got)
+	}
+
+	if got := ts.text(ts.call("reponest_handoff", map[string]any{
+		"project_id": float64(pid),
+		"summary":    "only a summary",
+	})); !strings.Contains(got, "at least one") {
+		t.Errorf("summary-only handoff should be reported\n%s", got)
+	}
+}

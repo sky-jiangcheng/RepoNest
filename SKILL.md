@@ -2,16 +2,31 @@
 
 RepoNest is a local-first code project context base. It discovers local Git repositories, maintains a cross-project knowledge base (Markdown notes, FTS5 search, version history), mines repository knowledge, and exposes it to AI agents via the MCP server and llms.txt export.
 
+## Session Memory Protocol
+
+The two highest-value tools form a session loop. Use it in every working session on a RepoNest-tracked project:
+
+```
+Session start → reponest_context   → one call, full project context (handoffs first)
+   ... work ...
+Session end   → reponest_handoff   → record what happened for the next session
+```
+
+1. **Start**: call `reponest_context` once — it returns tech stack, README excerpt, dependencies, recent commits, open todos and the most relevant notes (previous session handoffs lead). This replaces chaining `projects_list` → `notes_search` → `notes_read`.
+2. **End**: call `reponest_handoff` with `summary` (required) plus any of `changes` / `decisions` / `gotchas` / `next_steps`. The note is tagged `handoff` and the next session reads it first — regardless of which agent wrote it.
+
 ## Recommended AI Workflow
 
 ```
-1. Search projects  → reponest_projects_list        → find relevant repos
-2. Search knowledge → reponest_notes_search / reponest_ask  → find existing notes
-3. Read details     → reponest_notes_read            → read a specific note
-4. Create knowledge → reponest_notes_create          → capture new insights
-5. Update knowledge → reponest_notes_update          → refine existing notes
-6. Check readiness  → reponest_agent_score           → verify AI integration health
-7. Check the data   → reponest_integrity             → when results look incomplete
+1. Load context     → reponest_context               → session cold start, one call
+2. Search projects  → reponest_projects_list        → find relevant repos
+3. Search knowledge → reponest_notes_search / reponest_ask  → find existing notes
+4. Read details     → reponest_notes_read            → read a specific note
+5. Create knowledge → reponest_notes_create          → capture new insights
+6. Update knowledge → reponest_notes_update          → refine existing notes
+7. End session      → reponest_handoff               → structured handoff for the next session
+8. Check readiness  → reponest_agent_score           → verify AI integration health
+9. Check the data   → reponest_integrity             → when results look incomplete
 ```
 
 **When search comes back suspiciously thin**, run `reponest_integrity` before
@@ -21,10 +36,9 @@ with the notes table makes every search silently under-report, and
 installation readiness, not whether the data is true.
 
 **Typical scenario**: "Help me understand project X"
-1. `reponest_projects_list` — find the project and its ID
-2. `reponest_ask({ query: "project X recent changes" })` — search across notes
-3. `reponest_notes_read({ id })` — read relevant notes found
-4. `reponest_notes_create({ project_id, title, content })` — save your understanding
+1. `reponest_context({ project_name: "X" })` — one call loads everything known about the project
+2. `reponest_notes_read({ id })` — expand on any note the context surfaced
+3. `reponest_handoff({ project_id, summary, changes, next_steps })` — save what you learned when done
 
 **Typical scenario**: "What do I know about topic Y?"
 1. `reponest_notes_search({ query: "Y" })` — full-text search across all notes
@@ -67,6 +81,8 @@ go build -o /usr/local/bin/reponest-mcp ./cmd/mcp/
 
 | Tool | Description | Key Parameters | Example |
 |------|-------------|----------------|--------|
+| `reponest_context` | Load full project context in one call (session start) | `project_id?`, `project_name?` (fuzzy); none = auto-resolve when only one project | `{ project_name: "auth" }` |
+| `reponest_handoff` | Record a structured session handoff (session end) | `project_id`, `summary`, `changes?`, `decisions?`, `gotchas?`, `next_steps?`, `agent?`, `tags?` | `{ project_id: 1, summary: "...", gotchas: ["..."], next_steps: ["..."] }` |
 | `reponest_ask` | Ask a question, get top-5 ranked results | `query` (string, supports CJK) | `{ query: "数据库迁移方案" }` |
 | `reponest_notes_search` | FTS5 full-text search across notes | `query` (string, trigram + bm25) | `{ query: "react hooks" }` |
 | `reponest_notes_read` | Read one note by ID | `id` (number) | `{ id: 42 }` |

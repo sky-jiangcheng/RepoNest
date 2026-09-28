@@ -204,6 +204,30 @@
 
 ---
 
+## 🟢 会话记忆路线（ADR-0007 后续）
+
+> 定位升级为「AI agent 记忆层」后的主攻方向，按传播价值排序。
+
+### M1: 会话自动捕捉（零人工参与）
+
+- [ ] 解析 `~/.claude/projects/*/*.jsonl` 会话记录，提取最后一条 assistant 消息 + 工具调用摘要生成 handoff
+- [ ] 体积与隐私评估：只读最后 N 条消息，`.gitignore` 级别的路径白名单
+
+### M2: 多 agent 记忆源导入
+
+- [ ] Cursor（`~/.cursor/*/memory` 或 rules）、Codex、OpenCode 记忆格式导入器（复用 plugin.ImportDoc upsert 管线）
+
+### M3: 语义检索
+
+- [ ] 评估本地 embedding + sqlite-vec（保持零 CGO），补充 FTS5 字面匹配盲区；先做 A/B 评测再决定默认开关
+
+### M4: Agent 集成即插即用
+
+- [ ] Claude Code hook 示例：SessionEnd hook 自动触发 `reponest_handoff`（文档级，先于代码）
+- [ ] `npx reponest-init` 类一键注册脚本（写 .mcp.json + 提示 hook 配置）
+
+---
+
 ## 📋 遗留项
 
 - [ ] 桌面 GUI 回归测试：建议在真机跑一轮冒烟（扫描→收藏→刷新历史→笔记 CRUD→版本恢复→知识库搜索→MCP 问答）
