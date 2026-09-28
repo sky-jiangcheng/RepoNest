@@ -6,6 +6,24 @@
 
 ## [Unreleased]
 
+## [1.9.3] - 2026-09-28
+
+### 安全
+
+- **headless HTTP `?q=` 参数无长度上限**：`internal/httpapi` 的 `/api/search` 直接透传查询串，本地任意进程可用超长
+  参数反复触发 FTS/LIKE 全表扫描——与 v1.9.2 修复的 MCP 参数问题同类，只是遗漏了这条边界。现统一限制 1000
+  字节，超限返回 400 并附回归测试。
+- **知识挖掘依赖清单无上限读入内存**：`parseNpmDeps` / `parseGoDeps` / `parseCargoDeps` 用 `os.ReadFile`
+  整读 package.json / go.mod / Cargo.toml。被扫描仓库中的病态大文件（vendor 生成物可达数百 MB）会在
+  `reponest_scan` 期间造成内存峰值——与 v1.9.2 修复的 Claude 导入器 OOM 同类。改为限长读取（1 MB，
+  依赖名提取远够用），超限文件按解析失败跳过。
+
+### 评估记录
+
+- 插件 runtime 全量读取 `plugin.go`：**接受风险**——yaegi 必须编译完整源码，限长会破坏合法插件，且插件由用户
+  显式安装。无变更。
+- `reponest_context` project_name 上限：v1.9.2 已覆盖，本轮复核无回归。
+
 ## [1.9.2] - 2026-09-27
 
 ### 修复

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,26 @@ import (
 	"strings"
 	"time"
 )
+
+// maxManifestReadBytes caps dependency-manifest reads. These files live in
+// repositories the user chose to scan, so they are not attacker-controlled,
+// but nothing stops a scanned repo from containing a pathological file (a
+// vendored/generated package.json can reach hundreds of megabytes). Only
+// dependency names are extracted, so a megabyte is already generous; reading
+// beyond it is pure memory risk with zero information gain.
+const maxManifestReadBytes = 1 << 20
+
+// readCapped reads at most limit bytes from path. A truncated manifest fails
+// its parser and is skipped by the caller (no deps from that file) instead of
+// being loaded whole into memory.
+func readCapped(path string, limit int) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(io.LimitReader(f, int64(limit)))
+}
 
 // ErrNotARepo is returned when the path is not an accessible directory.
 var ErrNotARepo = errors.New("not an accessible repository directory")
@@ -326,7 +347,7 @@ func DetectDependencies(repoPath string) ([]Dependency, error) {
 }
 
 func parseNpmDeps(repoPath, filename string) ([]Dependency, error) {
-	data, err := os.ReadFile(filepath.Join(repoPath, filename))
+	data, err := readCapped(filepath.Join(repoPath, filename), maxManifestReadBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +369,7 @@ func parseNpmDeps(repoPath, filename string) ([]Dependency, error) {
 }
 
 func parseGoDeps(repoPath string) ([]Dependency, error) {
-	data, err := os.ReadFile(filepath.Join(repoPath, "go.mod"))
+	data, err := readCapped(filepath.Join(repoPath, "go.mod"), maxManifestReadBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +405,7 @@ func parseGoDeps(repoPath string) ([]Dependency, error) {
 }
 
 func parseCargoDeps(repoPath string) ([]Dependency, error) {
-	data, err := os.ReadFile(filepath.Join(repoPath, "Cargo.toml"))
+	data, err := readCapped(filepath.Join(repoPath, "Cargo.toml"), maxManifestReadBytes)
 	if err != nil {
 		return nil, err
 	}

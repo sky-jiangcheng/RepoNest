@@ -43,6 +43,36 @@ func TestSearchHitsNotEmptyNull(t *testing.T) {
 	}
 }
 
+// Regression: the MCP layer bounds its query argument (v1.9.2); the HTTP
+// boundary serves the same service, so it must bound ?q= too. An unbounded
+// value from any local process turns each FTS/LIKE match into a full-table
+// scan, and the endpoint answers repeatedly.
+func TestSearchQueryTooLong(t *testing.T) {
+	database, err := db.InitDB(":memory:")
+	if err != nil {
+		t.Fatalf("init db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	h := New(service.New(database, "me"))
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/search?q="+strings.Repeat("a", maxSearchQueryLen+1), nil))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "query too long") {
+		t.Errorf("body %q missing the length rejection", rec.Body.String())
+	}
+
+	// A query at the boundary is still served, not rejected.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/search?q="+strings.Repeat("a", maxSearchQueryLen), nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("boundary query: status = %d, want 200", rec.Code)
+	}
+}
+
 func TestEndpoints(t *testing.T) {
 	database, err := db.InitDB(":memory:")
 	if err != nil {

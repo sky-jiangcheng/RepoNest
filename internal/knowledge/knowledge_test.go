@@ -49,6 +49,42 @@ func TestExtractREADMENoReadme(t *testing.T) {
 	}
 }
 
+// Regression (same class as the Claude importer OOM fix): dependency
+// manifests are read from repositories the user scans, so a pathological
+// package.json (vendored, generated, accidental) must not be loaded whole.
+// Deeper than the cap, a manifest is skipped; below it, deps still parse.
+func TestParseDepsCappedRead(t *testing.T) {
+	root := t.TempDir()
+
+	// go.mod: deps within the first MB, then a huge trailing block that
+	// pushes the file past the read cap. Line parsing tolerates truncation,
+	// so the real deps must still be found.
+	var goMod strings.Builder
+	goMod.WriteString("module x\n\ngo 1.25\n\nrequire (\n\tgithub.com/spf13/cobra v1.9.1\n)\n")
+	goMod.WriteString("// filler\n" + strings.Repeat("x", maxManifestReadBytes))
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte(goMod.String()), 0640); err != nil {
+		t.Fatal(err)
+	}
+	deps, err := parseGoDeps(root)
+	if err != nil {
+		t.Fatalf("parseGoDeps: %v", err)
+	}
+	if len(deps) != 1 || deps[0].Name != "github.com/spf13/cobra" {
+		t.Errorf("truncated go.mod should still yield its deps, got %+v", deps)
+	}
+
+	// package.json: valid JSON prefix followed by filler that pushes the
+	// file past the cap. The truncated remainder is not parseable JSON, so
+	// the manifest must be skipped (error) instead of read whole.
+	pkg := `{"name":"x","dependencies":{"react":"^19.0.0"}}` + strings.Repeat("x", maxManifestReadBytes)
+	if err := os.WriteFile(filepath.Join(root, "package.json"), []byte(pkg), 0640); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parseNpmDeps(root, "package.json"); err == nil {
+		t.Error("oversized package.json must be skipped, not parsed")
+	}
+}
+
 func TestDetectTechStack(t *testing.T) {
 	root := writeTemp(t, map[string]string{
 		"package.json":       `{"name":"x","dependencies":{"react":"^19.0.0"}}`,

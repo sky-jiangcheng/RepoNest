@@ -19,6 +19,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -68,6 +69,13 @@ func (h *handler) aiContext(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"markdown": markdown})
 }
 
+// maxSearchQueryLen caps the ?q= parameter, mirroring the MCP layer's query
+// bound. The query is escaped before it reaches SQLite, so this is not an
+// injection guard — it stops a multi-megabyte value from turning every
+// FTS/LIKE match into a multi-second scan. The trust boundary is loopback
+// only, but any local process can hit this endpoint repeatedly.
+const maxSearchQueryLen = 1000
+
 // search runs a full-text knowledge search across notes and todos.
 // Query param: q (required). Use ?all=1 to also include todos (default notes).
 func (h *handler) search(w http.ResponseWriter, r *http.Request) {
@@ -78,6 +86,12 @@ func (h *handler) search(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing query param 'q'"})
+		return
+	}
+	if len(q) > maxSearchQueryLen {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": fmt.Sprintf("query too long: %d bytes (max %d)", len(q), maxSearchQueryLen),
+		})
 		return
 	}
 	var hits any
