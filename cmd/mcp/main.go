@@ -14,6 +14,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 
 	"reponest/internal/db"
+	"reponest/internal/domain"
 	"reponest/internal/platform"
 	"reponest/internal/service"
 	"reponest/internal/version"
@@ -28,7 +29,19 @@ func main() {
 	svc := service.New(d, platform.GetGitUserName())
 
 	mcpServer := server.NewMCPServer("reponest-mcp", version.Version)
+	registerTools(mcpServer, svc)
 
+	log.Printf("RepoNest MCP server v%s starting on stdio...", version.Version)
+	if err := server.ServeStdio(mcpServer); err != nil {
+		log.Fatalf("MCP server error: %v", err)
+	}
+}
+
+// registerTools wires every MCP tool onto the server. Split out of main so
+// tests can build a real server over a fixture service and invoke handlers
+// through the same path a client does, instead of reaching for unexported
+// handlers.
+func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 	mcpServer.AddTool(mcp.Tool{
 		Name:        "reponest_notes_list",
 		Description: "List all knowledge notes across projects",
@@ -98,7 +111,15 @@ func main() {
 			Properties: map[string]any{},
 		},
 	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return makeJSONResult("projects_list", svc.ListProjects())
+		// Empty must serialise as [] not null: a fresh install returns a nil
+		// slice from ListProjects, and an agent (or any JSON consumer) testing
+		// for an empty array should not have to handle null. Same rule the
+		// httpapi layer documents in its own regression test.
+		projects := svc.ListProjects()
+		if projects == nil {
+			projects = []domain.Project{}
+		}
+		return makeJSONResult("projects_list", projects)
 	})
 
 	mcpServer.AddTool(mcp.Tool{
@@ -277,9 +298,4 @@ func main() {
 	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return makeTextResult(runIntegrityReport(svc)), nil
 	})
-
-	log.Printf("RepoNest MCP server v%s starting on stdio...", version.Version)
-	if err := server.ServeStdio(mcpServer); err != nil {
-		log.Fatalf("MCP server error: %v", err)
-	}
 }
