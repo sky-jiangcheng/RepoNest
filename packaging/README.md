@@ -42,7 +42,7 @@ After publishing a release, fill them in:
 
 ```bash
 # for each asset you ship
-curl -sL https://github.com/sky-jiangcheng/RepoNest/releases/download/v1.7.9/reponest-mcp-linux-amd64.tar.gz | shasum -a 256
+curl -sL https://github.com/sky-jiangcheng/reponest/releases/download/v1.7.9/reponest-mcp-linux-amd64.tar.gz | shasum -a 256
 ```
 
 ## Where these are published

@@ -14,7 +14,7 @@ RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/reponest/master/scripts/install.sh | bash
 ```
 
 macOS 装到 `/Applications/RepoNest.app`，Linux 装到 `/usr/local/bin/reponest`；两者都会把 `reponest-mcp` 放进 `/usr/local/bin`。
@@ -22,12 +22,12 @@ macOS 装到 `/Applications/RepoNest.app`，Linux 装到 `/usr/local/bin/repones
 ### Windows
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/reponest/master/scripts/install.ps1 | iex
 ```
 
 装到 `%LOCALAPPDATA%\RepoNest` 并自动加入用户 PATH。
 
-或从 [GitHub Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的归档文件（macOS `.dmg` / Linux `.tar.gz` / Windows `.zip`）手动解压。
+或从 [GitHub Releases](https://github.com/sky-jiangcheng/reponest/releases) 下载对应平台的归档文件（macOS `.dmg` / Linux `.tar.gz` / Windows `.zip`）手动解压。
 
 桌面应用也可用包管理器安装（需先添加 tap，Linux 桌面版只提供 tarball）：
 
@@ -41,7 +41,7 @@ AI 走的是独立分发的 `reponest-mcp`（MCP stdio 服务器）。它**不�
 
 | 方式 | 平台 | 命令 |
 |------|------|------|
-| 手动（无需前置） | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
+| 手动（无需前置） | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/reponest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
 | Homebrew | macOS | `brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest-mcp` |
 | Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp` |
 | Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp` |

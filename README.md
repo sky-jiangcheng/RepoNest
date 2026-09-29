@@ -83,7 +83,7 @@
 
 ### 下载安装
 
-从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的最新版本。
+从 [Releases](https://github.com/sky-jiangcheng/reponest/releases) 下载对应平台的最新版本。
 
 **方式一：直接下载**
 
@@ -99,9 +99,9 @@
 
 | 平台 | 命令 | 装到哪 |
 |------|------|--------|
-| macOS | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.sh \| bash` | `/Applications/RepoNest.app` + `/usr/local/bin/reponest-mcp` |
+| macOS | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/reponest/master/scripts/install.sh \| bash` | `/Applications/RepoNest.app` + `/usr/local/bin/reponest-mcp` |
 | Linux | 同上 | `/usr/local/bin/reponest` + `/usr/local/bin/reponest-mcp` |
-| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\RepoNest`（自动加入用户 PATH） |
+| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/reponest/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\RepoNest`（自动加入用户 PATH） |
 
 macOS 也可以用 Homebrew（需先添加 tap，见 [`packaging/`](packaging/README.md)）：
 
@@ -126,7 +126,7 @@ AI 客户端走的是独立分发的 `reponest-mcp`（MCP stdio 服务器），*
 
 | 方式 | 平台 | 命令 |
 |------|------|------|
-| 手动（无需任何前置） | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
+| 手动（无需任何前置） | 全平台 | 从 [Releases](https://github.com/sky-jiangcheng/reponest/releases) 下载 `reponest-mcp-<target>.tar.gz` / `.zip` |
 | Homebrew | macOS | `brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest-mcp` |
 | Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp` |
 | Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp` |
@@ -256,7 +256,7 @@ web/src/
 | [SKILL.md](SKILL.md) | 面向 AI 代理的能力卡片 |
 | [TODO.md](TODO.md) | 已知事项与待办 |
 
-[在线文档](https://sky-jiangcheng.github.io/RepoNest/)（GitHub Pages，随 master 自动部署）。
+[在线文档](https://sky-jiangcheng.github.io/reponest/)（GitHub Pages，随 master 自动部署）。
 
 ## 参与贡献
 

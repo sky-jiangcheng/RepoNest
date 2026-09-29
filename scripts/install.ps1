@@ -1,13 +1,13 @@
 # RepoNest install script for Windows
 # Installs both the desktop app (reponest.exe) and the MCP server (reponest-mcp.exe).
-# Run in PowerShell: iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 | iex
+# Run in PowerShell: iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/reponest/master/scripts/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
 $InstallDir = "$env:LOCALAPPDATA\RepoNest"
 $BinaryName = "reponest.exe"
 $McpBinaryName = "reponest-mcp.exe"
-$Repo = "sky-jiangcheng/RepoNest"
+$Repo = "sky-jiangcheng/reponest"
 $Target = "windows-amd64"
 
 # ReleaseBase is the base URL for release assets. Overridable so CI can point

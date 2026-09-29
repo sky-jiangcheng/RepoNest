@@ -22,7 +22,7 @@
 #   ./scripts/prune-releases.sh --list              # inventory only
 set -euo pipefail
 
-REPO="${REPO:-sky-jiangcheng/RepoNest}"
+REPO="${REPO:-sky-jiangcheng/reponest}"
 KEEP=3
 ASSUME_YES=0
 DELETE_TAGS=0

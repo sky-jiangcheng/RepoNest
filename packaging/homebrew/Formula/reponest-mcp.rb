@@ -8,19 +8,19 @@
 # (info.productVersion) — never edit it by hand.
 class ReponestMcp < Formula
   desc "MCP stdio server exposing the RepoNest local knowledge base to AI agents"
-  homepage "https://github.com/sky-jiangcheng/RepoNest"
-  version "1.9.4"
+  homepage "https://github.com/sky-jiangcheng/reponest"
+  version "1.8.1"
   license "MIT"
 
   if OS.mac? && Hardware::CPU.arm?
-    url "https://github.com/sky-jiangcheng/RepoNest/releases/download/v#{version}/reponest-mcp-darwin-arm64.tar.gz"
-    sha256 "8b65d256c7c75e41ff06ef7f3582456aa2e2b823263ef70da8011a345952b4a9"
+    url "https://github.com/sky-jiangcheng/reponest/releases/download/v#{version}/reponest-mcp-darwin-arm64.tar.gz"
+    sha256 "70d9773f8b74820b30dbdfe86be8498632459dfa8e41f708981eb208d75c785e"
   elsif OS.mac? && Hardware::CPU.is_64_bit?
-    url "https://github.com/sky-jiangcheng/RepoNest/releases/download/v#{version}/reponest-mcp-darwin-amd64.tar.gz"
-    sha256 "72b106626373ad52ea7b6836c0f3223e9f097be1c30306f87eb077da1c406018"
+    url "https://github.com/sky-jiangcheng/reponest/releases/download/v#{version}/reponest-mcp-darwin-amd64.tar.gz"
+    sha256 "bbd2fdbb62be06a0987fae7c991a39827cba79959ca33b1292efdc1770c6560f"
   else
-    url "https://github.com/sky-jiangcheng/RepoNest/releases/download/v#{version}/reponest-mcp-linux-amd64.tar.gz"
-    sha256 "b123c4d761cc5ae74c512c537aeb757e41d04d207613a20097d96674e727ff8f"
+    url "https://github.com/sky-jiangcheng/reponest/releases/download/v#{version}/reponest-mcp-linux-amd64.tar.gz"
+    sha256 "222bed58e6ee8406bd2544180c67a5f5261787fe9a676b06d623a949c30215c8"
   end
 
   def install

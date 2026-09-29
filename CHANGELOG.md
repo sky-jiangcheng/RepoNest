@@ -6,100 +6,6 @@
 
 ## [Unreleased]
 
-### 移除
-
-- **PWA 移出桌面主构建（ADR-0008）**：落实 ADR-0006「暂缓/待移除」档。删除 3 个无引用 PWA 图标、两套 locale 各 11 个孤儿安装字符串；README / getting-started / settings / SKILL.md 中失实的「安装为 PWA」表述清零；CSP 注释不再以 PWA 叙事描述。web 构建保留（浏览器开发预览不受影响），但不再作为「可安装的 PWA」交付。
-
-## [1.9.4] - 2026-09-28
-
-### 新增
-
-- **Claude Code SessionEnd hook 示例（M4）**：把「零成本沉淀」从「依赖 agent 自觉调用 handoff」升级为会话生命周期自动触发。文档给出 `.claude/settings.json` 配置与配套脚本，一次有界的 headless 回合完成交接，并写清触发时机、成本与降级路径。见 `docs/features/ai-integration.md`「会话结束自动交接」节。
-
-### 安全
-
-- **handoff 协议防误覆盖**：交接笔记是会话记忆协议的契约——`reponest_context` 完整渲染最新一条，下一会话据此行动。此前一次 agent 误调用 `reponest_notes_update` 即可静默破坏该契约。现 MCP 写路径拒绝更新带 `handoff` 标签的笔记（提示改用 `reponest_handoff`；记录本身的修正保留给桌面端），普通笔记不受影响。
-
-### 修复
-
-- **`reponest_scan` 部分同步静默报成功**：个别项目组同步失败时仍返回纯 `success`，agent 据此信任了不完整的计数。`ScanResult` 新增 `sync_errors` 计数并在 MCP 结果中附带告警，指向 `reponest_integrity`。
-- **扫描取消无响应**：`ScanRepositories` 的目录遍历不接收 ctx，取消一次大规模扫描要等整趟 walk 跑完。现取消立即中止并向上传播（`scan repositories: context canceled`）。顺带修复：达到 `MaxEntries` 时此前会静默丢弃该根目录已发现的所有仓库。
-
-## [1.9.3] - 2026-09-28
-
-### 安全
-
-- **headless HTTP `?q=` 参数无长度上限**：`internal/httpapi` 的 `/api/search` 直接透传查询串，本地任意进程可用超长
-  参数反复触发 FTS/LIKE 全表扫描——与 v1.9.2 修复的 MCP 参数问题同类，只是遗漏了这条边界。现统一限制 1000
-  字节，超限返回 400 并附回归测试。
-- **知识挖掘依赖清单无上限读入内存**：`parseNpmDeps` / `parseGoDeps` / `parseCargoDeps` 用 `os.ReadFile`
-  整读 package.json / go.mod / Cargo.toml。被扫描仓库中的病态大文件（vendor 生成物可达数百 MB）会在
-  `reponest_scan` 期间造成内存峰值——与 v1.9.2 修复的 Claude 导入器 OOM 同类。改为限长读取（1 MB，
-  依赖名提取远够用），超限文件按解析失败跳过。
-
-### 评估记录
-
-- 插件 runtime 全量读取 `plugin.go`：**接受风险**——yaegi 必须编译完整源码，限长会破坏合法插件，且插件由用户
-  显式安装。无变更。
-- `reponest_context` project_name 上限：v1.9.2 已覆盖，本轮复核无回归。
-
-## [1.9.2] - 2026-09-27
-
-### 修复
-
-- **`reponest_notes_update` 部分更新清空元数据**：只传 `category`（文档化的合法用法）时 handler 调用
-  `UpdateNoteMeta`，而后者整体覆写 title/tags/kind/pinned——笔记标题与标签被静默清空、置顶状态丢失。
-  handler 改为「先读后合并」：只覆写显式提供的字段，pinned 保持原值；未提供任何可更新字段时返回明确
-  提示而非无声成功。工具描述同步注明「省略的字段保持原值，标题/标签无法通过本工具清空」。
-- **note 写入边界被插件导入路径绕过**：1.9.1 的校验只放在 service 层，但插件 runtime 的导入 upsert
-  （`runtime.upsertDoc`）与持有 `ctx.DB()` 的脚本插件直写 `internal/db`，可写入无边界内容，随后被
-  `reponest_context` 全量嵌入。边界校验下沉到 db 层（`CreateNoteEx` / `UpdateNote` / `UpdateNoteFull` /
-  `UpdateNoteMeta` 全覆盖，附 db 层回归测试），service 层保留前置校验以给出友好错误信息。
-- **Claude 导入器整文件读入内存**：`os.ReadFile` 无上限，单个超大 memory 文件在任何边界校验生效前
-  即已 OOM。改为 `io.LimitReader` 限长读取（`MaxNoteContentLen+1`），超限文件跳过并记日志。
-
-### 安全
-
-- **MCP 查询参数长度上限**：`reponest_notes_search` / `reponest_ask` 的 query 与 `reponest_context` 的
-  `project_name` 此前无长度上限。输入本身有 FTS/LIKE 转义保护（无注入面），但超长参数会把每次匹配变成
-  全表级扫描。现分别限制 1000 / 200 字节，超限返回明确提示并附回归测试。
-
-## [1.9.1] - 2026-09-27
-
-### 修复
-
-- **`reponest_scan` 静默吞掉扫描错误**：`runCollectedScan` 此前把文件系统扫描失败、事务失败、
-  panic 一律降级为日志并返回 `0, 0`，`ScanNow` 再包一层 `Success: true`——agent 收到的是
-  「扫描完成：发现 0 个仓库」而不是错误，空知识基被伪装成成功。现在硬失败以 `error` 返回，
-  单个项目组同步失败保持非致命（一条坏路径不拖垮全量扫描），全部组失败才报错；panic 也转换为
-  错误而不是"恢复后继续报告成功"。`ScanNow` 同时接受 MCP 请求 context，客户端断连即取消扫描。
-- **`reponest_context` 交接记录被截断**：最新 handoff、旧 handoff 与普通笔记混排争用同一个
-  10 条 / 1200 字预算，上一次会话的退出记录可能被砍半——恰是下次会话最需要的信息。现在最新
-  handoff 完整渲染（4000 字上限），更早的 handoff 压缩为「标题 + 日期 + 摘要一行」的时间线，
-  普通笔记预算不变。
-- **写入缺少长度/数量上限**：note/handoff 写入无边界，agent 一次调用即可写入超长内容或上百条
-  子弹，直接撑爆下一次 `reponest_context` 的上下文预算。service 层新增校验（覆盖桌面 UI /
-  MCP / 插件导入全部写入路径）：笔记内容 100KB、标题 200 字节、标签 20 个；handoff summary
-  4KB、每节 20 条、每条 1KB。超出即拒绝并说明限制。
-- **`ListAllNotes` 无 limit 下推**：`reponest_notes_list` 显示 50 条却先全量载入所有笔记全文，
-  llms.txt 生成同样全表扫描后只取 20 条。DB 层 `ListAllNotes` 新增 `limit`/`kind` 参数
-  （SQL 层 `LIMIT`），MCP `limit` 钳制在 [1, 500]；`agent_score` 的笔记计数改走新增的
-  `CountNotes` 聚合查询。
-
-### 安全
-
-- **安装脚本 SHA256 校验**：`install.sh` / `install.ps1` 此前直接安装下载的二进制，损坏或
-  篡改的资产无从发现。现在 release.yml 生成并上传 `SHA256SUMS` 资产，安装脚本下载后校验
-  Digest（`shasum` / `sha256sum` / `Get-FileHash` 三平台适配）：不符即中止安装；旧 release
-  没有清单时跳过并告警，不阻断安装。冒烟测试新增「清单损坏必须被拒绝」负路径，防止校验
-  逻辑退化为永远跳过。
-- **Headless HTTP 信任边界文档化**：`reponest server` 是无认证、返回全量知识库的 API，
-  此前只在 `cmd/server` 注释里提了一句 loopback。`internal/httpapi` 包注释与
-  `docs/api/reference.md` 现在明确：该 API 仅因绑定 `127.0.0.1` 而安全，可达性等价于
-  「本机上的另一个进程」，禁止改为 `0.0.0.0` 或经反代暴露。
-
-## [1.9.0] - 2026-09-28
-
 ### 新增
 
 - **会话记忆协议（ADR-0007）**：MCP 工具从 10 个扩展到 12 个，补齐 agent 会话边界的记忆两端：
@@ -114,18 +20,6 @@
   - 工具注册拆分至 `cmd/mcp/tools_context.go`；测试覆盖 service 层（项目解析 / 上下文渲染 /
     交接排序 / 校验）与 MCP 工具层（经真实 server 调用），`SKILL.md` 工作流同步升级为
     「session start → context / session end → handoff」协议。
-- **MCP `reponest_scan`（headless 冷启动，工具数 12 → 13）**：此前只有桌面应用能「播种扫描根 +
-  扫描」，文档宣称的「MCP 不需要桌面应用」实际不成立——纯 MCP 安装的知识库永远是空的。
-  新增服务层 `EnsureDefaultScanRoots`（首次播种默认扫描根，已有配置不覆盖）与同步 `ScanNow`
-  （与桌面端 `TriggerScan` 共用 `scanning` 互斥，返回仓库/项目计数），暴露为 `reponest_scan`。
-  首次可用漏斗由「安装→扫描→收藏→刷新→使用」压缩为「安装→`reponest_scan`→`reponest_context`」。
-  桌面端首启改为复用同一 `EnsureDefaultScanRoots`，两端行为一致。
-
-### 变更
-
-- **定位口径统一为「跨 agent 项目记忆层」**：README / docs 首页 / 快速开始 / AI 集成 / SKILL.md /
-  定位简报同步更新（此前仅英文开篇与 ADR 用了新叙事，中文定位句仍是「代码项目上下文库」）。
-  快速开始明确「扫描后知识库即可用」，收藏与回填标注为仅影响仪表盘统计的可选步骤。
 
 ## [1.8.1] - 2026-09-28
 
@@ -501,35 +395,30 @@
 
 - 首个正式版本：Wails 桌面应用骨架、GitHub Actions 多平台构建发布
 
-[Unreleased]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.2...HEAD
-[1.9.2]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.1...v1.9.2
-[1.9.1]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.9.0...v1.9.1
-[1.9.0]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.8.1...v1.9.0
-[1.8.1]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.8.0...v1.8.1
-[1.8.0]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.9...v1.8.0
-[1.7.9]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.8...v1.7.9
-[1.7.8]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.7...v1.7.8
-[1.7.7]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.6...v1.7.7
-[1.7.6]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.5...v1.7.6
-[1.7.5]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.4...v1.7.5
-[1.7.4]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.3...v1.7.4
-[1.7.3]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.2...v1.7.3
-[1.7.2]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.1...v1.7.2
-[1.7.1]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.0...v1.7.1
-[1.7.0]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.6.3...v1.7.0
-[1.6.3]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.6.2...v1.6.3
-[1.6.2]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.6.1...v1.6.2
-[1.6.1]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.6.1
-[1.5.7]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.5.5...v1.5.7
-[1.5.6]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.5.5...v1.5.6
-[1.5.5]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.5
-[1.5.3]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.3
-[1.5.2]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.2
-[1.5.1]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.1
-[1.5.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.0
-[1.4.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.4.0
-[1.3.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.3.0
-[1.2.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.2.0
-[1.1.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.1.0
-[1.0.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.0.0
+[Unreleased]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.9...HEAD
+[1.7.9]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.8...v1.7.9
+[1.7.8]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.7...v1.7.8
+[1.7.7]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.6...v1.7.7
+[1.7.6]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.5...v1.7.6
+[1.7.5]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.4...v1.7.5
+[1.7.4]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.3...v1.7.4
+[1.7.3]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.2...v1.7.3
+[1.7.2]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/sky-jiangcheng/reponest/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/sky-jiangcheng/reponest/compare/v1.6.3...v1.7.0
+[1.6.3]: https://github.com/sky-jiangcheng/reponest/compare/v1.6.2...v1.6.3
+[1.6.2]: https://github.com/sky-jiangcheng/reponest/compare/v1.6.1...v1.6.2
+[1.6.1]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.6.1
+[1.5.7]: https://github.com/sky-jiangcheng/reponest/compare/v1.5.5...v1.5.7
+[1.5.6]: https://github.com/sky-jiangcheng/reponest/compare/v1.5.5...v1.5.6
+[1.5.5]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.5.5
+[1.5.3]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.5.3
+[1.5.2]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.5.2
+[1.5.1]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.5.1
+[1.5.0]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.5.0
+[1.4.0]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.4.0
+[1.3.0]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.3.0
+[1.2.0]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.2.0
+[1.1.0]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.1.0
+[1.0.0]: https://github.com/sky-jiangcheng/reponest/releases/tag/v1.0.0
 

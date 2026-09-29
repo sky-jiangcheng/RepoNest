@@ -6,20 +6,20 @@
 # Version is stamped by scripts/update-manifests.sh from wails.json
 # (info.productVersion) — never edit it by hand.
 cask "reponest-mcp" do
-  version "1.9.4"
+  version "1.8.1"
   name "RepoNest MCP Server"
   desc "MCP stdio server exposing the RepoNest local knowledge base to AI agents"
-  homepage "https://github.com/sky-jiangcheng/RepoNest"
+  homepage "https://github.com/sky-jiangcheng/reponest"
   license "MIT"
 
   on_arm do
-    url "https://github.com/sky-jiangcheng/RepoNest/releases/download/v#{version}/reponest-mcp-darwin-arm64.tar.gz"
-    sha256 "8b65d256c7c75e41ff06ef7f3582456aa2e2b823263ef70da8011a345952b4a9"
+    url "https://github.com/sky-jiangcheng/reponest/releases/download/v#{version}/reponest-mcp-darwin-arm64.tar.gz"
+    sha256 "70d9773f8b74820b30dbdfe86be8498632459dfa8e41f708981eb208d75c785e"
   end
 
   on_intel do
-    url "https://github.com/sky-jiangcheng/RepoNest/releases/download/v#{version}/reponest-mcp-darwin-amd64.tar.gz"
-    sha256 "72b106626373ad52ea7b6836c0f3223e9f097be1c30306f87eb077da1c406018"
+    url "https://github.com/sky-jiangcheng/reponest/releases/download/v#{version}/reponest-mcp-darwin-amd64.tar.gz"
+    sha256 "bbd2fdbb62be06a0987fae7c991a39827cba79959ca33b1292efdc1770c6560f"
   end
 
   # The tarball stages a single bare `reponest-mcp` at its root; `binary` links
