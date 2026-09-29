@@ -58,7 +58,8 @@ func main() {
 			Middleware: func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					// Security headers on every response
-					// Note: unsafe-inline on script-src is required for PWA's registerSW.js.
+					// Note: script-src keeps 'unsafe-inline' (legacy allowance;
+					// tightening the CSP for the bundled SPA is a separate change).
 					// unsafe-eval is intentionally omitted; if dynamic eval is needed,
 					// refactor to use explicit Function() calls with a nonce instead.
 					w.Header().Set("Content-Security-Policy",

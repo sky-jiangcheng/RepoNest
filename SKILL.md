@@ -133,7 +133,7 @@ Or in a project-level `.mcp.json` / user-level MCP config (Cursor: Settings → 
 
 - **Backend**: Go + SQLite (modernc, zero CGO), Wails v2 desktop app
 - **Layering**: `internal/app` (thin Wails bindings) → `internal/service` (business core, shared by desktop/MCP) → `internal/db` + `internal/core/git`
-- **Frontend**: React 19 + Vite 8 + TypeScript 7, PWA, hand-rolled CSS design system
+- **Frontend**: React 19 + Vite 8 + TypeScript 7, hand-rolled CSS design system
 - **Search**: FTS5 trigram + bm25, LIKE fallback for short CJK queries
 - **i18n**: react-i18next, zh-CN + en
 - **Markdown**: Mermaid, KaTeX, callouts, highlight.js

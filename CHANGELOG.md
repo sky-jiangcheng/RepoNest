@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 移除
+
+- **PWA 移出桌面主构建（ADR-0008）**：落实 ADR-0006「暂缓/待移除」档。删除 3 个无引用 PWA 图标、两套 locale 各 11 个孤儿安装字符串；README / getting-started / settings / SKILL.md 中失实的「安装为 PWA」表述清零；CSP 注释不再以 PWA 叙事描述。web 构建保留（浏览器开发预览不受影响），但不再作为「可安装的 PWA」交付。
+
 ## [1.9.4] - 2026-09-28
 
 ### 新增

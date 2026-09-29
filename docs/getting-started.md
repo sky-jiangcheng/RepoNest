@@ -111,7 +111,6 @@ Cursor 等客户端在 **Settings → MCP → Add Server** 里填同样的 `comm
 | AI 集成 | 核心 | llms.txt、笔记导出、MCP server（含 agent-score 自检，见[AI 集成](features/ai-integration.md)） |
 | 仪表盘 | 支持 | 每日目标进度环、项目卡片、趋势折线图、提交热力图 |
 | 插件系统 | 实验 | yaegi 进程内 Go 脚本 + 知识源导入（见[知识源导入](plugins/overview.md)） |
-| PWA | 暂缓 | 支持安装到桌面/主屏幕，当前不再继续扩展 |
 
 ## 数据与日志位置
 

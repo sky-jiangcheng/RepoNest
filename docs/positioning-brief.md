@@ -31,7 +31,7 @@
 - API 文档化、契约扩展、平台化入口
 
 ### 4) 停止投入或移出主叙事
-- PWA / SEO / Web-only 追加能力
+- PWA（已移出桌面主构建，见 ADR-0008）/ SEO / Web-only 追加能力
 - 易造成误解为“在线平台、团队 Dashboard、HTTP Server”的表达
 
 ## 对外叙事重构

@@ -59,6 +59,7 @@
 | P35 | NoteSection CSS Modules 试点（notes.css 242→192 行，新建 .module.css 93 行） | S10 |
 | P38 | ProjectDetail 拆分（316→214 行 + useProjectDetail hook 122 行） | S11 |
 | P37 | SKILL.md 工作流指引 + MCP 工具参数/示例增强 | S12 |
+| D24 | PWA 移出桌面主构建（ADR-0008：残留清零 + 图标/孤儿 locale 清理） | S13 |
 
 </details>
 
@@ -91,7 +92,7 @@
 
 ---
 
-## 🔴 删除项（D20-D23）
+## 🔴 删除项（D20-D24）
 
 > 第四轮评估新增。零功能回退，纯减法。
 
@@ -111,6 +112,16 @@
 
 - [x] 确认无代码引用 icon-192/512/maskable
 - [x] 删除 3 个 PWA 图标文件（共 51KB），保留 favicon.ico + favicon.svg
+
+### D24: PWA 移出桌面主构建（ADR-0008）
+
+- [x] 删除 `web/public/` 3 个 PWA 图标（icon-192/512/maskable）——同 D23 范围，随 ADR-0008 落地
+- [x] 两套 locale（zh-CN / en）清理 11 个孤儿安装字符串（installTitle/Desc/App/Msg/Desktop 等）
+- [x] `App.tsx` 路由注释改为「浏览器 / 桌面壳」区分，不再以 PWA 叙事描述
+- [x] `main.go` CSP 注释去掉 PWA/registerSW.js 表述
+- [x] README / getting-started / settings / SKILL.md / docs 失实行清零
+- [x] ADR-0008 + index 登记
+- [x] web 构建保留（`npm run build` 照常），不再是可安装 PWA
 
 ---
 
@@ -231,6 +242,7 @@
 ## 📋 遗留项
 
 - [ ] 桌面 GUI 回归测试：建议在真机跑一轮冒烟（扫描→收藏→刷新历史→笔记 CRUD→版本恢复→知识库搜索→MCP 问答）
+- [ ] **D25 仪表盘生产力门面收缩（2.0 候选，非现在）**：首屏讲记忆环、打开是仪表盘，定位纯度持续被消耗。收敛方向：仪表盘退化为「项目列表 + 最近活动」；目标环 / 每日代码量标准 / 工作日告警沉入插件或删除（GitBoard/GitBuddy 时代遗产，见 [ADR-0008](docs/adr/0008-pwa-removal.md) 遗留项）
 - [x] `reponest_context` brief/full 档位评估（v1.9.4 收敛：中等优先，缓做——当前固定 10 notes × 1200 字符 + 8 commits 对单会话偏充裕）
 - [x] README 对比表 + ASCII 架构图（v1.9.4 收敛：文档润色，低优先，缓做）
 - [x] `mineAndCacheAsync` 后台 goroutine 加 recover（`project_overview.go:138`）
@@ -255,5 +267,6 @@
 | ~~**Sprint 10**~~ | ~~P35 NoteSection CSS Modules 试点~~ | ✅ |
 | ~~**Sprint 11**~~ | ~~P38 ProjectDetail hook 提取~~ | ✅ |
 | ~~**Sprint 12**~~ | ~~P37 SKILL.md 工作流指引~~ | ✅ |
-| **2.0 规划** | C11 插件系统评估 + P35 全量 CSS Modules | 按版本 |
+| ~~**Sprint 13**~~ | ~~D24 PWA 移出桌面主构建（ADR-0008 落地）~~ | ✅ |
+| **2.0 规划** | D25 仪表盘生产力门面收缩 + C11 插件系统评估 + P35 全量 CSS Modules | 按版本 |
 | **按需** | P29, P31, P32, P33, P36 | 随重构穿插 |
