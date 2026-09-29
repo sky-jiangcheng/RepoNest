@@ -203,7 +203,7 @@
 
 ### P31: `Domain/types.go` 评估 🔻低
 
-- [ ] 评估是否收拢核心 domain 类型（当前仅 15 行，类型散落在各包）
+- [ ] 评估是否收拢核心 domain 类型（当前 132 行，类型散落在各包）
 
 ### P32: Wails 绑定层审计 🔸中
 
@@ -248,7 +248,7 @@
 - [x] `mineAndCacheAsync` 后台 goroutine 加 recover（`project_overview.go:138`）
 - [x] `.zcode/` 已移出跟踪，不需要 history rewrite
 - [ ] P29 `parseTimestamp` 鲁棒性（低优先级，git log 格式稳定）
-- [ ] P31 `Domain/types.go` 评估（仅 15 行，暂不需要收拢）
+- [ ] P31 `Domain/types.go` 评估（132 行，暂不需要收拢）
 - [ ] P32 Wails 绑定层审计（218 行，确认 MCP 对应关系）
 - [ ] P33 `TrendChart` 评估（100 行纯 SVG，「支持」级功能）
 - [ ] P36 `knowledge.go` 进一步拆分评估（515 行，内聚度高暂不拆）

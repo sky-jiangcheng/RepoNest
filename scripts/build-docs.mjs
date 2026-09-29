@@ -9,8 +9,8 @@
 // 依赖 marked（复用 web/node_modules），运行方式：
 //   node scripts/build-docs.mjs
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
@@ -48,23 +48,39 @@ function parseDoc(mdPath) {
 function renderMarkdown(mdPath) {
   const { title, body } = parseDoc(mdPath)
   let html = marked.parse(body, { gfm: true })
-  // Rewrite relative .md links to generated .html pages.
-  html = html.replace(/href="([^"#]*?)\.md(#[^"]*)?"/g, (m, path, hash) =>
-    path === '' || path.startsWith('http') ? m : `href="${path}.html${hash ?? ''}"`)
+  // Rewrite relative .md links: links into docs/ become same-position .html
+  // pages (the output file sits next to the source, so the relative path is
+  // unchanged); links to files outside docs/ (README, packaging, TODO...) are
+  // rewritten to GitHub blob URLs, because no .html is ever generated for
+  // them and the raw .md path would 404 on the Pages site.
+  html = html.replace(/href="([^"#]*?)\.md(#[^"]*)?"/g, (m, path, hash) => {
+    if (path === '' || path.startsWith('http')) return m
+    const target = resolve(dirname(mdPath), path + '.md')
+    const relDocs = relative(docsDir, target)
+    if (!relDocs.startsWith('..') && existsSync(target)) {
+      return `href="${path}.html${hash ?? ''}"`
+    }
+    const relRepo = relative(root, target).split('\\').join('/')
+    return `href="${REPO}/blob/master/${relRepo}${hash ?? ''}"`
+  })
   return { title, html }
 }
 
 // --- Template -------------------------------------------------------------------
 
-const navHtml = sidebar.sections.map(sec => `
+// Sidebar links must resolve from every generated page, and pages live at
+// different depths (docs/x.html vs docs/features/x.html). Each page therefore
+// gets a relPrefix ("", "../", "../..") that nav links are prefixed with.
+const navHtml = (prefix) => sidebar.sections.map(sec => `
       <h3>${sec.title}</h3>
-${sec.items.map(it => `      <a href="${it.file}.html" data-page="${it.file}">${it.label}</a>`).join('\n')}
+${sec.items.map(it => `      <a href="${prefix}${it.file}.html" data-page="${it.file}">${it.label}</a>`).join('\n')}
 `).join('')
 
-function page(title, activeFile, contentHtml, extraHead = '') {
+function page(title, activeFile, contentHtml, prefix = '', extraHead = '') {
   const active = activeFile
     ? `document.querySelectorAll('.sidebar a[data-page]').forEach(a => { if (a.dataset.page === ${JSON.stringify(activeFile)}) a.classList.add('active') })`
     : ''
+  const nav = navHtml(prefix)
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -117,7 +133,7 @@ ${extraHead}  <style>
       <h1>Repo<span>Nest</span></h1>
       <small>用户文档 · v${version}</small>
     </div>
-    <nav>${navHtml}
+    <nav>${nav}
     </nav>
   </aside>
   <main class="main">
@@ -133,31 +149,42 @@ ${contentHtml}
 
 // --- Build -----------------------------------------------------------------------
 
-const built = []
-
-for (const sec of sidebar.sections) {
-  for (const item of sec.items) {
-    const mdPath = join(docsDir, item.file + '.md')
-    if (!existsSync(mdPath)) {
-      console.error(`✗ sidebar 条目缺失源文件: docs/${item.file}.md`)
-      process.exitCode = 1
-      continue
-    }
-    const { title, html } = renderMarkdown(mdPath)
-    const outPath = join(docsDir, item.file + '.html')
-    writeFileSync(outPath, page(title, item.file, html))
-    built.push(relative(root, outPath))
+// Every .md under docs/ gets a page, sidebar entry or not: ADR detail pages,
+// for instance, are linked from several docs but intentionally kept out of
+// the navigation. Skipping them would ship dead links by construction.
+function collectMdFiles(dir) {
+  const out = []
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name)
+    if (statSync(p).isDirectory()) out.push(...collectMdFiles(p))
+    else if (name.endsWith('.md')) out.push(p)
   }
+  return out
 }
 
-// Landing page: docs/index.md → index.html, with quick nav links.
-{
-  const { title, html } = renderMarkdown(join(docsDir, 'index.md'))
-  const quick = sidebar.sections.flatMap(s => s.items).slice(0, 7)
-    .map(it => `      <a href="${it.file}.html">${it.label}</a>`).join('\n')
-  const content = html.replace('<!--NAV_LINKS-->', quick)
-  writeFileSync(join(docsDir, 'index.html'), page(title || 'RepoNest 文档', '', content))
-  built.push('docs/index.html')
+const built = []
+const sidebarFiles = new Set(sidebar.sections.flatMap(s => s.items.map(it => it.file)))
+const missingSidebar = [...sidebarFiles].filter(f => !existsSync(join(docsDir, f + '.md')))
+if (missingSidebar.length > 0) {
+  for (const f of missingSidebar) console.error(`✗ sidebar 条目缺失源文件: docs/${f}.md`)
+  process.exitCode = 1
+}
+
+for (const mdPath of collectMdFiles(docsDir)) {
+  const base = relative(docsDir, mdPath).replace(/\.md$/, '').split('\\').join('/')
+  const depth = base.split('/').length - 1
+  const prefix = '../'.repeat(depth)
+  const { title, html } = renderMarkdown(mdPath)
+  const outPath = join(docsDir, base + '.html')
+  if (base === 'index') {
+    // Landing page: inject quick nav links into the <!--NAV_LINKS--> slot.
+    const quick = sidebar.sections.flatMap(s => s.items).slice(0, 7)
+      .map(it => `      <a href="${prefix}${it.file}.html">${it.label}</a>`).join('\n')
+    writeFileSync(outPath, page(title || 'RepoNest 文档', '', html.replace('<!--NAV_LINKS-->', quick), prefix))
+  } else {
+    writeFileSync(outPath, page(title, base, html, prefix))
+  }
+  built.push(relative(root, outPath))
 }
 
 console.log(`✓ 生成 ${built.length} 个页面（v${version}）：\n  ${built.join('\n  ')}`)

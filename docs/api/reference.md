@@ -5,7 +5,7 @@ order: 22
 
 # API 参考
 
-RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露给前端（`window.go.main.App.<方法名>`），方法名与 JSON 载荷即契约。`docs/api/openapi.json` 以 HTTP 路径形式**镜像同一契约**，供 AI 代理与网关消费者阅读——桌面应用本身不监听 HTTP 端口。
+RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露给前端（`window.go.main.App.<方法名>`），方法名与 JSON 载荷即契约。桌面应用默认不监听 HTTP 端口；需要 HTTP 形态时由 `cmd/server` 提供仅限 loopback 的 JSON API（复用同一 service 层）。
 
 > 绑定层是薄委托（`internal/app`），实现全部在 `internal/service`；CLI 与 MCP 复用同一实现。
 
@@ -130,4 +130,4 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 
 ## OpenAPI
 
-机器可读契约见 [openapi.json](openapi.json)（版本随 `internal/version`，路径与上表方法一一对应）。⚠️ 该 spec 描述的是**绑定面镜像**；桌面应用不提供 HTTP 服务（见 [TODO](../../TODO.md)）。
+机器可读契约暂以本页表格为准（此前的手工 openapi.json 已随 D10 移除，待 CI 自动生成后回归）。桌面应用不提供公网 HTTP 服务（见 [TODO](https://github.com/sky-jiangcheng/reponest/blob/master/TODO.md)）。
