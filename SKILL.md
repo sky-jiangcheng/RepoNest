@@ -16,6 +16,8 @@ Session end   → reponest_handoff   → record what happened for the next sessi
 0. **First run**: on a fresh install call `reponest_scan` once — it seeds the default scan roots and scans them synchronously, so the knowledge base is populated without ever opening the desktop app. Call it again any time `reponest_context` reports no projects.
 1. **Start**: call `reponest_context` once — it returns tech stack, README excerpt, dependencies, recent commits, open todos and the most relevant notes (previous session handoffs lead). This replaces chaining `projects_list` → `notes_search` → `notes_read`.
 2. **End**: call `reponest_handoff` with `summary` (required) plus any of `changes` / `decisions` / `gotchas` / `next_steps`. The note is tagged `handoff` and the next session reads it first — regardless of which agent wrote it.
+   - Handoff notes are protocol records: `reponest_notes_update` refuses to overwrite them (write a new handoff instead), and `reponest_context` renders the latest one in full.
+   - To make step 2 fire automatically instead of relying on the agent remembering, wire a Claude Code `SessionEnd` hook — one bounded headless turn at session end (see `docs/features/ai-integration.md`).
 
 ## Recommended AI Workflow
 
@@ -91,7 +93,7 @@ go build -o /usr/local/bin/reponest-mcp ./cmd/mcp/
 | `reponest_notes_search` | FTS5 full-text search across notes | `query` (string, trigram + bm25) | `{ query: "react hooks" }` |
 | `reponest_notes_read` | Read one note by ID | `id` (number) | `{ id: 42 }` |
 | `reponest_notes_create` | Create a new note | `project_id`, `title`, `content`, `category?`, `tags?` | `{ project_id: 1, title: "API Design", content: "...", category: "knowledge" }` |
-| `reponest_notes_update` | Update note content/metadata | `id`, `content?`, `title?`, `tags?`, `category?` | `{ id: 42, content: "updated text" }` |
+| `reponest_notes_update` | Update note content/metadata (refuses notes tagged `handoff`) | `id`, `content?`, `title?`, `tags?`, `category?` | `{ id: 42, content: "updated text" }` |
 | `reponest_notes_list` | List all notes (paginated) | `limit?`, `offset?` | `{ limit: 20 }` |
 | `reponest_projects_list` | List all projects with stats | `starred_only?` | `{ starred_only: true }` |
 | `reponest_projects_stats` | Get stats for one project | `id` (number) | `{ id: 1 }` |

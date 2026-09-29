@@ -1,6 +1,8 @@
 package scanner
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,11 +19,21 @@ const MaxEntries = 10000
 
 // ScanRepositories recursively searches for .git directories within the given roots,
 // up to the specified max depth. Returns a list of discovered repositories.
-func ScanRepositories(roots []string, maxDepth int) ([]RepoInfo, error) {
+// The walk honours ctx: a cancelled scan (agent client disconnect, desktop
+// "stop" button) aborts promptly instead of finishing a multi-minute walk
+// for nobody — the returned error is then ctx.Err(), never a partial result
+// presented as a complete one.
+func ScanRepositories(ctx context.Context, roots []string, maxDepth int) ([]RepoInfo, error) {
 	var repos []RepoInfo
 	for _, root := range roots {
-		found, err := scanRoot(root, maxDepth)
+		if err := ctx.Err(); err != nil {
+			return repos, err
+		}
+		found, err := scanRoot(ctx, root, maxDepth)
 		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return repos, ctxErr
+			}
 			// skip inaccessible roots
 			continue
 		}
@@ -31,7 +43,7 @@ func ScanRepositories(roots []string, maxDepth int) ([]RepoInfo, error) {
 }
 
 // scanRoot scans a single root directory for git repositories.
-func scanRoot(root string, maxDepth int) ([]RepoInfo, error) {
+func scanRoot(ctx context.Context, root string, maxDepth int) ([]RepoInfo, error) {
 	var repos []RepoInfo
 	entriesCount := 0
 
@@ -55,6 +67,11 @@ func scanRoot(root string, maxDepth int) ([]RepoInfo, error) {
 				return nil
 			}
 			return nil
+		}
+
+		// Cancelled mid-walk: stop descending, surface the cancellation.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return filepath.SkipAll
 		}
 
 		if !d.IsDir() {
@@ -94,5 +111,17 @@ func scanRoot(root string, maxDepth int) ([]RepoInfo, error) {
 		return nil
 	})
 
-	return repos, err
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			// Cancellation won the race: never present a partial walk as a
+			// complete result.
+			return repos, ctxErr
+		}
+		if !errors.Is(err, filepath.SkipAll) {
+			return repos, err
+		}
+		// MaxEntries reached: keep the repos already found on this root
+		// instead of silently dropping the whole root's results.
+	}
+	return repos, nil
 }

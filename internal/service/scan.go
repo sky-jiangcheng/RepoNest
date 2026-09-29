@@ -18,6 +18,10 @@ type ScanResult struct {
 	Success    bool   `json:"success"`
 	ReposFound int    `json:"repos_found"`
 	Projects   int    `json:"projects"`
+	// SyncErrors counts project groups whose DB sync failed while others
+	// succeeded. A partial sync used to report plain success, leaving the
+	// agent to believe the knowledge base was complete.
+	SyncErrors int    `json:"sync_errors,omitempty"`
 	TaskID     string `json:"task_id,omitempty"`
 }
 
@@ -84,11 +88,12 @@ func (s *Service) ScanNow(ctx context.Context) (*ScanResult, error) {
 		s.scanMu.Unlock()
 	}()
 
-	repos, projects, err := s.runCollectedScan(ctx)
+	res, err := s.runCollectedScan(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &ScanResult{Success: true, ReposFound: repos, Projects: projects}, nil
+	res.Success = true
+	return &res, nil
 }
 
 // TriggerScan starts an async full repository scan and returns immediately.
@@ -109,7 +114,7 @@ func (s *Service) TriggerScan() (*ScanResult, error) {
 	taskID := fmt.Sprintf("%d", time.Now().UnixNano())
 
 	go func() {
-		if _, _, err := s.runCollectedScan(ctx); err != nil {
+		if _, err := s.runCollectedScan(ctx); err != nil {
 			// Cancellation via CancelScan is the expected path: the desktop
 			// user pressed "stop". Anything else is a real scan failure that
 			// used to vanish into runCollectedScan's log-only error handling.
@@ -158,12 +163,15 @@ func (s *Service) GetScanStatus() *ScanStatus {
 // errors instead of being logged and swallowed: ScanNow must be able to tell
 // an agent "the scan failed" rather than reporting success with 0 repos.
 // Per-group sync errors stay non-fatal (one bad path must not abort the whole
-// scan), but a panic anywhere in the pipeline is converted into an error too,
-// because a recovered panic that reports success would be a lie.
-func (s *Service) runCollectedScan(ctx context.Context) (foundRepos, foundProjects int, err error) {
+// scan) but are counted into ScanResult.SyncErrors, so a partial sync never
+// masquerades as a clean one; a panic anywhere in the pipeline is converted
+// into an error too, because a recovered panic that reports success would be
+// a lie.
+func (s *Service) runCollectedScan(ctx context.Context) (out ScanResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("panic in collected scan: %v", r)
+			out = ScanResult{}
 			err = fmt.Errorf("scan panicked: %v", r)
 		}
 	}()
@@ -175,9 +183,11 @@ func (s *Service) runCollectedScan(ctx context.Context) (foundRepos, foundProjec
 	}
 
 	roots, _ := db.GetScanRoots(s.db)
-	repos, err := scanner.ScanRepositories(roots, maxDepth)
+	repos, err := scanner.ScanRepositories(ctx, roots, maxDepth)
 	if err != nil {
-		return 0, 0, fmt.Errorf("scan repositories: %w", err)
+		// Cancellation or a genuine walk failure — never present a partial
+		// filesystem result as a complete scan.
+		return ScanResult{ReposFound: len(repos)}, fmt.Errorf("scan repositories: %w", err)
 	}
 
 	// Group discovered repositories into projects. Repositories returned by
@@ -197,15 +207,15 @@ func (s *Service) runCollectedScan(ctx context.Context) (foundRepos, foundProjec
 
 	tx, err := s.db.Begin()
 	if err != nil {
-		return 0, 0, fmt.Errorf("begin scan transaction: %w", err)
+		return ScanResult{ReposFound: len(repos)}, fmt.Errorf("begin scan transaction: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	var syncErrs int
+	syncErrs := 0
 	for i, group := range groups {
 		select {
 		case <-ctx.Done():
-			return 0, 0, ctx.Err()
+			return ScanResult{ReposFound: len(repos)}, ctx.Err()
 		default:
 		}
 		s.scanMu.Lock()
@@ -233,15 +243,15 @@ func (s *Service) runCollectedScan(ctx context.Context) (foundRepos, foundProjec
 	// "found N projects" would tell the agent the knowledge base is ready
 	// when it is empty.
 	if syncErrs > 0 && syncErrs == len(groups) {
-		return 0, 0, fmt.Errorf("scan sync failed for all %d discovered project group(s)", len(groups))
+		return ScanResult{}, fmt.Errorf("scan sync failed for all %d discovered project group(s)", len(groups))
 	}
 
 	if err := db.CleanupStaleDataTx(tx, scannedPaths); err != nil {
-		return 0, 0, fmt.Errorf("cleanup stale data: %w", err)
+		return ScanResult{ReposFound: len(repos)}, fmt.Errorf("cleanup stale data: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, 0, fmt.Errorf("commit scan transaction: %w", err)
+		return ScanResult{ReposFound: len(repos)}, fmt.Errorf("commit scan transaction: %w", err)
 	}
 
 	// Re-read after commit: projects found by this scan were just marked
@@ -253,15 +263,15 @@ func (s *Service) runCollectedScan(ctx context.Context) (foundRepos, foundProjec
 		// is skipped, so report the real counts with a warning-level log
 		// instead of failing the whole call.
 		log.Printf("load collected projects error: %v", err)
-		return len(repos), len(groups), nil
+		return ScanResult{ReposFound: len(repos), Projects: len(groups), SyncErrors: syncErrs}, nil
 	}
 	s.refreshCollectedStats(ctx, collectedIDs)
 	_ = db.SetConfig(s.db, "last_stats_backfill", s.git.GetTodayDate())
-	log.Printf("scan complete: %d repos, %d projects", len(repos), len(groups))
+	log.Printf("scan complete: %d repos, %d projects (%d sync errors)", len(repos), len(groups), syncErrs)
 	if s.rt != nil {
 		s.rt.Emit("project.scanned", map[string]any{
 			"repos_found": len(repos), "projects": len(groups),
 		})
 	}
-	return len(repos), len(groups), nil
+	return ScanResult{ReposFound: len(repos), Projects: len(groups), SyncErrors: syncErrs}, nil
 }

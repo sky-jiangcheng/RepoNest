@@ -197,7 +197,7 @@ func TestCreateHandoffNoteValidationAndTemplate(t *testing.T) {
 	if note.Kind != "knowledge" || note.Source != "mcp" {
 		t.Errorf("handoff should persist as knowledge/mcp, got kind=%s source=%s", note.Kind, note.Source)
 	}
-	if !noteIsHandoff(*note) {
+	if !IsHandoffNote(*note) {
 		t.Errorf("handoff note must carry the %q tag, tags=%q", handoffTag, note.Tags)
 	}
 	if !strings.Contains(note.Tags, "frontend") {

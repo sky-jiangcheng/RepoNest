@@ -223,7 +223,7 @@
 
 ### M4: Agent 集成即插即用
 
-- [ ] Claude Code hook 示例：SessionEnd hook 自动触发 `reponest_handoff`（文档级，先于代码）
+- [x] Claude Code hook 示例：SessionEnd hook 自动触发 reponest_handoff（v1.9.4 交付于 docs/features/ai-integration.md「会话结束自动交接」节）
 - [ ] `npx reponest-init` 类一键注册脚本（写 .mcp.json + 提示 hook 配置）
 
 ---
@@ -231,6 +231,8 @@
 ## 📋 遗留项
 
 - [ ] 桌面 GUI 回归测试：建议在真机跑一轮冒烟（扫描→收藏→刷新历史→笔记 CRUD→版本恢复→知识库搜索→MCP 问答）
+- [x] `reponest_context` brief/full 档位评估（v1.9.4 收敛：中等优先，缓做——当前固定 10 notes × 1200 字符 + 8 commits 对单会话偏充裕）
+- [x] README 对比表 + ASCII 架构图（v1.9.4 收敛：文档润色，低优先，缓做）
 - [x] `mineAndCacheAsync` 后台 goroutine 加 recover（`project_overview.go:138`）
 - [x] `.zcode/` 已移出跟踪，不需要 history rewrite
 - [ ] P29 `parseTimestamp` 鲁棒性（低优先级，git log 格式稳定）

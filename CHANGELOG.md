@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [1.9.4] - 2026-09-28
+
+### 新增
+
+- **Claude Code SessionEnd hook 示例（M4）**：把「零成本沉淀」从「依赖 agent 自觉调用 handoff」升级为会话生命周期自动触发。文档给出 `.claude/settings.json` 配置与配套脚本，一次有界的 headless 回合完成交接，并写清触发时机、成本与降级路径。见 `docs/features/ai-integration.md`「会话结束自动交接」节。
+
+### 安全
+
+- **handoff 协议防误覆盖**：交接笔记是会话记忆协议的契约——`reponest_context` 完整渲染最新一条，下一会话据此行动。此前一次 agent 误调用 `reponest_notes_update` 即可静默破坏该契约。现 MCP 写路径拒绝更新带 `handoff` 标签的笔记（提示改用 `reponest_handoff`；记录本身的修正保留给桌面端），普通笔记不受影响。
+
+### 修复
+
+- **`reponest_scan` 部分同步静默报成功**：个别项目组同步失败时仍返回纯 `success`，agent 据此信任了不完整的计数。`ScanResult` 新增 `sync_errors` 计数并在 MCP 结果中附带告警，指向 `reponest_integrity`。
+- **扫描取消无响应**：`ScanRepositories` 的目录遍历不接收 ctx，取消一次大规模扫描要等整趟 walk 跑完。现取消立即中止并向上传播（`scan repositories: context canceled`）。顺带修复：达到 `MaxEntries` 时此前会静默丢弃该根目录已发现的所有仓库。
+
 ## [1.9.3] - 2026-09-28
 
 ### 安全

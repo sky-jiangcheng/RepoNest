@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -33,11 +34,18 @@ func registerScanTool(mcpServer *server.MCPServer, svc *service.Service) {
 		if err != nil {
 			return makeTextResult("error: " + err.Error()), nil
 		}
-		return makeJSONResult("scan", map[string]any{
+		payload := map[string]any{
 			"success":     res.Success,
 			"repos_found": res.ReposFound,
 			"projects":    res.Projects,
 			"next_step":   "Call reponest_context to load a project's full working context.",
-		})
+		}
+		// A partial sync must not masquerade as a clean scan: the agent should
+		// know some project groups failed before it trusts the counts.
+		if res.SyncErrors > 0 {
+			payload["sync_errors"] = res.SyncErrors
+			payload["warning"] = fmt.Sprintf("%d project group(s) failed to sync; counts are partial — run reponest_integrity before trusting results", res.SyncErrors)
+		}
+		return makeJSONResult("scan", payload)
 	})
 }

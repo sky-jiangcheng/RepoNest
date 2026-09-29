@@ -35,12 +35,12 @@ MCP 是唯一的 AI 执行接口（`reponest` CLI 未随版本发布）。stdio 
 |------|------|------|
 | `reponest_scan` | 冷启动：播种默认扫描根目录并同步扫描，发现本地 Git 仓库（纯 MCP 安装可用，无需桌面应用） | 写 |
 | `reponest_context` | 会话开始一次注入项目全上下文（技术栈 / README / 待办 / 高相关笔记，交接笔记置顶） | 读 |
-| `reponest_handoff` | 会话结束结构化交接（summary/changes/decisions/gotchas/next_steps），落库并供下次 `reponest_context` 置顶读取 | 写 |
+| `reponest_handoff` | 会话结束结构化交接（summary/changes/decisions/gotchas/next_steps），落库并供下次 `reponest_context` 置顶读取；落库笔记带 `handoff` 标签，`reponest_notes_update` 拒绝覆盖 | 写 |
 | `reponest_notes_list` | 全部笔记 | 读 |
 | `reponest_notes_search` | FTS5 搜索（query） | 读 |
 | `reponest_notes_read` | 按 ID 读笔记 | 读 |
 | `reponest_notes_create` | 新建知识笔记 | 写 |
-| `reponest_notes_update` | 更新笔记内容与元数据 | 写 |
+| `reponest_notes_update` | 更新笔记内容与元数据（部分更新；拒绝覆盖 `handoff` 协议笔记） | 写 |
 | `reponest_projects_list` | 全部项目 | 读 |
 | `reponest_projects_stats` | 项目统计（按 id） | 读 |
 | `reponest_ask` | 问答式检索，Top-5 文本 | 读 |
@@ -75,6 +75,53 @@ claude mcp add reponest -- /path/to/reponest-mcp
   }
 }
 ```
+
+### 会话结束自动交接（SessionEnd hook）
+
+「零成本沉淀」的真实含义不是「agent 记得自觉调用」——靠自觉等于没有承诺。Claude Code 的 **SessionEnd hook** 把交接变成会话生命周期的一部分：会话一结束，交接必然发生，不依赖 agent 的记性。这也是新用户装完第一天就能感受到「下次开局即带全上下文」的路径。
+
+写入 `.claude/settings.json`（项目级，随仓库分享给协作者）：
+
+```json
+{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/reponest-handoff.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+配套脚本 `.claude/hooks/reponest-handoff.sh`（记得 `chmod +x`）：
+
+```sh
+#!/bin/sh
+# SessionEnd hook: make the handoff automatic instead of relying on the
+# agent's goodwill. One bounded headless turn costs a fraction of the
+# session it preserves; "the agent will remember to call handoff" costs
+# the entire exit record whenever it forgets.
+set -u
+cd "${CLAUDE_PROJECT_DIR:-$(pwd)}" || exit 0
+command -v claude >/dev/null 2>&1 || exit 0
+claude -p --mcp-config .mcp.json \
+  'This session ended. Call reponest_handoff for the current project: a concise summary plus next_steps. If the project cannot be resolved, call reponest_context once first. Do nothing else.' \
+  >/dev/null 2>&1 || true
+```
+
+设计要点与代价（写清楚，别让叙事变成吹牛）：
+
+- **触发时机**：会话结束时由 Claude Code 触发，触发原因（`clear` / `logout` / `prompt_input_exit` / `other`）以 JSON 形式写入 stdin；脚本可读 stdin 按需跳过（例如「只是清了上下文」不必交接）。
+- **成本**：一次有界的 headless 回合（`claude -p`），远小于它保存的整场会话上下文；hook 有默认超时（60s），脚本以 `|| true` 静默收尾，不影响会话退出。
+- **降级路径**：没有 `claude` CLI 时直接跳过；MCP 未注册时 headless 调用失败并被吞掉——协议要求交接必须由 `reponest_handoff` 写入，hook 只负责「必定触发」，从不绕过协议直写数据库。
+- **协议保护**：交接笔记带 `handoff` 标签，`reponest_notes_update` 拒绝覆盖它们（防误覆盖），下一次会话由 `reponest_context` 置顶完整渲染。
+- hook 的事件名与配置字段随 Claude Code 版本演进，接入前以 `claude --help` 和官方 hooks 文档为准。
 
 ### 接入 Cursor / 其他 MCP 客户端
 

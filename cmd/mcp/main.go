@@ -248,7 +248,7 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 
 	mcpServer.AddTool(mcp.Tool{
 		Name:        "reponest_notes_update",
-		Description: "Update an existing note's content and/or metadata. Omitted fields keep their current value (there is deliberately no way to clear the title or tags — write a new note instead).",
+		Description: "Update an existing note's content and/or metadata. Omitted fields keep their current value (there is deliberately no way to clear the title or tags — write a new note instead). Notes tagged 'handoff' are session-protocol records and cannot be updated here: write a new handoff with reponest_handoff instead.",
 		InputSchema: mcp.ToolInputSchema{
 			Type: "object",
 			Properties: map[string]any{
@@ -295,6 +295,17 @@ func registerTools(mcpServer *server.MCPServer, svc *service.Service) {
 		note, err := svc.GetNote(int64(id))
 		if err != nil {
 			return makeTextResult(fmt.Sprintf("note not found: %v", err)), nil
+		}
+
+		// Handoff notes are the session-memory protocol's exit records:
+		// reponest_context renders the latest one in full and the next
+		// session acts on it. One mistaken update used to silently overwrite
+		// that contract, so this agent-facing write path treats them as
+		// append-only. Writing a new handoff (reponest_handoff) is the
+		// supported flow; fixing the record itself stays a desktop-UI
+		// operation.
+		if service.IsHandoffNote(*note) {
+			return makeTextResult(fmt.Sprintf("refusing to update note %d: it is a session handoff (tagged 'handoff') — the protocol record between sessions, protected from plain overwrites. Write a new handoff with reponest_handoff; if this record itself is wrong, edit it from the desktop app.", note.ID)), nil
 		}
 
 		if content != "" {

@@ -277,7 +277,7 @@ func renderProjectCatalog(projects []domain.Project) string {
 // describe the freshest state of the work.
 func splitHandoffNotes(notes []domain.Note) (handoff, plain []domain.Note) {
 	for _, n := range notes {
-		if noteIsHandoff(n) {
+		if IsHandoffNote(n) {
 			handoff = append(handoff, n)
 		} else {
 			plain = append(plain, n)
@@ -334,9 +334,12 @@ func oneLineSummary(content string, maxLen int) string {
 	return "(no summary)"
 }
 
-// noteIsHandoff checks the note's tag list for the "handoff" tag. Tags are
-// stored as a comma-separated string, so the check compares each element.
-func noteIsHandoff(n domain.Note) bool {
+// IsHandoffNote reports whether a note carries the "handoff" tag. Handoff
+// notes are the session-memory protocol's exit records: reponest_context
+// renders the latest one in full and the next session acts on it, so the MCP
+// write path treats them as append-only protocol artifacts rather than
+// ordinary notes.
+func IsHandoffNote(n domain.Note) bool {
 	for _, tag := range strings.Split(n.Tags, ",") {
 		if strings.EqualFold(strings.TrimSpace(tag), "handoff") {
 			return true

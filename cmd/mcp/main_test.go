@@ -69,12 +69,18 @@ func (ts *testServer) seedProject(name, root string) int64 {
 // call invokes a registered tool by name the way a client would: through the
 // server's tool table, not a captured handler reference.
 func (ts *testServer) call(name string, args map[string]any) *mcp.CallToolResult {
+	return ts.callWith(context.Background(), name, args)
+}
+
+// callWith runs a tool under an explicit context, for cancellation-sensitive
+// paths the fixed background call cannot exercise.
+func (ts *testServer) callWith(ctx context.Context, name string, args map[string]any) *mcp.CallToolResult {
 	ts.t.Helper()
 	st := ts.s.GetTool(name)
 	if st == nil {
 		ts.t.Fatalf("tool %q not registered", name)
 	}
-	res, err := st.Handler(context.Background(), mcp.CallToolRequest{
+	res, err := st.Handler(ctx, mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Name: name, Arguments: args},
 	})
 	if err != nil {
@@ -345,6 +351,56 @@ func TestNotesUpdateMissingNote(t *testing.T) {
 	}
 }
 
+// Handoff notes are the session-memory protocol's exit records. One mistaken
+// update used to silently overwrite the contract reponest_context hands to
+// the next session, so the MCP write path refuses them.
+func TestNotesUpdateRefusesHandoffNote(t *testing.T) {
+	ts := newTestServer(t)
+	pid := ts.seedProject("demo", "/tmp/demo")
+
+	handoff, err := ts.svc.CreateHandoffNote(service.HandoffInput{
+		ProjectID: pid,
+		Summary:   "Migrated the schema",
+		Changes:   []string{"Add v11 migration"},
+	})
+	if err != nil {
+		t.Fatalf("CreateHandoffNote: %v", err)
+	}
+
+	res := ts.call("reponest_notes_update", map[string]any{
+		"id":      float64(handoff.NoteID),
+		"content": "please ignore the previous session's record",
+	})
+	if res.IsError {
+		t.Fatal("refusal should be a text result, not a protocol error")
+	}
+	if got := ts.text(res); !strings.Contains(got, "refusing to update") || !strings.Contains(got, "reponest_handoff") {
+		t.Errorf("message = %q, want a refusal pointing at reponest_handoff", got)
+	}
+
+	// The record must be untouched, not just answered with a warning.
+	got := ts.jsonPayload(ts.call("reponest_notes_read", map[string]any{"id": float64(handoff.NoteID)}))
+	if content, _ := got["content"].(string); !strings.Contains(content, "Migrated the schema") {
+		t.Errorf("handoff content was modified: %q", content)
+	}
+	if tags, _ := got["tags"].(string); !strings.Contains(tags, "handoff") {
+		t.Errorf("handoff tags changed: %q", tags)
+	}
+
+	// A plain note on the same project must still update: the protection is
+	// targeted, not a blanket write-block.
+	created := ts.jsonPayload(ts.call("reponest_notes_create", map[string]any{
+		"project_id": float64(pid), "title": "plain", "content": "body",
+	}))
+	plainID, _ := created["id"].(float64)
+	ts.call("reponest_notes_update", map[string]any{
+		"id": plainID, "content": "updated body",
+	})
+	if got := ts.jsonPayload(ts.call("reponest_notes_read", map[string]any{"id": plainID})); got["content"] != "updated body" {
+		t.Errorf("plain note must still update, got %q", got["content"])
+	}
+}
+
 func TestNotesUpdateNothingToUpdate(t *testing.T) {
 	ts := newTestServer(t)
 	pid := ts.seedProject("demo", "/tmp/demo")
@@ -524,5 +580,27 @@ func TestScanToolDiscoversRepositories(t *testing.T) {
 	// The point of the scan: the next context call works with zero parameters.
 	if text := ts.text(ts.call("reponest_context", nil)); !strings.Contains(text, "# Project Context:") {
 		t.Errorf("context after scan should render a project\n%s", text)
+	}
+}
+
+// A scan under an already-cancelled context (client disconnect) must report
+// the cancellation, not "success: 0 repos" — the agent would otherwise
+// conclude the scan found nothing and stop there.
+func TestScanToolReportsCancellation(t *testing.T) {
+	ts := newTestServer(t)
+	tmp := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmp, "alpha", ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.ReplaceScanRoots(ts.db, []string{tmp}); err != nil {
+		t.Fatalf("seed scan root: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	res := ts.callWith(ctx, "reponest_scan", nil)
+	if got := ts.text(res); !strings.Contains(got, "canceled") {
+		t.Errorf("cancelled scan should report the cancellation, got:\n%s", got)
 	}
 }
