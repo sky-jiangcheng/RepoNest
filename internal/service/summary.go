@@ -8,6 +8,7 @@ import (
 
 	"repo-nest/internal/db"
 	"repo-nest/internal/domain"
+	"repo-nest/internal/integrity"
 )
 
 // SummaryData holds the daily summary payload.
@@ -151,4 +152,15 @@ func (s *Service) GetNoteCounts() []domain.NoteCount {
 		counts = []domain.NoteCount{}
 	}
 	return counts
+}
+
+// RunIntegrityChecks audits how much of the knowledge base can be trusted:
+// FTS index drift, orphan rows, schema shape versus the version stamp, scan
+// coverage and mined-cache freshness.
+//
+// It is exposed on the Service rather than by handing out the *sql.DB so that
+// the integrity package stays behind this layer, per ADR-0005. The returned
+// Report is a snapshot - it is read-only and safe to keep or print.
+func (s *Service) RunIntegrityChecks() *integrity.Report {
+	return integrity.RunAll(s.db)
 }

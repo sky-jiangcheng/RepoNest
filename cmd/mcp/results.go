@@ -44,18 +44,23 @@ func runAgentScore(svc *service.Service) string {
 		}
 	}
 
-	// 1. Database health + notes count
-	notes := svc.ListAllNotes()
-	noteCount := len(notes)
-	if noteCount > 0 {
-		parts = append(parts, fmt.Sprintf("  ✅ Database OK — %d notes", noteCount))
+	// Count, not load: len(ListAllNotes()) used to materialize every note's
+	// full content just to report how many there are.
+	noteCount := svc.CountNotes()
+
+	// 1. Database reachable. This used to be `noteCount > 0`, identical to
+	// check 2 below — the same signal counted twice, inflating the score of an
+	// empty install. Health() actually pings the handle, so it can fail where
+	// "there are no notes yet" is perfectly healthy.
+	if h := svc.Health(); h["status"] == "ok" {
+		parts = append(parts, fmt.Sprintf("  ✅ Database reachable (schema v%s, %d note(s))", h["version"], noteCount))
 		record(true)
 	} else {
-		parts = append(parts, "  ⚠️  Database OK but no notes (run scan first)")
+		parts = append(parts, fmt.Sprintf("  ❌ Database unavailable: %v — nothing below can be trusted", h["message"]))
 		record(false)
 	}
 
-	// 2. Notes exist
+	// 2. Notes exist (now the only check on noteCount)
 	if noteCount > 0 {
 		parts = append(parts, fmt.Sprintf("  ✅ Notes exist: %d", noteCount))
 		record(true)
@@ -64,13 +69,19 @@ func runAgentScore(svc *service.Service) string {
 		record(false)
 	}
 
-	// 3. Search works
+	// 3. Search works. `hits != nil` looks like it should be `len(hits) > 0`
+	// and is worth a note, because the two are NOT equivalent here:
+	// internal/db/search.go returns a nil slice for a successful zero-hit
+	// query, but internal/service/search.go normalises that to an empty
+	// non-nil slice, and returns nil *only* when the query actually errored.
+	// So nil means "the search path is broken" and empty means "searched
+	// fine, nothing matched" — which is the healthy state for a fresh install.
 	hits := svc.SearchAll("test")
 	if hits != nil {
-		parts = append(parts, "  ✅ Search (FTS5) operational")
+		parts = append(parts, fmt.Sprintf("  ✅ Search (FTS5) operational (%d hit(s) for probe)", len(hits)))
 		record(true)
 	} else {
-		parts = append(parts, "  ⚠️  Search not available")
+		parts = append(parts, "  ⚠️  Search not available — the FTS5 query path returned an error")
 		record(false)
 	}
 

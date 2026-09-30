@@ -9,6 +9,8 @@ package claude
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +22,13 @@ import (
 // SourceName is the stable knowledge-source identifier registered by this
 // importer.
 const SourceName = "claude"
+
+// maxImportReadBytes caps how much of one memory file is read into memory.
+// Claude's memory files are human-written Markdown notes, so anything above
+// the note content bound is junk or a mistake. The cap matters on its own:
+// os.ReadFile loads the whole file before any bound check could reject it, so
+// a single oversized file OOM'd the import.
+const maxImportReadBytes = db.MaxNoteContentLen + 1
 
 // Importer implements plugin.KnowledgeImporter for Claude memory files.
 type Importer struct {
@@ -77,8 +86,15 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 			if base == "MEMORY" {
 				continue
 			}
-			raw, err := os.ReadFile(filepath.Join(memDir, m.Name()))
+			raw, err := readCapped(filepath.Join(memDir, m.Name()), maxImportReadBytes)
 			if err != nil {
+				continue
+			}
+			if len(raw) > db.MaxNoteContentLen {
+				// The runtime would reject the oversized doc anyway; skipping
+				// here keeps the failure attributed to the file that caused it.
+				log.Printf("claude importer: skipping %s/%s: %d bytes exceeds the %d-byte note limit",
+					e.Name(), m.Name(), len(raw), db.MaxNoteContentLen)
 				continue
 			}
 			docs = append(docs, plugin.ImportDoc{
@@ -91,6 +107,18 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 		}
 	}
 	return docs, nil
+}
+
+// readCapped reads at most limit bytes from path. A file larger than the limit
+// returns exactly limit bytes with no error, so the caller can distinguish
+// "oversized" from "unreadable" and skip the file with a clear message.
+func readCapped(path string, limit int) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(io.LimitReader(f, int64(limit)))
 }
 
 // DisplayName extracts the final path segment from a Claude project dir name

@@ -9,6 +9,10 @@ import (
 	"repo-nest/internal/domain"
 )
 
+// llmsNotesScanLimit caps how many recent knowledge notes llms.txt scans to
+// fill its 20-note window; it must stay comfortably above that window.
+const llmsNotesScanLimit = 200
+
 // GenerateLLMsTxt returns an aggregated Markdown document suitable for AI
 // consumption. It contains a project catalog, recent knowledge notes, and a
 // structured summary of the local codebase knowledge base.
@@ -80,8 +84,10 @@ func (s *Service) GenerateLLMsTxt() string {
 		b.WriteString("\n")
 	}
 
-	// Recent knowledge notes
-	notes, err := db.ListAllNotes(s.db)
+	// Recent knowledge notes. The query filters by kind and caps the scan:
+	// loading every note (full content included) to display twenty of them
+	// is what made llms.txt generation quadratic in knowledge-base size.
+	notes, err := db.ListAllNotes(s.db, llmsNotesScanLimit, "knowledge")
 	if err != nil {
 		log.Printf("generate llms.txt notes error: %v", err)
 		notes = []domain.NoteWithProject{}
@@ -89,9 +95,6 @@ func (s *Service) GenerateLLMsTxt() string {
 	b.WriteString("## Recent Knowledge Notes\n\n")
 	shown := 0
 	for _, n := range notes {
-		if n.Kind != "knowledge" {
-			continue
-		}
 		b.WriteString(fmt.Sprintf("### %s\n\n", firstNonEmpty(n.Title, "Untitled")))
 		b.WriteString(fmt.Sprintf("- Project: %s\n", n.ProjectName))
 		b.WriteString(fmt.Sprintf("- Tags: %s\n", n.Tags))

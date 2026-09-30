@@ -1,0 +1,255 @@
+# Install-script smoke test / 安装脚本冒烟测试
+#
+# Rationale / 背景: scripts/install.sh and install.ps1 both download from
+# `releases/latest/download`, so a wrong asset name (or a rename in
+# release.yml) fails only for end users, silently — CHANGELOG 1.8.0 records
+# that the macOS/Linux/Windows one-liners had "never succeeded" before that
+# release. This job exercises the real download → extract → install path
+# against a local fixture server, so the failure surfaces here instead.
+#
+# The desktop asset is faked (the goal is the script's URL/extract/install
+# logic, not Wails output), but the MCP archive is a real Go build of
+# ./cmd/mcp, so `reponest-mcp` actually runs afterwards. RELEASES /
+# REPO_NEST_RELEASE_BASE point the scripts at the fixture.
+name: Install smoke test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: install.sh (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+          cache: true
+
+      # The MCP binary is the real deliverable under test: a genuine build of
+      # ./cmd/mcp packed the same way release.yml packs it.
+      - name: Build MCP server
+        run: go build -o dist/reponest-mcp ./cmd/mcp/
+
+      # The desktop tarball only has to satisfy the script's download and
+      # extract steps; building Wails here would need GTK/WebKit and would
+      # test release.yml instead of install.sh.
+      - name: Pack fixture assets
+        run: |
+          mkdir -p dist
+          printf '#!/bin/sh\necho reponest fixture\n' > dist/reponest
+          chmod +x dist/reponest
+          tar -czf dist/reponest-linux-amd64.tar.gz -C dist reponest
+          tar -czf dist/reponest-mcp-linux-amd64.tar.gz -C dist reponest-mcp
+          rm -f dist/reponest
+          # Same manifest shape release.yml uploads, so install.sh's verify
+          # path runs for real (not just its "no manifest" skip path).
+          (cd dist && sha256sum reponest-linux-amd64.tar.gz reponest-mcp-linux-amd64.tar.gz > SHA256SUMS)
+          cat dist/SHA256SUMS
+
+      - name: Serve fixtures over HTTP
+        run: |
+          python3 -m http.server 8080 --directory dist &
+          for i in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:8080/ >/dev/null && break
+            sleep 0.5
+          done
+
+      - name: Run install.sh against fixtures
+        env:
+          RELEASES: http://127.0.0.1:8080
+        run: |
+          export INSTALL_DIR="$RUNNER_TEMP/bin"
+          mkdir -p "$INSTALL_DIR"
+          bash scripts/install.sh
+
+      - name: Verify installed binaries execute
+        run: |
+          export PATH="$RUNNER_TEMP/bin:$PATH"
+          command -v reponest
+          command -v reponest-mcp
+          # reponest-mcp serves MCP over stdio; it must answer an initialize
+          # handshake, not just exist as a file.
+          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            | "$RUNNER_TEMP/bin/reponest-mcp" 2>/dev/null | grep -q 'reponest-mcp' || {
+            echo "reponest-mcp did not answer initialize" >&2; exit 1; }
+
+      # The positive run above proves verification *runs*; this proves it can
+      # *fail*. Without it, a bug that always skipped verification would pass
+      # the whole suite.
+      - name: Corrupted checksum is rejected
+        env:
+          RELEASES: http://127.0.0.1:8080
+        run: |
+          # Flip the first hex digit of the desktop asset's digest in the
+          # manifest the fixture server is serving (it reads from disk per
+          # request), then install.sh must abort instead of installing.
+          python3 - <<'EOF'
+          import pathlib
+          p = pathlib.Path("dist/SHA256SUMS")
+          lines = p.read_text().splitlines()
+          digest = lines[0].split()[0]
+          lines[0] = lines[0].replace(digest, ("1" if digest[0] == "0" else "0") + digest[1:], 1)
+          p.write_text("\n".join(lines) + "\n")
+          EOF
+          export INSTALL_DIR="$RUNNER_TEMP/bin-bad"
+          mkdir -p "$INSTALL_DIR"
+          if bash scripts/install.sh >/dev/null 2>&1; then
+            echo "install.sh accepted a corrupted SHA256SUMS" >&2
+            exit 1
+          fi
+          echo "corrupted checksum correctly rejected"
+
+  macos:
+    name: install.sh (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Build MCP server
+        run: go build -o dist/reponest-mcp ./cmd/mcp/
+
+      # macOS install.sh attaches a .dmg with hdiutil; a fixture dmg built
+      # with hdiutil is a real one, so the attach/detach path is exercised.
+      # The .app bundle layout mirrors what Wails produces (a directory named
+      # RepoNest.app/Contents/...), which is what the script looks for inside
+      # the dmg.
+      - name: Pack fixture assets
+        run: |
+          TARGET="$(uname -m | sed 's/x86_64/amd64/;s/arm64/arm64/')"
+          TARGET="darwin-$TARGET"
+          echo "TARGET=$TARGET" >> "$GITHUB_ENV"
+          mkdir -p stage/RepoNest.app/Contents/MacOS dist
+          printf '#!/bin/sh\necho reponest fixture\n' > stage/RepoNest.app/Contents/MacOS/reponest
+          chmod +x stage/RepoNest.app/Contents/MacOS/reponest
+          hdiutil create -volname RepoNest -srcfolder stage -ov -format UDZO \
+            "dist/reponest-$TARGET.dmg"
+          tar -czf "dist/reponest-mcp-$TARGET.tar.gz" -C dist reponest-mcp
+          # Same manifest shape release.yml uploads, so install.sh's verify
+          # path runs for real (not just its "no manifest" skip path).
+          (cd dist && shasum -a 256 "reponest-$TARGET.dmg" "reponest-mcp-$TARGET.tar.gz" > SHA256SUMS)
+          cat dist/SHA256SUMS
+
+      - name: Serve fixtures over HTTP
+        run: |
+          python3 -m http.server 8080 --directory dist &
+          for i in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:8080/ >/dev/null && break
+            sleep 0.5
+          done
+
+      - name: Run install.sh against fixtures
+        env:
+          RELEASES: http://127.0.0.1:8080
+        run: |
+          # Scratch dirs: no sudo, and nothing touches the real
+          # /Applications or /usr/local/bin on the runner.
+          export APP_INSTALL_DIR="$RUNNER_TEMP/Applications"
+          export INSTALL_DIR="$RUNNER_TEMP/bin"
+          mkdir -p "$APP_INSTALL_DIR" "$INSTALL_DIR"
+          bash scripts/install.sh
+
+      - name: Verify installed artifacts
+        run: |
+          test -d "$RUNNER_TEMP/Applications/RepoNest.app" || {
+            echo "RepoNest.app missing" >&2; exit 1; }
+          test -x "$RUNNER_TEMP/bin/reponest-mcp" || {
+            echo "reponest-mcp missing or not executable" >&2; exit 1; }
+          # The MCP binary must actually run, not just exist.
+          echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            | "$RUNNER_TEMP/bin/reponest-mcp" 2>/dev/null | grep -q 'reponest-mcp' || {
+            echo "reponest-mcp did not answer initialize" >&2; exit 1; }
+
+  windows:
+    name: install.ps1 (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Build MCP server
+        run: go build -o dist/reponest-mcp.exe ./cmd/mcp/
+
+      - name: Pack fixture assets
+        shell: pwsh
+        run: |
+          # Desktop zip: the script only checks the archive extracts and
+          # contains reponest.exe.
+          Set-Content -Path dist/reponest.exe -Value "fixture" -NoNewline
+          Compress-Archive -Path dist/reponest.exe `
+            -DestinationPath dist/reponest-windows-amd64.zip -Force
+          Compress-Archive -Path dist/reponest-mcp.exe `
+            -DestinationPath dist/reponest-mcp-windows-amd64.zip -Force
+          # Same manifest shape release.yml uploads, so install.ps1's verify
+          # path runs for real (not just its "no manifest" skip path).
+          $lines = foreach ($f in @("dist/reponest-windows-amd64.zip", "dist/reponest-mcp-windows-amd64.zip")) {
+            "$((Get-FileHash -Path $f -Algorithm SHA256).Hash.ToLower())  $(Split-Path $f -Leaf)"
+          }
+          Set-Content -Path dist/SHA256SUMS -Value ($lines -join "`r`n") -Encoding ascii -NoNewline
+          Get-Content dist/SHA256SUMS
+
+      - name: Serve fixtures over HTTP
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath python -ArgumentList `
+            "-m","http.server","8080","--directory","dist" `
+            -PassThru -WindowStyle Hidden
+          "SERVER_PID=$($p.Id)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $ok = $false
+          for ($i = 0; $i -lt 40; $i++) {
+            try {
+              Invoke-WebRequest -Uri http://127.0.0.1:8080/ -UseBasicParsing | Out-Null
+              $ok = $true; break
+            } catch { Start-Sleep -Milliseconds 500 }
+          }
+          if (-not $ok) { throw "fixture server did not start" }
+
+      - name: Run install script
+        shell: pwsh
+        run: |
+          $env:REPO_NEST_RELEASE_BASE = "http://127.0.0.1:8080"
+          . .\scripts\install.ps1
+
+      - name: Verify installed artifacts
+        shell: pwsh
+        run: |
+          $dir = "$env:LOCALAPPDATA\RepoNest"
+          if (-not (Test-Path "$dir\reponest.exe")) { throw "reponest.exe missing" }
+          if (-not (Test-Path "$dir\reponest-mcp.exe")) { throw "reponest-mcp.exe missing" }
+
+      - name: Stop fixture server
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:SERVER_PID) { Stop-Process -Id $env:SERVER_PID -Force -ErrorAction SilentlyContinue }

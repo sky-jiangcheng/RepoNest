@@ -9,6 +9,15 @@ import (
 	"repo-nest/internal/domain"
 )
 
+// validateNoteBounds rejects oversized note fields before they reach the
+// database. The enforcement lives in internal/db (the chokepoint every writer
+// converges on, including the plugin runtime's direct db upserts); the service
+// keeps calling it first so the desktop UI and MCP callers get the friendly
+// message before a raw DB error surfaces.
+func validateNoteBounds(title, content, tags string) error {
+	return db.ValidateNoteBounds(title, content, tags)
+}
+
 // ListNotes returns all notes for a project.
 func (s *Service) ListNotes(projectID int64) []domain.Note {
 	notes, err := db.ListNotes(s.db, projectID)
@@ -27,6 +36,9 @@ func (s *Service) CreateNote(projectID int64, content string) (*domain.Note, err
 	if strings.TrimSpace(content) == "" {
 		return nil, fmt.Errorf("content is required")
 	}
+	if err := validateNoteBounds("", content, ""); err != nil {
+		return nil, err
+	}
 	note, err := db.CreateNote(s.db, projectID, content)
 	if err == nil && s.rt != nil {
 		s.rt.Emit("note.created", map[string]any{
@@ -40,6 +52,9 @@ func (s *Service) CreateNote(projectID int64, content string) (*domain.Note, err
 func (s *Service) CreateNoteWithMeta(projectID int64, title, content, tags, kind, source string) (*domain.Note, error) {
 	if strings.TrimSpace(content) == "" {
 		return nil, fmt.Errorf("content is required")
+	}
+	if err := validateNoteBounds(title, content, tags); err != nil {
+		return nil, err
 	}
 	note, err := db.CreateNoteEx(s.db, projectID, title, content, tags, kind, source)
 	if err == nil && s.rt != nil {
@@ -55,6 +70,9 @@ func (s *Service) UpdateNote(noteID int64, content string) error {
 	if strings.TrimSpace(content) == "" {
 		return fmt.Errorf("content is required")
 	}
+	if err := validateNoteBounds("", content, ""); err != nil {
+		return err
+	}
 	return db.UpdateNote(s.db, noteID, content)
 }
 
@@ -64,6 +82,9 @@ func (s *Service) UpdateNote(noteID int64, content string) error {
 func (s *Service) UpdateNoteFull(noteID int64, content, title, tags, kind string, pinned bool) error {
 	if strings.TrimSpace(content) == "" {
 		return fmt.Errorf("content is required")
+	}
+	if err := validateNoteBounds(title, content, tags); err != nil {
+		return err
 	}
 	return db.UpdateNoteFull(s.db, noteID, content, title, tags, kind, pinned)
 }
@@ -75,6 +96,9 @@ func (s *Service) DeleteNote(noteID int64) error {
 
 // UpdateNoteMeta updates a note's editable metadata (title, tags, kind, pinned).
 func (s *Service) UpdateNoteMeta(noteID int64, title, tags, kind string, pinned bool) error {
+	if err := validateNoteBounds(title, "", tags); err != nil {
+		return err
+	}
 	return db.UpdateNoteMeta(s.db, noteID, title, tags, kind, pinned)
 }
 
@@ -89,9 +113,29 @@ func (s *Service) MoveNote(noteID, projectID int64) error {
 }
 
 // ListAllNotes returns every note across all projects, joined with project
-// info, ordered pinned first then most recently updated.
+// info, ordered pinned first then most recently updated. Unbounded: this is
+// the desktop UI's full-list path. Agent-facing callers must use
+// ListAllNotesLimited so a large knowledge base is never fully loaded.
 func (s *Service) ListAllNotes() []domain.NoteWithProject {
-	notes, err := db.ListAllNotes(s.db)
+	return s.listAllNotes(0)
+}
+
+// ListAllNotesLimited returns the most recent notes across all projects,
+// capped at limit (<= 0 falls back to the default). Used by MCP tools and
+// llms.txt generation, whose output is bounded anyway: pulling every note
+// with its full content to display a few dozen is pure waste.
+func (s *Service) ListAllNotesLimited(limit int) []domain.NoteWithProject {
+	if limit <= 0 {
+		limit = defaultAllNotesLimit
+	}
+	return s.listAllNotes(limit)
+}
+
+// defaultAllNotesLimit matches reponest_notes_list's documented default.
+const defaultAllNotesLimit = 50
+
+func (s *Service) listAllNotes(limit int) []domain.NoteWithProject {
+	notes, err := db.ListAllNotes(s.db, limit, "")
 	if err != nil {
 		log.Printf("list all notes error: %v", err)
 		return nil
@@ -100,6 +144,17 @@ func (s *Service) ListAllNotes() []domain.NoteWithProject {
 		notes = []domain.NoteWithProject{}
 	}
 	return notes
+}
+
+// CountNotes returns the total number of notes across all projects without
+// loading them, for health/score checks that only need the number.
+func (s *Service) CountNotes() int {
+	n, err := db.CountNotes(s.db)
+	if err != nil {
+		log.Printf("count notes error: %v", err)
+		return 0
+	}
+	return n
 }
 
 // ListAllTags returns the distinct set of tags used across all notes.

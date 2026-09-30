@@ -51,5 +51,11 @@ docs/**/*.html
 .workbuddy/
 .zcode/
 
+# Release artifacts / 发布产物
+# Built by scripts/build-release-assets.sh; ~40MB of cross-compiled binaries.
+# Regenerate per release rather than committing them. The MCP server has no
+# build-time input beyond this repo, so nothing is lost.
+assets/releases/
+
 # 根目录游离的 npm 依赖（图标脚本等的临时安装，真正的依赖树在 web/node_modules）
 /node_modules/

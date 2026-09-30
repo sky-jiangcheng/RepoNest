@@ -2,7 +2,7 @@
 
 ## 一句话定位（对外）
 
-**RepoNest 是本地优先的“代码项目上下文库”**：帮你快速理解本地 Git 项目最近发生了什么、沉淀了哪些可检索知识，并把它们交给 AI 继续使用。
+**RepoNest 是本地优先的“跨 agent 项目记忆层”**：帮你快速理解本地 Git 项目最近发生了什么、沉淀了哪些可检索知识，并在会话边界自动把这些记忆交给任何 AI agent 继续使用。
 
 ## 用户价值（做减法后的承诺）
 
@@ -31,7 +31,7 @@
 - API 文档化、契约扩展、平台化入口
 
 ### 4) 停止投入或移出主叙事
-- PWA / SEO / Web-only 追加能力
+- PWA（已移出桌面主构建，见 ADR-0008）/ SEO / Web-only 追加能力
 - 易造成误解为“在线平台、团队 Dashboard、HTTP Server”的表达
 
 ## 对外叙事重构
@@ -42,18 +42,18 @@
 
 **中文（三句定位）**
 
-> RepoNest 现在更聚焦：本地项目上下文库。帮你快速理解项目、沉淀知识、交给 AI 继续使用。
+> RepoNest 是本地优先的跨 agent 项目记忆层：开会话一次注入上下文（`reponest_context`）、收会话结构化交接（`reponest_handoff`），让任何 agent 都从上一次结束的地方继续。
 
 **English**
 
-> RepoNest now focuses on what it does best: a local-first project context base—understand your local repos, capture reusable knowledge, and hand it off to AI.
+> RepoNest is the local-first memory layer for AI coding agents: one call injects full project context at session start (`reponest_context`), one call records a structured handoff at session end (`reponest_handoff`) — any agent picks up where the last one stopped.
 
 **Release note**
 
-> Positioning and UX alignment release: RepoNest prioritizes local project understanding and knowledge retrieval; dashboard/statistics become supporting capabilities.
+> Positioning release: RepoNest is reframed as the local-first, cross-agent project memory layer; the session loop (`reponest_scan` → `reponest_context` → `reponest_handoff`) becomes the headline capability. Dashboard/statistics stay supporting capabilities.
 
 ### 推荐（完整）
-> RepoNest 帮你把本地 Git 项目从“散落在终端和记忆里”变成“可检索、可复用的上下文”。它能快速发现你关心的项目，理解每个项目当前状态，并把笔记、依赖、技术栈和活跃信息沉淀下来；随后通过导出与 MCP 提供给 AI 继续使用。
+> RepoNest 帮你把本地 Git 项目从“散落在终端和记忆里”变成“可检索、可复用的记忆层”。它能快速发现你关心的项目，理解每个项目当前状态，并把笔记、依赖、技术栈和活跃信息沉淀下来；随后在会话开始时一次注入给 AI（`reponest_context`），在会话结束时结构化收回（`reponest_handoff`），跨 agent 复用。
 
 ### 暂停（容易误导）
 - “代码提交仪表盘 / 数据大盘”

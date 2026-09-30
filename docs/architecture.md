@@ -9,7 +9,7 @@ order: 20
 
 ## 总体形态
 
-单文件 **Wails v2** 桌面应用：Go 后端 + React SPA（`web/dist` 经 `go:embed` 打进二进制），SQLite（modernc 纯 Go，零 CGO），统计通过本机 `git` CLI 读取。**本地优先**：不监听端口、不上传数据。
+单文件 **Wails v2** 桌面应用：Go 后端 + React SPA（`web/dist` 经 `go:embed` 打进二进制），SQLite（modernc 纯 Go，零 CGO），统计通过本机 `git` CLI 读取。**本地优先**：不上传数据；桌面应用自身不监听端口，另有可选的 headless HTTP API（`cmd/server`，仅监听 `127.0.0.1`，供本地工具集成，默认不随桌面应用启动）。
 
 ## 分层（后端）
 
@@ -18,15 +18,15 @@ main.go                  Wails 入口：DB 初始化、扫描根播种、窗口/
    │
 internal/app             绑定层：每方法 1-3 行委托 service（transport glue）
    │
-internal/service         业务核心（唯一访问 db 与 git Provider 的层）
+internal/service         业务核心（笔记/搜索/上下文/交接等业务规则在此层）
    │            │
 internal/db   internal/core/git
 (SQLite 查询)   (Git Provider 抽象，本地 CLI 实现)
 ```
 
-**Wails 桌面与 MCP（cmd/mcp）两种入口共享同一 service 实现**——行为永远一致，新功能只需实现一次。
+**Wails 桌面、MCP（cmd/mcp）与 headless HTTP（cmd/server）三种入口共享同一 service 实现**——行为永远一致，新功能只需实现一次。两个例外直连 db：`internal/core/plugin/runtime`（插件知识导入的 upsert 管线）与 `internal/importers/claude`（Claude 记忆读取），均为 service 之外的既有约定。
 
-支撑包：`internal/domain`（跨层行类型）、`internal/version`（版本 SSOT）、`internal/diff`（笔记行级 diff）、`internal/stats`（git log 解析）、`internal/knowledge`（仓库知识挖掘）、`internal/scanner` + `internal/grouper`（扫描与分组）、`internal/platform`（OS 差异）、`internal/core/plugin`（插件 SPI + yaegi 运行时）。
+支撑包：`internal/domain`（跨层行类型）、`internal/version`（版本 SSOT）、`internal/diff`（笔记行级 diff）、`internal/stats`（git log 解析）、`internal/knowledge`（仓库知识挖掘）、`internal/scanner` + `internal/grouper`（扫描与分组）、`internal/platform`（OS 差异）、`internal/core/plugin`（插件 SPI + yaegi 运行时）、`internal/integrity`（数据可信度审计：FTS 漂移/孤儿行/缓存新鲜度等 6 项只读检查）、`internal/httpapi`（headless HTTP JSON API，service 的 HTTP 壳）、`internal/importers/claude`（Claude 记忆幂等导入）。
 
 ## 关键数据流
 
@@ -66,7 +66,7 @@ styles/     设计系统：tokens / reset / components / layouts / features
 
 ## 数据库（internal/db）
 
-单文件 SQLite（WAL + 外键），8 个版本化迁移自动执行；表：`projects` / `repositories` / `daily_stats` / `project_notes`(+FTS) / `project_todos`(+FTS) / `note_versions` / `repo_meta` / `app_config` / `scan_roots`。查询按域拆分文件（projects.go / notes.go / …）；升降级等事务操作（`SplitProjectDown` / `MergeProjectUp`）有单测覆盖。
+单文件 SQLite（WAL + 外键），12 个版本化迁移自动执行；表：`projects` / `repositories` / `daily_stats` / `project_notes`(+FTS) / `project_todos`(+FTS) / `note_versions` / `repo_meta` / `app_config` / `scan_roots`。查询按域拆分文件（projects.go / notes.go / …）；升降级等事务操作（`SplitProjectDown` / `MergeProjectUp`）有单测覆盖。
 
 ## 构建与产物
 

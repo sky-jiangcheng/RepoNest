@@ -139,6 +139,42 @@ func TestImportMissingDirIsNoop(t *testing.T) {
 	}
 }
 
+// An oversized memory file must be skipped, not imported: os.ReadFile would
+// load the whole file into memory before any bound check could reject it.
+func TestImportSkipsOversizedFile(t *testing.T) {
+	home := fakeHome(t)
+	claudeDir := filepath.Join(home, ".claude", "projects")
+	memDir := filepath.Join(claudeDir, "-Users-u-Workspace-Proj", "memory")
+	if err := os.MkdirAll(memDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(memDir, "project.md"), []byte("hello world"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(memDir, "huge.md"),
+		[]byte(strings.Repeat("x", db.MaxNoteContentLen+1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+
+	imp := New(database)
+	docs, err := imp.Import()
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	if len(docs) != 1 {
+		t.Fatalf("expected only the small doc, got %d", len(docs))
+	}
+	if !strings.Contains(docs[0].Content, "hello world") {
+		t.Errorf("kept doc content = %q", docs[0].Content)
+	}
+}
+
 // TestImporterImplementsInterface guards the interface contract.
 func TestImporterImplementsInterface(t *testing.T) {
 	db, _ := sql.Open("sqlite", ":memory:")

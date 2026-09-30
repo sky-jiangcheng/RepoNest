@@ -5,15 +5,19 @@ order: 1
 
 # 快速开始
 
-RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行时依赖），核心价值是**本地项目的上下文理解与知识沉淀**：自动发现本机 Git 仓库，快速沉淀笔记、依赖、技术栈与活跃信息，方便你和 AI 检索复用。仪表盘与统计是支持能力，不是产品主入口。
+RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行时依赖），核心价值是一层**跨 agent 的项目记忆层**：自动发现本机 Git 仓库，快速沉淀笔记、依赖、技术栈与活跃信息，便于你和任何 AI agent 检索复用。仪表盘与统计是支持能力，不是产品主入口。
 
 ## 下载安装
+
+安装脚本会同时装上桌面应用和 `reponest-mcp`（AI 客户端用的 MCP 服务器）。
 
 ### macOS / Linux
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh | bash
 ```
+
+macOS 装到 `/Applications/RepoNest.app`，Linux 装到 `/usr/local/bin/reponest`；两者都会把 `reponest-mcp` 放进 `/usr/local/bin`。
 
 ### Windows
 
@@ -44,12 +48,14 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scri
 仪表盘点击 **重新扫描**，应用递归发现扫描根下的所有 Git 仓库并按目录智能分组为项目。
 
 > 首次扫描仅登记仓库与项目，不预扫历史提交数据。
+>
+> **到这一步知识库已经可用**：可以写笔记、搜索、交给 AI（`reponest_context` / `reponest_handoff`）。下面的收藏与回填只影响仪表盘统计，不影响知识库。
 
-### 3. 收藏仓库
+### 3. 收藏仓库（可选，仪表盘统计）
 
 在仪表盘中点击星标收藏关注的仓库。收藏后卡片展示完整统计（今日新增 / 文件 / 仓库数 / 净增 / 团队总量）。
 
-### 4. 回填历史数据
+### 4. 回填历史数据（可选，仪表盘统计）
 
 在收藏的仓库卡片上点击 **刷新历史** 按钮，回填该仓库近 365 天的每日统计数据（进度环与热力图随即填充）。
 
@@ -63,7 +69,6 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scri
 | AI 集成 | 核心 | llms.txt、笔记导出、MCP server（含 agent-score 自检，见[AI 集成](features/ai-integration.md)） |
 | 仪表盘 | 支持 | 每日目标进度环、项目卡片、趋势折线图、提交热力图 |
 | 插件系统 | 实验 | yaegi 进程内 Go 脚本 + 知识源导入（见[知识源导入](plugins/overview.md)） |
-| PWA | 暂缓 | 支持安装到桌面/主屏幕，当前不再继续扩展 |
 
 ## 数据与日志位置
 

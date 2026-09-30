@@ -48,7 +48,3 @@ order: 2
 ### 项目分组
 
 自动按父目录分组（Monorepo 识别），手动拆分/合并见[项目详情](project-detail.md)。
-
-## 截图
-
-![仪表盘首页](../screenshots/dashboard.png)

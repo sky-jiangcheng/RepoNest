@@ -59,6 +59,7 @@
 | P35 | NoteSection CSS Modules 试点（notes.css 242→192 行，新建 .module.css 93 行） | S10 |
 | P38 | ProjectDetail 拆分（316→214 行 + useProjectDetail hook 122 行） | S11 |
 | P37 | SKILL.md 工作流指引 + MCP 工具参数/示例增强 | S12 |
+| D24 | PWA 移出桌面主构建（ADR-0008：残留清零 + 图标/孤儿 locale 清理） | S13 |
 
 </details>
 
@@ -91,7 +92,7 @@
 
 ---
 
-## 🔴 删除项（D20-D23）
+## 🔴 删除项（D20-D24）
 
 > 第四轮评估新增。零功能回退，纯减法。
 
@@ -111,6 +112,16 @@
 
 - [x] 确认无代码引用 icon-192/512/maskable
 - [x] 删除 3 个 PWA 图标文件（共 51KB），保留 favicon.ico + favicon.svg
+
+### D24: PWA 移出桌面主构建（ADR-0008）
+
+- [x] 删除 `web/public/` 3 个 PWA 图标（icon-192/512/maskable）——同 D23 范围，随 ADR-0008 落地
+- [x] 两套 locale（zh-CN / en）清理 11 个孤儿安装字符串（installTitle/Desc/App/Msg/Desktop 等）
+- [x] `App.tsx` 路由注释改为「浏览器 / 桌面壳」区分，不再以 PWA 叙事描述
+- [x] `main.go` CSP 注释去掉 PWA/registerSW.js 表述
+- [x] README / getting-started / settings / SKILL.md / docs 失实行清零
+- [x] ADR-0008 + index 登记
+- [x] web 构建保留（`npm run build` 照常），不再是可安装 PWA
 
 ---
 
@@ -192,7 +203,7 @@
 
 ### P31: `Domain/types.go` 评估 🔻低
 
-- [ ] 评估是否收拢核心 domain 类型（当前仅 15 行，类型散落在各包）
+- [ ] 评估是否收拢核心 domain 类型（当前 132 行，类型散落在各包）
 
 ### P32: Wails 绑定层审计 🔸中
 
@@ -204,13 +215,40 @@
 
 ---
 
+## 🟢 会话记忆路线（ADR-0007 后续）
+
+> 定位升级为「AI agent 记忆层」后的主攻方向，按传播价值排序。
+
+### M1: 会话自动捕捉（零人工参与）
+
+- [ ] 解析 `~/.claude/projects/*/*.jsonl` 会话记录，提取最后一条 assistant 消息 + 工具调用摘要生成 handoff
+- [ ] 体积与隐私评估：只读最后 N 条消息，`.gitignore` 级别的路径白名单
+
+### M2: 多 agent 记忆源导入
+
+- [ ] Cursor（`~/.cursor/*/memory` 或 rules）、Codex、OpenCode 记忆格式导入器（复用 plugin.ImportDoc upsert 管线）
+
+### M3: 语义检索
+
+- [ ] 评估本地 embedding + sqlite-vec（保持零 CGO），补充 FTS5 字面匹配盲区；先做 A/B 评测再决定默认开关
+
+### M4: Agent 集成即插即用
+
+- [x] Claude Code hook 示例：SessionEnd hook 自动触发 reponest_handoff（v1.9.4 交付于 docs/features/ai-integration.md「会话结束自动交接」节）
+- [ ] `npx reponest-init` 类一键注册脚本（写 .mcp.json + 提示 hook 配置）
+
+---
+
 ## 📋 遗留项
 
 - [ ] 桌面 GUI 回归测试：建议在真机跑一轮冒烟（扫描→收藏→刷新历史→笔记 CRUD→版本恢复→知识库搜索→MCP 问答）
+- [ ] **D25 仪表盘生产力门面收缩（2.0 候选，非现在）**：首屏讲记忆环、打开是仪表盘，定位纯度持续被消耗。收敛方向：仪表盘退化为「项目列表 + 最近活动」；目标环 / 每日代码量标准 / 工作日告警沉入插件或删除（GitBoard/GitBuddy 时代遗产，见 [ADR-0008](docs/adr/0008-pwa-removal.md) 遗留项）
+- [x] `reponest_context` brief/full 档位评估（v1.9.4 收敛：中等优先，缓做——当前固定 10 notes × 1200 字符 + 8 commits 对单会话偏充裕）
+- [x] README 对比表 + ASCII 架构图（v1.9.4 收敛：文档润色，低优先，缓做）
 - [x] `mineAndCacheAsync` 后台 goroutine 加 recover（`project_overview.go:138`）
 - [x] `.zcode/` 已移出跟踪，不需要 history rewrite
 - [ ] P29 `parseTimestamp` 鲁棒性（低优先级，git log 格式稳定）
-- [ ] P31 `Domain/types.go` 评估（仅 15 行，暂不需要收拢）
+- [ ] P31 `Domain/types.go` 评估（132 行，暂不需要收拢）
 - [ ] P32 Wails 绑定层审计（218 行，确认 MCP 对应关系）
 - [ ] P33 `TrendChart` 评估（100 行纯 SVG，「支持」级功能）
 - [ ] P36 `knowledge.go` 进一步拆分评估（515 行，内聚度高暂不拆）
@@ -229,5 +267,6 @@
 | ~~**Sprint 10**~~ | ~~P35 NoteSection CSS Modules 试点~~ | ✅ |
 | ~~**Sprint 11**~~ | ~~P38 ProjectDetail hook 提取~~ | ✅ |
 | ~~**Sprint 12**~~ | ~~P37 SKILL.md 工作流指引~~ | ✅ |
-| **2.0 规划** | C11 插件系统评估 + P35 全量 CSS Modules | 按版本 |
+| ~~**Sprint 13**~~ | ~~D24 PWA 移出桌面主构建（ADR-0008 落地）~~ | ✅ |
+| **2.0 规划** | D25 仪表盘生产力门面收缩 + C11 插件系统评估 + P35 全量 CSS Modules | 按版本 |
 | **按需** | P29, P31, P32, P33, P36 | 随重构穿插 |

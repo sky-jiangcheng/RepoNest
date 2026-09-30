@@ -6,10 +6,20 @@
 // The desktop Wails App, the (future) CLI and this headless server are all thin
 // adapters over internal/service. They share one implementation and one SQLite
 // database.
+//
+// Trust boundary: this API has NO authentication — it serves the complete
+// local knowledge base (notes, todos, mined repo knowledge). It is safe only
+// because cmd/server binds it to 127.0.0.1, so reachability is equivalent to
+// "another process on this machine". Anyone embedding this handler (tests,
+// plugins, future transports) must preserve that property: loopback-only,
+// never 0.0.0.0, and never documented as a network service. Exposing it
+// beyond loopback would publish the user's private code knowledge to the
+// network.
 package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -59,6 +69,13 @@ func (h *handler) aiContext(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"markdown": markdown})
 }
 
+// maxSearchQueryLen caps the ?q= parameter, mirroring the MCP layer's query
+// bound. The query is escaped before it reaches SQLite, so this is not an
+// injection guard — it stops a multi-megabyte value from turning every
+// FTS/LIKE match into a multi-second scan. The trust boundary is loopback
+// only, but any local process can hit this endpoint repeatedly.
+const maxSearchQueryLen = 1000
+
 // search runs a full-text knowledge search across notes and todos.
 // Query param: q (required). Use ?all=1 to also include todos (default notes).
 func (h *handler) search(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +86,12 @@ func (h *handler) search(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing query param 'q'"})
+		return
+	}
+	if len(q) > maxSearchQueryLen {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": fmt.Sprintf("query too long: %d bytes (max %d)", len(q), maxSearchQueryLen),
+		})
 		return
 	}
 	var hits any

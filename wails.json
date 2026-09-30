@@ -14,7 +14,11 @@
   "info": {
     "companyName": "",
     "productName": "RepoNest",
+<<<<<<< HEAD
     "productVersion": "1.7.10",
+=======
+    "productVersion": "1.9.4",
+>>>>>>> github/master
     "copyright": "",
     "comments": "Local Git Knowledge Base"
   }

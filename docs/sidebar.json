@@ -10,8 +10,8 @@
     {
       "title": "功能手册",
       "items": [
-        { "file": "features/dashboard", "label": "仪表盘" },
         { "file": "features/knowledge", "label": "知识库与笔记" },
+        { "file": "features/dashboard", "label": "仪表盘" },
         { "file": "features/project-detail", "label": "项目详情" },
         { "file": "features/settings", "label": "设置" },
         { "file": "features/command-palette", "label": "命令面板与快捷键" }

@@ -5,7 +5,7 @@ order: 22
 
 # API 参考
 
-RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露给前端（`window.go.main.App.<方法名>`），方法名与 JSON 载荷即契约。`docs/api/openapi.json` 以 HTTP 路径形式**镜像同一契约**，供 AI 代理与网关消费者阅读——桌面应用本身不监听 HTTP 端口。
+RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露给前端（`window.go.main.App.<方法名>`），方法名与 JSON 载荷即契约。桌面应用默认不监听 HTTP 端口；需要 HTTP 形态时由 `cmd/server` 提供仅限 loopback 的 JSON API（复用同一 service 层）。
 
 > 绑定层是薄委托（`internal/app`），实现全部在 `internal/service`；CLI 与 MCP 复用同一实现。
 
@@ -13,6 +13,23 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 
 - `GetHeatmapData(projectId int64)`：新增参数，`0` 为全局，`>0` 限定该项目的仓库（此前项目详情页误用全局数据）
 - 移除从未被前端调用的死方法：`ExportProjectStats`、`ExportHeatmapCSV`、`GetNoteVersion`、`ScanForRepositories`、`RefreshStats`、`RefreshAllStats`、`RefreshProjectStats`
+
+---
+
+## Headless HTTP 服务（`reponest server`）
+
+面向 DeepSeek Harness dsh-plugin 等外部运行时的 JSON API，与桌面应用、CLI、MCP 共用同一 `internal/service` 实现和同一个 SQLite 数据库。
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 服务与数据库健康状态 |
+| `/api/ai_context` | GET/POST | 全知识库 Markdown（llms.txt 风格） |
+| `/api/search?q=...&all=1` | GET | FTS5 全文搜索（默认仅笔记，`all=1` 含待办） |
+| `/api/project/{id}/detail` | GET | 项目 + 仓库及历史统计 |
+| `/api/project/{id}/overview` | GET | 知识挖掘结果（README/技术栈/依赖等） |
+| `/api/project/{id}/stats?date=` | GET | 某日项目统计 |
+
+> **信任边界**：该服务**无认证**，返回内容即用户完整本地知识库。安全性完全依赖 `cmd/server` 只绑定 `127.0.0.1`——可达性等价于「本机上的另一个进程」。**禁止**改为 `0.0.0.0` 或经反代暴露到网络；需要远程访问时应先补认证方案并提交 ADR。
 
 ---
 
@@ -113,4 +130,4 @@ RepoNest 的对外接口是 **Wails 绑定面**：Go 方法经 Wails Bind 暴露
 
 ## OpenAPI
 
-机器可读契约见 [openapi.json](openapi.json)（版本随 `internal/version`，路径与上表方法一一对应）。⚠️ 该 spec 描述的是**绑定面镜像**；桌面应用不提供 HTTP 服务（见 [TODO](../../TODO.md)）。
+机器可读契约暂以本页表格为准（此前的手工 openapi.json 已随 D10 移除，待 CI 自动生成后回归）。桌面应用不提供公网 HTTP 服务（见 [TODO](https://github.com/sky-jiangcheng/repo-nest/blob/master/TODO.md)）。

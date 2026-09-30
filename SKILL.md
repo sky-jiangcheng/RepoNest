@@ -1,23 +1,49 @@
 # RepoNest Skill
 
-RepoNest is a local-first code project context base. It discovers local Git repositories, maintains a cross-project knowledge base (Markdown notes, FTS5 search, version history), mines repository knowledge, and exposes it to AI agents via the MCP server and llms.txt export.
+RepoNest is a local-first, cross-agent project memory layer. It discovers local Git repositories, maintains a cross-project knowledge base (Markdown notes, FTS5 search, version history), mines repository knowledge, and exposes it to AI agents via the MCP server and llms.txt export.
+
+## Session Memory Protocol
+
+The tools form a session loop. Use it in every working session on a RepoNest-tracked project:
+
+```
+First run     → reponest_scan      → discover local Git repos (headless; no desktop app needed)
+Session start → reponest_context   → one call, full project context (handoffs first)
+   ... work ...
+Session end   → reponest_handoff   → record what happened for the next session
+```
+
+0. **First run**: on a fresh install call `reponest_scan` once — it seeds the default scan roots and scans them synchronously, so the knowledge base is populated without ever opening the desktop app. Call it again any time `reponest_context` reports no projects.
+1. **Start**: call `reponest_context` once — it returns tech stack, README excerpt, dependencies, recent commits, open todos and the most relevant notes (previous session handoffs lead). This replaces chaining `projects_list` → `notes_search` → `notes_read`.
+2. **End**: call `reponest_handoff` with `summary` (required) plus any of `changes` / `decisions` / `gotchas` / `next_steps`. The note is tagged `handoff` and the next session reads it first — regardless of which agent wrote it.
+   - Handoff notes are protocol records: `reponest_notes_update` refuses to overwrite them (write a new handoff instead), and `reponest_context` renders the latest one in full.
+   - To make step 2 fire automatically instead of relying on the agent remembering, wire a Claude Code `SessionEnd` hook — one bounded headless turn at session end (see `docs/features/ai-integration.md`).
 
 ## Recommended AI Workflow
 
 ```
-1. Search projects  → reponest_projects_list        → find relevant repos
-2. Search knowledge → reponest_notes_search / reponest_ask  → find existing notes
-3. Read details     → reponest_notes_read            → read a specific note
-4. Create knowledge → reponest_notes_create          → capture new insights
-5. Update knowledge → reponest_notes_update          → refine existing notes
-6. Check readiness  → reponest_agent_score           → verify AI integration health
+0. First run        → reponest_scan                  → discover repos, populate the knowledge base
+1. Load context     → reponest_context               → session cold start, one call
+2. Search projects  → reponest_projects_list        → find relevant repos
+3. Search knowledge → reponest_notes_search / reponest_ask  → find existing notes
+4. Read details     → reponest_notes_read            → read a specific note
+5. Create knowledge → reponest_notes_create          → capture new insights
+6. Update knowledge → reponest_notes_update          → refine existing notes
+7. End session      → reponest_handoff               → structured handoff for the next session
+8. Check readiness  → reponest_agent_score           → verify AI integration health
+9. Check the data   → reponest_integrity             → when results look incomplete
 ```
 
+**When search comes back suspiciously thin**, run `reponest_integrity` before
+concluding the knowledge base is thin. An FTS index that drifted out of sync
+with the notes table makes every search silently under-report, and
+`reponest_agent_score` will still say everything is fine — it checks
+installation readiness, not whether the data is true.
+
 **Typical scenario**: "Help me understand project X"
-1. `reponest_projects_list` — find the project and its ID
-2. `reponest_ask({ query: "project X recent changes" })` — search across notes
-3. `reponest_notes_read({ id })` — read relevant notes found
-4. `reponest_notes_create({ project_id, title, content })` — save your understanding
+1. `reponest_context({ project_name: "X" })` — one call loads everything known about the project
+2. `reponest_notes_read({ id })` — expand on any note the context surfaced
+3. `reponest_handoff({ project_id, summary, changes, next_steps })` — save what you learned when done
 
 **Typical scenario**: "What do I know about topic Y?"
 1. `reponest_notes_search({ query: "Y" })` — full-text search across all notes
@@ -36,7 +62,19 @@ RepoNest is a local-first code project context base. It discovers local Git repo
 
 ## MCP Server (`reponest-mcp`)
 
-MCP is the single AI execution interface (the `reponest` CLI is not shipped). stdio server, opens the database once per process. Build and register:
+MCP is the single AI execution interface (the `reponest` CLI is not shipped). stdio server, opens the database once per process. The desktop app is **not** required — `reponest-mcp` reads the same local SQLite database.
+
+Install from a release (preferred), then register:
+
+```bash
+# No prerequisites — download reponest-mcp-<target>.tar.gz / .zip from Releases
+# Or use a package manager:
+#   macOS   : brew tap sky-jiangcheng/repo && brew install --cask sky-jiangcheng/repo/reponest-mcp
+#   Linux   : brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp
+#   Windows : scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp
+```
+
+Build from source if none of the above apply:
 
 ```bash
 go build -o /usr/local/bin/reponest-mcp ./cmd/mcp/
@@ -48,15 +86,19 @@ go build -o /usr/local/bin/reponest-mcp ./cmd/mcp/
 
 | Tool | Description | Key Parameters | Example |
 |------|-------------|----------------|--------|
+| `reponest_scan` | Discover local Git repos and populate the knowledge base (first run; headless) | none (seeds default scan roots, then scans synchronously) | `{}` |
+| `reponest_context` | Load full project context in one call (session start) | `project_id?`, `project_name?` (fuzzy); none = auto-resolve when only one project | `{ project_name: "auth" }` |
+| `reponest_handoff` | Record a structured session handoff (session end) | `project_id`, `summary`, `changes?`, `decisions?`, `gotchas?`, `next_steps?`, `agent?`, `tags?` | `{ project_id: 1, summary: "...", gotchas: ["..."], next_steps: ["..."] }` |
 | `reponest_ask` | Ask a question, get top-5 ranked results | `query` (string, supports CJK) | `{ query: "数据库迁移方案" }` |
 | `reponest_notes_search` | FTS5 full-text search across notes | `query` (string, trigram + bm25) | `{ query: "react hooks" }` |
 | `reponest_notes_read` | Read one note by ID | `id` (number) | `{ id: 42 }` |
 | `reponest_notes_create` | Create a new note | `project_id`, `title`, `content`, `category?`, `tags?` | `{ project_id: 1, title: "API Design", content: "...", category: "knowledge" }` |
-| `reponest_notes_update` | Update note content/metadata | `id`, `content?`, `title?`, `tags?`, `category?` | `{ id: 42, content: "updated text" }` |
+| `reponest_notes_update` | Update note content/metadata (refuses notes tagged `handoff`) | `id`, `content?`, `title?`, `tags?`, `category?` | `{ id: 42, content: "updated text" }` |
 | `reponest_notes_list` | List all notes (paginated) | `limit?`, `offset?` | `{ limit: 20 }` |
 | `reponest_projects_list` | List all projects with stats | `starred_only?` | `{ starred_only: true }` |
 | `reponest_projects_stats` | Get stats for one project | `id` (number) | `{ id: 1 }` |
 | `reponest_agent_score` | Check AI-readiness score (0-100) | none | `{}` |
+| `reponest_integrity` | Audit data trustworthiness (index drift, orphans, staleness) | none | `{}` |
 
 ### Registering with clients
 
@@ -91,7 +133,7 @@ Or in a project-level `.mcp.json` / user-level MCP config (Cursor: Settings → 
 
 - **Backend**: Go + SQLite (modernc, zero CGO), Wails v2 desktop app
 - **Layering**: `internal/app` (thin Wails bindings) → `internal/service` (business core, shared by desktop/MCP) → `internal/db` + `internal/core/git`
-- **Frontend**: React 19 + Vite 8 + TypeScript 7, PWA, hand-rolled CSS design system
+- **Frontend**: React 19 + Vite 8 + TypeScript 7, hand-rolled CSS design system
 - **Search**: FTS5 trigram + bm25, LIKE fallback for short CJK queries
 - **i18n**: react-i18next, zh-CN + en
 - **Markdown**: Mermaid, KaTeX, callouts, highlight.js
