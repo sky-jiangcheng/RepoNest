@@ -1,25 +1,25 @@
-# ADR-0004: 块编辑器（Block Editor）
+# ADR-0004: Block Editor
 
-- 状态：Accepted
-- 日期：2026-08-10（补录，实现于 1.5.7 / issue #19）
-- 关联：[ADR-0002](0002-c-end-repositioning.md)
+- Status: Accepted
+- Date: 2026-08-10 (backfilled; implemented in 1.5.7 / issue #19)
+- Related: [ADR-0002](0002-c-end-repositioning.md)
 
-## 背景
+## Background
 
-知识笔记需要超越纯 textarea 的编辑体验（对标 GitBook 的结构化块），但**存储格式必须仍是纯 Markdown**——数据属于用户，不能被编辑器锁定。
+Knowledge notes need an editing experience beyond a plain textarea (structured blocks benchmarked against GitBook), but **the storage format must remain pure Markdown** — the data belongs to the user and must stay free of editor lock-in.
 
-## 决策
+## Decision
 
-在 React 侧实现轻量块编辑器（`web/src/components/BlockEditor.tsx`），而非引入重型富文本框架：
+Implement a lightweight block editor on the React side (`web/src/components/BlockEditor.tsx`) rather than introducing a heavyweight rich-text framework:
 
-1. 内容按空行切分为块，`detectType()` 依据首行语法识别块类型（标题/代码/callout/列表/表格/公式/分隔线…）
-2. 每块独立行内编辑；`joinBlocks()` 以 `\n\n` 重组——**产物与手写 Markdown 完全等价**
-3. 输入 `/` 呼起块面板，插入 callout / tabs / details / 代码 / Mermaid / 公式 / 表格等模板
-4. 块级拖拽排序与上下移；Markdown 源码 ↔ 块双轨随时切换
-5. 预览走 `renderMarkdownAsync`（Mermaid/KaTeX 异步渲染）
+1. Content is split into blocks by blank lines; `detectType()` identifies the block type (heading/code/callout/list/table/formula/divider…) from the first line's syntax
+2. Each block is edited independently inline; `joinBlocks()` reassembles with `\n\n` — **the output is fully equivalent to hand-written Markdown**
+3. Typing `/` opens the block palette, inserting templates for callout / tabs / details / code / Mermaid / formula / table, etc.
+4. Block-level drag-and-drop reordering plus move up/down; the Markdown source ↔ blocks dual view switches at any time
+5. Preview uses `renderMarkdownAsync` (Mermaid/KaTeX async rendering)
 
-## 后果
+## Consequences
 
-- 正面：零新增运行时依赖；数据可随时被任何 Markdown 工具读写；与版本历史 diff 天然兼容
-- 负面：块识别是启发式的，极端嵌套 Markdown 可能合并为单块（退化为普通编辑，无损）
-- 1.7.0：块面板标签/描述/插入模板已 i18n 化（`buildPaletteItems(t)`）
+- Positive: zero new runtime dependencies; data stays readable and writable by any Markdown tool at any time; naturally compatible with version history diffs
+- Negative: block detection is heuristic; extremely nested Markdown may merge into a single block (degrades to ordinary editing, lossless)
+- 1.7.0: palette labels/descriptions/insert templates are i18n-ized (`buildPaletteItems(t)`)

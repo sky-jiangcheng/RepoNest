@@ -1,46 +1,46 @@
 ---
-title: 项目详情
+title: Project Detail
 order: 4
 ---
 
-# 项目详情
+# Project Detail
 
-项目详情页展示单个项目的统计、仓库知识挖掘、热力图与趋势，以及该项目的笔记与待办。
+The project detail page shows a single project's stats, repository knowledge mining, heatmap, and trends, plus its notes and todos.
 
-## 页面结构
+## Page Structure
 
-### 头部卡片
+### Header Card
 
-- 项目名称与路径、自动/手动分组标记
-- **向下拆分 / 向上合并**：调整分组级别（单事务，笔记与待办随迁）
-- 汇总统计：子仓库数、活跃天数、文件变更、新增/删除行数
+- Project name and path, auto/manual grouping marker
+- **Split down / merge up**: adjust the grouping level (single transaction; notes and todos move with it)
+- Aggregate stats: sub-repository count, active days, file changes, added/deleted lines
 
-### 项目概览（仓库知识挖掘）
+### Project Overview (repository knowledge mining)
 
-自动从仓库工作树提取，结果缓存于 `repo_meta`（首次「实时挖掘」，之后「来自缓存」）：
+Extracted automatically from the repository working tree and cached in `repo_meta` (mined live the first time, "from cache" afterwards):
 
-| 内容 | 说明 |
+| Content | Description |
 |------|------|
-| README 摘录 | 最多 200 行 / 8KB |
-| 技术栈 | 20+ manifest 识别（package.json / go.mod / Cargo.toml / pom.xml / Dockerfile …） |
-| 语言占比 | 按代码行数统计的 Top 语言条形图 |
-| 依赖清单 | npm / go.mod（含块状 require）/ Cargo 直接依赖 |
-| Top 贡献者 | `git shortlog -sn` Top 5 |
-| 活跃度 | 总提交 / 近 30 天 / 90 天活跃天数 / 活跃月 / 最近提交 |
-| 最近提交流 | 最新 8 条（时间 / 分支 / 作者 / 信息） |
+| README excerpt | Up to 200 lines / 8KB |
+| Tech stack | 20+ manifest recognition (package.json / go.mod / Cargo.toml / pom.xml / Dockerfile …) |
+| Language share | Bar chart of top languages by lines of code |
+| Dependencies | npm / go.mod (including block require) / Cargo direct dependencies |
+| Top contributors | Top 5 from `git shortlog -sn` |
+| Activity | Total commits / last 30 days / active days within 90 / active months / latest commit |
+| Recent commits | Latest 8 (time / branch / author / message) |
 
-### 提交热力图（项目维度）
+### Commit Heatmap (project scope)
 
-**本项目仓库**的全年提交密度（与仪表盘的全局热力图相互独立）。
+Year-round commit density for **this project's repositories** (independent of the dashboard's global heatmap).
 
-### 趋势图
+### Trend Chart
 
-新增 / 删除 / 文件变更三线对比，范围可切换 **近 7 天 / 近 30 天 / 全部**。
+Three-line comparison of additions / deletions / file changes, switchable across **last 7 days / last 30 days / all**.
 
-### 子仓库列表
+### Sub-repository List
 
-每个仓库的路径、累计新增/删除与最近统计明细。
+Each repository's path, cumulative additions/deletions, and latest stats details.
 
-### 笔记与待办面板
+### Notes & Todos Panel
 
-项目维度的知识笔记（[知识库](knowledge.md) 同源）与待办事项（增删 / 完成 / 排序）。
+Project-scoped knowledge notes (same source as the [Knowledge Base](knowledge.md)) and todos (add/delete / complete / reorder).

@@ -1,91 +1,91 @@
 ---
-title: 架构说明
+title: Architecture
 order: 20
 ---
 
-# 架构说明
+# Architecture
 
-> 1.7.0 服务层重构的动机与取舍见 [ADR-0005](adr/0005-service-layer.md)；产品定位见 [ADR-0002](adr/0002-c-end-repositioning.md)。
+> For the motivation and trade-offs of the 1.7.0 service-layer refactor, see [ADR-0005](adr/0005-service-layer.md); for product positioning, see [ADR-0002](adr/0002-c-end-repositioning.md).
 
-## 总体形态
+## Overall Shape
 
-单文件 **Wails v2** 桌面应用：Go 后端 + React SPA（`web/dist` 经 `go:embed` 打进二进制），SQLite（modernc 纯 Go，零 CGO），统计通过本机 `git` CLI 读取。**本地优先**：不上传数据；桌面应用自身不监听端口，另有可选的 headless HTTP API（`cmd/server`，仅监听 `127.0.0.1`，供本地工具集成，默认不随桌面应用启动）。
+A single-binary **Wails v2** desktop app: Go backend + React SPA (`web/dist` embedded into the binary via `go:embed`), SQLite (modernc pure Go, zero CGO); statistics are read through the local `git` CLI. **Local-first**: no data leaves the machine; the desktop app itself listens on no port, and there is an optional headless HTTP API (`cmd/server`, binds to `127.0.0.1` only, for local tool integration, not started with the desktop app by default).
 
-## 分层（后端）
+## Layers (Backend)
 
 ```
-main.go                  Wails 入口：DB 初始化、扫描根播种、窗口/AssetServer/安全头
+main.go                  Wails entry: DB init, scan-root seeding, window/AssetServer/security headers
    │
-internal/app             绑定层：每方法 1-3 行委托 service（transport glue）
+internal/app             Binding layer: 1-3 lines per method delegating to service (transport glue)
    │
-internal/service         业务核心（笔记/搜索/上下文/交接等业务规则在此层）
+internal/service         Business core (notes/search/context/handoff business rules live here)
    │            │
 internal/db   internal/core/git
-(SQLite 查询)   (Git Provider 抽象，本地 CLI 实现)
+(SQLite queries)   (Git Provider abstraction, local CLI implementation)
 ```
 
-**Wails 桌面、MCP（cmd/mcp）与 headless HTTP（cmd/server）三种入口共享同一 service 实现**——行为永远一致，新功能只需实现一次。两个例外直连 db：`internal/core/plugin/runtime`（插件知识导入的 upsert 管线）与 `internal/importers/claude`（Claude 记忆读取），均为 service 之外的既有约定。
+**The three entry points — Wails desktop, MCP (cmd/mcp), and headless HTTP (cmd/server) — share the same service implementation**, so behavior is always consistent and a new feature is implemented once. Two exceptions call db directly: `internal/core/plugin/runtime` (the upsert pipeline for plugin knowledge imports) and `internal/importers/claude` (Claude memory reading), both pre-existing arrangements outside the service layer.
 
-支撑包：`internal/domain`（跨层行类型）、`internal/version`（版本 SSOT）、`internal/diff`（笔记行级 diff）、`internal/stats`（git log 解析）、`internal/knowledge`（仓库知识挖掘）、`internal/scanner` + `internal/grouper`（扫描与分组）、`internal/platform`（OS 差异）、`internal/core/plugin`（插件 SPI + yaegi 运行时）、`internal/integrity`（数据可信度审计：FTS 漂移/孤儿行/缓存新鲜度等 6 项只读检查）、`internal/httpapi`（headless HTTP JSON API，service 的 HTTP 壳）、`internal/importers/claude`（Claude 记忆幂等导入）。
+Supporting packages: `internal/domain` (row types shared across layers), `internal/version` (version SSOT), `internal/diff` (line-level note diff), `internal/stats` (git log parsing), `internal/knowledge` (repository knowledge mining), `internal/scanner` + `internal/grouper` (scanning and grouping), `internal/platform` (OS differences), `internal/core/plugin` (plugin SPI + yaegi runtime), `internal/integrity` (data trustworthiness audit: FTS drift / orphan rows / cache freshness etc., 6 read-only checks), `internal/httpapi` (headless HTTP JSON API, the HTTP shell over service), `internal/importers/claude` (idempotent Claude memory import).
 
-## 关键数据流
+## Key Data Flows
 
-### 扫描管线（service/scan.go，唯一管线）
+### Scan pipeline (service/scan.go, the single pipeline)
 
 ```
 scan_roots ──▶ scanner.ScanRepositories ──▶ grouper.GroupRepositories
-        ──▶ db 事务：SyncProjectTx + UpsertRepositoryTx + CleanupStaleDataTx
-        ──▶ refreshCollectedStats（365 天窗口，all + 个人作者双行 upsert）
-        ──▶ 事件 project.scanned
+        ──▶ db transaction: SyncProjectTx + UpsertRepositoryTx + CleanupStaleDataTx
+        ──▶ refreshCollectedStats (365-day window, dual-row upsert: all + personal author)
+        ──▶ event project.scanned
 ```
 
-### 统计刷新（service/refresh.go，唯一循环）
+### Stats refresh (service/refresh.go, the single loop)
 
-`refreshRepoStatsRange`：对单仓库按日期区间查询 `git log --shortstat` 聚合，跳过零行，写 `all` 与个人作者两行；取消感知。扫描完成刷新、项目历史回填、按需单日刷新共用此实现。
+`refreshRepoStatsRange`: for one repository, aggregates `git log --shortstat` over a date range, skips zero-row results, and writes both the `all` row and the personal-author row; cancellation-aware. The post-scan refresh, project history backfill, and on-demand single-day refresh all share this implementation.
 
-### 知识库
+### Knowledge base
 
-`project_notes` + FTS5 trigram 虚拟表（bm25 排序，短查询降级 LIKE，见 [ADR-0003](adr/0003-fts5-search.md)）；每次更新触发器写入 `note_versions` 快照（保留 50），diff 由 `internal/diff` LCS 生成。
+`project_notes` + FTS5 trigram virtual table (bm25 ranking, LIKE fallback for short queries, see [ADR-0003](adr/0003-fts5-search.md)); every update trigger writes a `note_versions` snapshot (last 50 kept); diffs are generated by the LCS in `internal/diff`.
 
-### 插件运行时（ADR-0002）
+### Plugin runtime (ADR-0002)
 
-yaegi 解释 `<config>/reponest/plugins/*/plugin.go`；事件总线 + 知识源注册表；内置 `claude` 导入器与脚本插件同一 upsert 路径。
+yaegi interprets `<config>/reponest/plugins/*/plugin.go`; event bus + knowledge source registry; the built-in `claude` importer and script plugins share the same upsert path.
 
-## 前端（web/src）
+## Frontend (web/src)
 
 ```
-api/        types + transport（Wails window.go / HTTP 双模）+ endpoints（每后端方法一个函数）
-hooks/      useApiData（TTL 缓存+去重）/ useDebouncedCallback / useScanPolling / useConfirmClick
-pages/      Knowledge（首页）/ Dashboard / ProjectDetail / Settings，大页面按域拆子组件
+api/        types + transport (Wails window.go / HTTP dual mode) + endpoints (one function per backend method)
+hooks/      useApiData (TTL cache + dedup) / useDebouncedCallback / useScanPolling / useConfirmClick
+pages/      Knowledge (home) / Dashboard / ProjectDetail / Settings; large pages split into domain subcomponents
 components/ ProjectCard / Heatmap / TrendChart / notes/NoteEditor / notes/VersionHistoryPanel…
-locales/    zh-CN + en（i18next 懒加载）
-styles/     设计系统：tokens / reset / components / layouts / features
+locales/    zh-CN + en (lazy-loaded i18next)
+styles/     design system: tokens / reset / components / layouts / features
 ```
 
-无全局状态库：页面级 `useState` + hooks；主题走 `data-theme` CSS 变量。
+No global state library: page-level `useState` + hooks; theming via `data-theme` CSS variables.
 
-## 数据库（internal/db）
+## Database (internal/db)
 
-单文件 SQLite（WAL + 外键），12 个版本化迁移自动执行；表：`projects` / `repositories` / `daily_stats` / `project_notes`(+FTS) / `project_todos`(+FTS) / `note_versions` / `repo_meta` / `app_config` / `scan_roots`。查询按域拆分文件（projects.go / notes.go / …）；升降级等事务操作（`SplitProjectDown` / `MergeProjectUp`）有单测覆盖。
+Single-file SQLite (WAL + foreign keys), 12 versioned migrations applied automatically; tables: `projects` / `repositories` / `daily_stats` / `project_notes`(+FTS) / `project_todos`(+FTS) / `note_versions` / `repo_meta` / `app_config` / `scan_roots`. Queries are split into per-domain files (projects.go / notes.go / …); split/merge and other transactional operations (`SplitProjectDown` / `MergeProjectUp`) are covered by unit tests.
 
-## 构建与产物
+## Build Artifacts
 
-| 产物 | 来源 | 说明 |
+| Artifact | Source | Description |
 |------|------|------|
-| `reponest` | 根包 | Wails 桌面应用（`scripts/build.sh`） |
-| `reponest-mcp` | `cmd/mcp` | MCP stdio 服务器（知识库查询 + agent-score 自检） |
+| `reponest` | Root package | Wails desktop app (`scripts/build.sh`) |
+| `reponest-mcp` | `cmd/mcp` | MCP stdio server (knowledge base queries + agent-score self-check) |
 
-CI（`.github/workflows/release.yml`）多平台构建 + macOS 签名公证；文档站（`pages.yml`）由 `scripts/build-docs.mjs` 从 `docs/**/*.md` 生成后部署 GitHub Pages。
+CI (`.github/workflows/release.yml`) builds for multiple platforms plus macOS signing & notarization; the docs site (`pages.yml`) is generated from `docs/**/*.md` by `scripts/build-docs.mjs` and deployed to GitHub Pages.
 
-## 命名分层
+## Naming Layers
 
-品牌展示层与机器标识层**有意不一致**——标识层（URL、包名、数据目录、对外契约）不随品牌措辞变化，保证升级链与数据迁移稳定：
+The brand display layer and the machine identity layer are **intentionally inconsistent** — the identity layer (URLs, package names, data directory, external contracts) does not follow brand wording, keeping the upgrade chain and data migrations stable:
 
-| 层 | 取值 | 说明 |
+| Layer | Value | Notes |
 |------|------|------|
-| 品牌名 | `RepoNest` | `productName`、应用内 Logo、文档文案 |
-| 完整展示名 | `RepoNest: Local Git Knowledge Base` | 窗口标题（`main.go` 的 Wails `options.Title`）与 HTML `<title>` |
-| 仓库与包标识 | `repo-nest` | GitHub 仓库名、Go module 名、npm 包名 |
-| 冻结标识 | `reponest` | 二进制/命令名、用户数据目录（`internal/platform` 的 `dirName`）、MCP server 名与工具前缀 |
+| Brand name | `RepoNest` | `productName`, in-app logo, docs copy |
+| Full display name | `RepoNest: Local Git Knowledge Base` | Window title (Wails `options.Title` in `main.go`) and the HTML `<title>` |
+| Repository & package identity | `repo-nest` | GitHub repo name, Go module name, npm package name |
+| Frozen identity | `reponest` | Binary/command name, user data directory (`dirName` in `internal/platform`), MCP server name and tool prefix |
 
-冻结标识不参与「品牌统一」：数据目录已经历 gitboard → gitbuddy → reponest 两轮迁移（`internal/platform/platform.go` 的 legacy 迁移逻辑），MCP 工具名是对 AI 客户端的对外契约。
+The frozen identity takes no part in "brand unification": the data directory has already gone through two migrations, gitboard → gitbuddy → reponest (legacy migration logic in `internal/platform/platform.go`), and MCP tool names are an external contract with AI clients.

@@ -1,57 +1,57 @@
 ---
-title: 知识库与笔记
+title: Knowledge Base & Notes
 order: 3
 ---
 
-# 知识库与笔记
+# Knowledge Base & Notes
 
-知识库是应用首页，也是跨项目的笔记中心：Markdown / 块编辑器、标签分类、FTS5 全文搜索、版本历史与 AI 记忆导入。
+The knowledge base is the app's home page and the cross-project notes hub: Markdown / block editor, tag organization, FTS5 full-text search, version history, and AI memory imports.
 
-## 笔记管理
+## Note Management
 
-- **创建笔记**：首页「快速创建笔记」选择所属项目；或项目详情页笔记面板新建
-- **元数据**：标题（留空取首行）、标签（逗号分隔）、分类（知识 / 日志 / 想法 / 其他）、置顶
-- **跨项目迁移**：编辑状态下「关联项目」下拉一键迁移
-- **草稿自动保存**：编辑内容实时存入本地，意外关闭不丢失
+- **Create a note**: pick the owning project in "Quick create note" on the home page; or create one from the notes panel on the project detail page
+- **Metadata**: title (falls back to the first line when empty), tags (comma-separated), kind (knowledge / log / idea / other), pinned
+- **Move across projects**: one click on the "Linked project" dropdown while editing
+- **Draft autosave**: edits persist locally in real time, so an unexpected close loses nothing
 
-## 块编辑器
+## Block Editor
 
-输入 `/` 呼起块面板，插入结构化块：
+Type `/` to open the block panel and insert structured blocks:
 
-| 块 | 说明 |
+| Block | Description |
 |----|------|
-| Callout | TIP / WARNING / NOTE 提示块 |
-| 代码块 | 带语言高亮 |
-| Mermaid 图 | 流程图 / 时序图等 |
-| 数学公式 | KaTeX 渲染 |
-| 待办列表 / 表格 / 分隔线 | 常用结构 |
-| 折叠块 / Tabs | `<details>` 与 `{% tabs %}` |
+| Callout | TIP / WARNING / NOTE callout blocks |
+| Code block | With language highlighting |
+| Mermaid diagram | Flowcharts / sequence diagrams, etc. |
+| Math formula | Rendered by KaTeX |
+| Todo list / table / divider | Common structures |
+| Collapse block / Tabs | `<details>` and `{% tabs %}` |
 
-- 块可拖拽排序、上下移动、独立删除
-- **Markdown ↔ 块双轨随时切换**：存储格式始终是纯 Markdown，任何编辑器都能打开
+- Blocks can be drag-sorted, moved up/down, and deleted individually
+- **Markdown ↔ blocks, switchable anytime**: the storage format is always plain Markdown, openable by any editor
 
-## 富渲染
+## Rich Rendering
 
-highlight.js 代码高亮、Mermaid 图、KaTeX 数学公式、GFM Callout 与任务列表。
+highlight.js code highlighting, Mermaid diagrams, KaTeX math formulas, GFM callouts and task lists.
 
-## 搜索
+## Search
 
-- 首页搜索框自动聚焦；「询问知识库」模式返回带相关性的答案片段
-- FTS5 trigram + bm25 排序，snippet 高亮匹配词；短 CJK 查询自动降级 LIKE
-- 覆盖笔记与待办；`⌘/Ctrl+K` 命令面板随时可用
+- The home search box auto-focuses; "Ask the knowledge base" mode returns answer snippets ranked by relevance
+- FTS5 trigram + bm25 ranking, snippet highlighting for matched terms; short CJK queries automatically fall back to LIKE
+- Covers notes and todos; the `⌘/Ctrl+K` command palette is available anytime
 
-## 版本历史
+## Version History
 
-每次保存自动创建快照（保留最近 50 个）。笔记卡片 **历史** 按钮：
+Every save automatically creates a snapshot (the last 50 are kept). The **History** button on a note card:
 
-- 版本列表（时间、标题）
-- 查看任意版本与当前的行级 LCS diff（+/- 标记）
-- 一键恢复到任意历史版本
+- Version list (time, title)
+- Line-level LCS diff of any version against the current one (+/- markers)
+- One-click restore to any historical version
 
-## 导入 Claude 记忆
+## Import Claude Memory
 
-一键将 `~/.claude/projects/*/memory/*.md` 幂等导入为知识笔记（重复导入更新而非重复创建）。**设置 → 插件** 可查看导入源并手动触发。
+One click idempotently imports `~/.claude/projects/*/memory/*.md` as knowledge notes (re-imports update the existing notes). **Settings → Plugins** lists the import sources and allows manual triggering.
 
-## 导出
+## Export
 
-笔记卡片 **导出 .md**：带 YAML frontmatter（标题 / 标签 / 项目 / 类型 / 更新时间）的 Markdown 复制到剪贴板。批量 AI 消费见 [AI 集成](ai-integration.md) 的 llms.txt。
+The note card's **Export .md** copies Markdown with YAML frontmatter (title / tags / project / kind / updated time) to the clipboard. For batch AI consumption, see llms.txt under [AI Integration](ai-integration.md).

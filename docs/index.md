@@ -1,58 +1,58 @@
 ---
-title: RepoNest 文档
+title: RepoNest Documentation
 ---
 
-# RepoNest 文档
+# RepoNest Documentation
 
-<p class="subtitle"><strong>The local-first memory layer for AI coding agents</strong> — discover your Git repos, understand what changed, capture knowledge as searchable Markdown, and hand it to any agent in one tool call.<br><strong>本地优先的跨 agent 项目记忆层</strong>：自动发现本地 Git 项目，理解每个项目「现在发生了什么、沉淀了哪些知识」，并在会话边界自动注入与收回，让任何 agent 复用同一份项目上下文。</p>
+<p class="subtitle"><strong>The local-first memory layer for AI coding agents</strong> — discover your Git repos, understand what changed, capture knowledge as searchable Markdown, and hand it to any agent in one tool call.<br><strong>The local-first cross-agent project memory layer</strong>: automatically discovers local Git projects, understands what each project is doing now and what knowledge it has accumulated, and injects and retracts context automatically at session boundaries, so any agent reuses the same project context.</p>
 
 <!--NAV_LINKS-->
 
-## 产品定位
+## Product Positioning
 
-RepoNest 的核心价值是：**让本地 Git 项目从‘散落在终端和记忆里’变成‘可检索、可复用的上下文’**。
+RepoNest's core value: **turning local Git projects from "scattered across terminals and memory" into "searchable, reusable context"**.
 
-当前优先级声明：
-1. **本地项目理解与知识上下文** 是第一优先级
-2. 仪表盘与统计是支持能力，不作为产品主叙事
-3. 插件/Web-only 能力不再默认扩展（PWA 已移出桌面主构建，见 [ADR-0008](adr/0008-pwa-removal.md)）
+Current priority statement:
+1. **Local project understanding and knowledge context** is the first priority
+2. Dashboard and statistics are supporting capabilities, not the main product narrative
+3. Plugin/Web-only capabilities are no longer extended by default (PWA has been removed from the desktop main build, see [ADR-0008](adr/0008-pwa-removal.md))
 
-前端默认页为**知识库**，导航顺序为 **知识库 → 仪表盘 → 设置**（见 [ADR-0006](adr/0006-scope-freeze.md)）。
+The frontend default page is the **Knowledge Base**, with navigation order **Knowledge Base → Dashboard → Settings** (see [ADR-0006](adr/0006-scope-freeze.md)).
 
-核心闭环：
+Core loop:
 
 ```
-发现本地项目 → 理解项目 → 沉淀知识 → 检索知识 → 交给 AI 使用
+Discover local projects → Understand projects → Capture knowledge → Retrieve knowledge → Hand to AI
 ```
 
-其中「交给 AI 使用」落在**会话边界**：`reponest_scan` 建立知识库，`reponest_context` 开会话一次注入全上下文，`reponest_handoff` 收会话结构化交接，跨 agent 复用。
+The "hand to AI" step lands at **session boundaries**: `reponest_scan` builds the knowledge base, `reponest_context` injects the full context in one call at session start, `reponest_handoff` records a structured handoff at session end, reusable across agents.
 
-- **发现**：自动扫描本地 Git 仓库并按 Monorepo/单仓库智能分组
-- **理解**：项目详情自动挖掘 README 摘要、技术栈、依赖、贡献者与活跃度
-- **记录**：Markdown 笔记（分类/标签/版本历史），可导入 Claude 记忆
-- **检索**：FTS5 全文搜索（含短 CJK 降级），命中可定位、可解释
-- **AI 使用**：MCP 会话记忆协议（`reponest_scan` / `reponest_context` / `reponest_handoff`）+ llms.txt，供 Claude Code / Cursor 等直接消费
+- **Discover**: automatically scans local Git repositories and intelligently groups them by Monorepo/single-repo
+- **Understand**: project details automatically extract README summaries, tech stacks, dependencies, contributors, and activity
+- **Record**: Markdown notes (categories/tags/version history), importable into Claude memory
+- **Retrieve**: FTS5 full-text search (with short-CJK fallback); hits are locatable and explainable
+- **AI use**: MCP session memory protocol (`reponest_scan` / `reponest_context` / `reponest_handoff`) + llms.txt, ready for direct consumption by Claude Code / Cursor and others
 
-功能分级（核心 / 支持 / 实验性 / 暂缓）与范围冻结规则见 [ADR-0006](adr/0006-scope-freeze.md)。
+Feature tiering (core / supporting / experimental / deferred) and scope-freeze rules: see [ADR-0006](adr/0006-scope-freeze.md).
 
-## 文档说明
+## About This Documentation
 
-本手册覆盖 RepoNest 的核心功能与使用场景。文档以 Markdown 编写（唯一内容源，存放于仓库 `docs/` 目录），由 `scripts/build-docs.mjs` 生成 HTML 后部署到 GitHub Pages。
+This manual covers RepoNest's core features and use cases. The docs are written in Markdown (the single content source, stored in the repository's `docs/` directory), built into HTML by `scripts/build-docs.mjs` and deployed to GitHub Pages.
 
-- **在线浏览**：<https://sky-jiangcheng.github.io/repo-nest/>，随 master 分支自动更新
-- **本地生成**：`node scripts/build-docs.mjs`（依赖 `web/node_modules` 中的 marked）
-- **问题反馈**：<https://github.com/sky-jiangcheng/repo-nest/issues>
+- **Browse online**: <https://sky-jiangcheng.github.io/repo-nest/>, auto-updated with the master branch
+- **Build locally**: `node scripts/build-docs.mjs` (depends on marked in `web/node_modules`)
+- **Report issues**: <https://github.com/sky-jiangcheng/repo-nest/issues>
 
-## 快速导览
+## Quick Navigation
 
-| 我想… | 去看 |
+| I want to… | Go to |
 |------|------|
-| 安装并跑起第一次扫描 | [快速开始](getting-started.md) |
-| 备份数据 / 换机迁移 / 卸载 | [数据与备份](data-management.md) |
-| 看提交量 / 目标 / 热力图 | [仪表盘](features/dashboard.md) |
-| 写笔记、搜笔记、找回旧版本 | [知识库与笔记](features/knowledge.md) |
-| 看某个项目的技术栈与依赖 | [项目详情](features/project-detail.md) |
-| 让 Claude / Cursor 读写我的知识库 | [AI 集成](features/ai-integration.md) |
-| 写一个插件或知识源导入器 | [插件手册](plugins/overview.md) |
-| 理解代码分层与关键决策 | [架构说明](architecture.md)、[ADR](adr/index.md) |
-| 看懂存储结构与「为何不让 AI 直接读 git」 | [存储结构优化与 AI 价值](storage-optimization.md) |
+| Install and run the first scan | [Getting Started](getting-started.md) |
+| Back up data / migrate to a new machine / uninstall | [Data & Backup](data-management.md) |
+| View commits / goals / heatmap | [Dashboard](features/dashboard.md) |
+| Write notes, search notes, recover old versions | [Knowledge Base & Notes](features/knowledge.md) |
+| View a project's tech stack and dependencies | [Project Detail](features/project-detail.md) |
+| Let Claude / Cursor read and write my knowledge base | [AI Integration](features/ai-integration.md) |
+| Write a plugin or a knowledge-source importer | [Plugin Manual](plugins/overview.md) |
+| Understand code layering and key decisions | [Architecture](architecture.md), [ADR](adr/index.md) |
+| Understand storage structure and "why not let AI read git directly" | [Storage Optimization & AI Value](storage-optimization.md) |

@@ -1,15 +1,15 @@
 ---
-title: 快速开始
+title: Getting Started
 order: 1
 ---
 
-# 快速开始
+# Getting Started
 
-RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行时依赖），核心价值是一层**跨 agent 的项目记忆层**：自动发现本机 Git 仓库，快速沉淀笔记、依赖、技术栈与活跃信息，便于你和任何 AI agent 检索复用。仪表盘与统计是支持能力，不是产品主入口。
+RepoNest is a local-first desktop app (Wails v2, single file, zero runtime dependencies). Its core value is a **cross-agent project memory layer**: it automatically discovers local Git repositories and quickly captures notes, dependencies, tech stacks, and activity info for you and any AI agent to retrieve and reuse. Dashboard and statistics are supporting capabilities, not the main product entry.
 
-## 下载安装
+## Download and Install
 
-安装脚本会同时装上桌面应用和 `reponest-mcp`（AI 客户端用的 MCP 服务器）。
+The install script installs both the desktop app and `reponest-mcp` (the MCP server used by AI clients).
 
 ### macOS / Linux
 
@@ -17,7 +17,7 @@ RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行
 curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh | bash
 ```
 
-macOS 装到 `/Applications/RepoNest.app`，Linux 装到 `/usr/local/bin/reponest`；两者都会把 `reponest-mcp` 放进 `/usr/local/bin`。
+macOS installs to `/Applications/RepoNest.app`, Linux installs to `/usr/local/bin/reponest`; both place `reponest-mcp` into `/usr/local/bin`.
 
 ### Windows
 
@@ -25,81 +25,81 @@ macOS 装到 `/Applications/RepoNest.app`，Linux 装到 `/usr/local/bin/repones
 iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 | iex
 ```
 
-或从 [GitHub Releases](https://github.com/sky-jiangcheng/repo-nest/releases) 下载对应平台的二进制文件。
+Or download the binary for your platform from [GitHub Releases](https://github.com/sky-jiangcheng/repo-nest/releases).
 
-## 首次启动
+## First Launch
 
-启动后直接打开桌面窗口（Wails 应用，无需浏览器）。
+The desktop window opens directly on launch (Wails app, no browser needed).
 
-### 1. 配置扫描目录
+### 1. Configure Scan Directories
 
-首次启动会自动播种默认扫描根目录：
+The first launch automatically seeds the default scan roots:
 
-| 平台 | 默认扫描范围 |
+| Platform | Default scan scope |
 |------|-------------|
-| macOS | 当前用户 HOME 目录 |
-| Linux | 当前用户 HOME 目录 |
-| Windows | 除 C: 盘外的所有磁盘 |
+| macOS | Current user HOME directory |
+| Linux | Current user HOME directory |
+| Windows | All disks except C: |
 
-可在 **设置 → 扫描目录** 中修改（支持添加 / 移除，扫描深度 1-2 级）。
+Change them under **Settings → Scan Directories** (add/remove supported, scan depth 1-2 levels).
 
-### 2. 执行扫描
+### 2. Run a Scan
 
-仪表盘点击 **重新扫描**，应用递归发现扫描根下的所有 Git 仓库并按目录智能分组为项目。
+Click **Rescan** on the dashboard; the app recursively discovers all Git repositories under the scan roots and intelligently groups them into projects by directory.
 
-> 首次扫描仅登记仓库与项目，不预扫历史提交数据。
+> The first scan only registers repositories and projects; it does not prescan historical commit data.
 >
-> **到这一步知识库已经可用**：可以写笔记、搜索、交给 AI（`reponest_context` / `reponest_handoff`）。下面的收藏与回填只影响仪表盘统计，不影响知识库。
+> **At this point the knowledge base is already usable**: you can write notes, search, and hand off to AI (`reponest_context` / `reponest_handoff`). The starring and backfill below only affect dashboard statistics, not the knowledge base.
 
-### 3. 收藏仓库（可选，仪表盘统计）
+### 3. Star Repositories (optional, dashboard statistics)
 
-在仪表盘中点击星标收藏关注的仓库。收藏后卡片展示完整统计（今日新增 / 文件 / 仓库数 / 净增 / 团队总量）。
+Click the star on the dashboard to star the repositories you care about. Once starred, cards show full statistics (today's additions / files / repo count / net growth / team total).
 
-### 4. 回填历史数据（可选，仪表盘统计）
+### 4. Backfill Historical Data (optional, dashboard statistics)
 
-在收藏的仓库卡片上点击 **刷新历史** 按钮，回填该仓库近 365 天的每日统计数据（进度环与热力图随即填充）。
+Click the **Refresh History** button on a starred repo card to backfill that repository's daily statistics for the past 365 days (the progress ring and heatmap fill in immediately).
 
-## 核心功能速览
+## Core Features at a Glance
 
-| 功能 | 定位 | 说明 |
+| Feature | Tier | Description |
 |------|------|------|
-| 知识库 | 核心 | 跨项目笔记中心：Markdown、标签、置顶、FTS5 全文搜索、版本历史 |
-| 仓库知识挖掘 | 核心 | 自动提取 README、技术栈、语言占比、依赖、贡献者、活跃度 |
-| 项目理解与检索 | 核心 | 命令面板 `⌘/Ctrl+K`、全局搜索、项目上下文跳转 |
-| AI 集成 | 核心 | llms.txt、笔记导出、MCP server（含 agent-score 自检，见[AI 集成](features/ai-integration.md)） |
-| 仪表盘 | 支持 | 每日目标进度环、项目卡片、趋势折线图、提交热力图 |
-| 插件系统 | 实验 | yaegi 进程内 Go 脚本 + 知识源导入（见[知识源导入](plugins/overview.md)） |
+| Knowledge Base | Core | Cross-project note hub: Markdown, tags, pinning, FTS5 full-text search, version history |
+| Repository knowledge mining | Core | Automatically extracts README, tech stack, language breakdown, dependencies, contributors, activity |
+| Project understanding & retrieval | Core | Command palette `⌘/Ctrl+K`, global search, project context jumps |
+| AI integration | Core | llms.txt, note export, MCP server (with agent-score self-check, see [AI Integration](features/ai-integration.md)) |
+| Dashboard | Supporting | Daily goal progress ring, project cards, trend line chart, commit heatmap |
+| Plugin system | Experimental | yaegi in-process Go scripts + knowledge-source import (see [Knowledge Source Import](plugins/overview.md)) |
 
-## 数据与日志位置
+## Data & Log Locations
 
-| 内容 | macOS | Windows | Linux |
+| Item | macOS | Windows | Linux |
 |------|-------|---------|-------|
-| 数据库 | `~/Library/Application Support/reponest/dashboard.db` | `%APPDATA%\reponest\dashboard.db` | `~/.config/reponest/dashboard.db` |
-| 插件目录 | `…/reponest/plugins/` | `…/reponest\plugins\` | `…/reponest/plugins/` |
-| 日志 | `~/Library/Logs/reponest.log` | `%APPDATA%\reponest\logs\reponest.log` | `$XDG_STATE_HOME/reponest/reponest.log`（默认 `~/.local/state/reponest/`） |
+| Database | `~/Library/Application Support/reponest/dashboard.db` | `%APPDATA%\reponest\dashboard.db` | `~/.config/reponest/dashboard.db` |
+| Plugin directory | `…/reponest/plugins/` | `…/reponest\plugins\` | `…/reponest/plugins/` |
+| Logs | `~/Library/Logs/reponest.log` | `%APPDATA%\reponest\logs\reponest.log` | `$XDG_STATE_HOME/reponest/reponest.log` (default `~/.local/state/reponest/`) |
 
-升级时 schema 自动迁移，数据无需手工处理。详细排障见[故障排查](troubleshooting.md)。
+The schema migrates automatically on upgrade; data needs no manual handling. For detailed troubleshooting see [Troubleshooting](troubleshooting.md).
 
-## 从源码构建
+## Build from Source
 
-**前置要求**：Go 1.25+、Node.js 20+；开发调试可选 [Wails CLI](https://wails.io) v2.13+。
+**Prerequisites**: Go 1.25+, Node.js 20+; [Wails CLI](https://wails.io) v2.13+ optional for development debugging.
 
 ```bash
-# 前端依赖与构建（产物被 go:embed 进二进制）
+# Frontend deps & build (output is go:embed-ed into the binary)
 cd web && npm install && npm run build && cd ..
 
-# 桌面应用
+# Desktop app
 go build -ldflags="-s -w" -o reponest .
 
 # MCP server
 go build -o reponest-mcp ./cmd/mcp/
 ```
 
-开发模式：`wails dev`（前端热更新 + Wails 绑定注入）。测试：`go test ./...`；前端 `npm test` / `npm run build`（tsc 严格检查）。
+Dev mode: `wails dev` (frontend hot reload + Wails binding injection). Tests: `go test ./...`; frontend `npm test` / `npm run build` (strict tsc checks).
 
-## 下一步
+## Next Steps
 
-- [数据与备份](data-management.md)：备份、换机迁移、重置与卸载
-- [仪表盘](features/dashboard.md)：目标进度、热力图与排序
-- [知识库与笔记](features/knowledge.md)：块编辑器与全文搜索
-- [设置](features/settings.md)：扫描、标准、外观、插件
+- [Data & Backup](data-management.md): backup, machine migration, reset, and uninstall
+- [Dashboard](features/dashboard.md): goal progress, heatmap, and sorting
+- [Knowledge Base & Notes](features/knowledge.md): block editor and full-text search
+- [Settings](features/settings.md): scanning, standards, appearance, plugins

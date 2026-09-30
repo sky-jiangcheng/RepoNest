@@ -86,7 +86,7 @@ function page(title, activeFile, contentHtml, prefix = '', extraHead = '') {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title ? title + ' · ' : ''}RepoNest 文档</title>
+  <title>${title ? title + ' · ' : ''}RepoNest Docs</title>
 ${extraHead}  <style>
     :root { --bg: #f8f9fa; --text: #1a1a2e; --muted: #6c757d; --accent: #4caf50; --border: #e2e8f0; --sidebar-w: 240px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -131,7 +131,7 @@ ${extraHead}  <style>
   <aside class="sidebar">
     <div class="sidebar-brand">
       <h1>Repo<span>Nest</span></h1>
-      <small>用户文档 · v${version}</small>
+      <small>Docs · v${version}</small>
     </div>
     <nav>${nav}
     </nav>
@@ -139,7 +139,7 @@ ${extraHead}  <style>
   <main class="main">
 ${contentHtml}
     <hr>
-    <a href="${REPO}" class="back-to-top">← 返回 GitHub 仓库</a>
+    <a href="${REPO}" class="back-to-top">← Back to GitHub repo</a>
   </main>
   <script>${active}</script>
 </body>
@@ -180,7 +180,7 @@ for (const mdPath of collectMdFiles(docsDir)) {
     // Landing page: inject quick nav links into the <!--NAV_LINKS--> slot.
     const quick = sidebar.sections.flatMap(s => s.items).slice(0, 7)
       .map(it => `      <a href="${prefix}${it.file}.html">${it.label}</a>`).join('\n')
-    writeFileSync(outPath, page(title || 'RepoNest 文档', '', html.replace('<!--NAV_LINKS-->', quick), prefix))
+    writeFileSync(outPath, page(title || 'RepoNest Docs', '', html.replace('<!--NAV_LINKS-->', quick), prefix))
   } else {
     writeFileSync(outPath, page(title, base, html, prefix))
   }

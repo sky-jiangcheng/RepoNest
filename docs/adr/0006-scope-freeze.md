@@ -1,48 +1,48 @@
-# ADR-0006: 范围冻结与功能分级（核心闭环优先）
+# ADR-0006: Scope Freeze and Feature Tiering (Core Loop First)
 
-- 状态：Accepted
-- 日期：2026-08-20
-- 关联：[ADR-0002](0002-c-end-repositioning.md)（本地优先定位）、[ADR-0001](0001-plugin-platform.md)（已废弃的平台化路线）、[ADR-0005](0005-service-layer.md)（服务层统一）、[ADR-0007](0007-session-memory-protocol.md)（会话记忆协议，本定位的落地）
+- Status: Accepted
+- Date: 2026-08-20
+- Related: [ADR-0002](0002-c-end-repositioning.md) (local-first positioning), [ADR-0001](0001-plugin-platform.md) (the deprecated platform route), [ADR-0005](0005-service-layer.md) (service layer unification), [ADR-0007](0007-session-memory-protocol.md) (session memory protocol, the implementation of this positioning)
 
-## 背景
+## Background
 
-RepoNest 同时承载提交统计、知识库、块编辑器、插件平台、PWA、SEO、CLI、MCP、agent-score 等多条产品线（Issue #73/#74）。核心价值容易被功能数量掩盖，外围能力持续增加维护成本。本 ADR 将产品主线收敛为：
+RepoNest simultaneously carries multiple product lines: commit statistics, knowledge base, block editor, plugin platform, PWA, SEO, CLI, MCP, agent-score, etc. (Issues #73/#74). The core value gets obscured by feature count, while peripheral capabilities keep adding maintenance cost. This ADR converges the product main line to:
 
-> **跨 agent 的项目记忆层**：为 AI 会话提供项目级上下文注入与会话结束结构化交接，让知识在不同 agent 间流转。
+> **A cross-agent project memory layer**: providing project-level context injection for AI sessions and structured handoff at session end, letting knowledge flow between agents.
 
-「本地优先」仍是部署与数据边界（数据不出本机，见 ADR-0002），但产品价值主张已从「人和 AI 都能查的知识库」升级为「agent 之间流转的记忆」：`reponest_context` 在会话开始一键注入全上下文，`reponest_handoff` 在会话结束零成本沉淀，两端闭合成记忆环（协议细节见 ADR-0007）。
+"Local-first" remains the deployment and data boundary (data never leaves this machine, see ADR-0002), but the product value proposition upgrades from "a knowledge base both humans and AI can query" to "memory flowing between agents": `reponest_context` injects the full context with one call at session start, and `reponest_handoff` deposits it at zero cost at session end — the two ends close into a memory loop (protocol details in ADR-0007).
 
-核心闭环（每个新功能必须能归入至少一个环节）：
+Core loop (every new feature must fit at least one stage):
 
 ```
-发现项目 → 理解项目 → 记录知识 → 检索知识 → 注入会话 → 会话结束沉淀
+Discover project → Understand project → Record knowledge → Retrieve knowledge → Inject into session → Deposit at session end
 ```
 
-## 决策
+## Decision
 
-### 1. 主交付形态
+### 1. Primary delivery form
 
-**本地优先的跨平台桌面应用**（Wails 单二进制）。Web/PWA/HTTP server 不再作为同等交付形态推进。
+**A local-first cross-platform desktop application** (Wails single binary). Web/PWA/HTTP server are no longer advanced as equal delivery forms.
 
-### 2. 功能分级
+### 2. Feature tiering
 
-| 级别 | 定义 | 现状功能 |
-|------|------|---------|
-| **核心** | 直接构成「发现→理解→记录→检索→注入→沉淀」闭环 | 自动发现仓库、项目分组、仓库知识挖掘、Markdown 笔记、FTS5 搜索、版本历史、全局搜索、会话上下文注入（reponest_context）、会话结束交接（reponest_handoff）、AI 就绪接口（CLI/MCP/llms.txt） |
-| **支持核心** | 服务于闭环的可理解性，不喧宾夺主 | 仪表盘与统计、工作日检查、状态栏、i18n、单文件跨平台、Claude 记忆导入 |
-| **实验性** | 保留真实场景但**不再扩展平台基础设施** | yaegi 插件系统、块编辑器高级块（Callout/Tabs/Mermaid 等结构化块）、OpenAPI/HTTP API spec（契约文档，非可用 HTTP server） |
-| **暂缓/待移除** | 不继续投入；评估是否移出桌面主构建 | PWA 深度能力、SEO 产物、Web-only 交互 |
+| Tier | Definition | Current features |
+|------|-----------|------------------|
+| **Core** | Directly constitutes the "Discover → Understand → Record → Retrieve → Inject → Deposit" loop | Automatic repo discovery, project grouping, repository knowledge mining, Markdown notes, FTS5 search, version history, global search, session context injection (reponest_context), session-end handoff (reponest_handoff), AI-ready interfaces (CLI/MCP/llms.txt) |
+| **Core support** | Serves the comprehensibility of the loop without overshadowing it | Dashboard and statistics, workday checks, status bar, i18n, single-file cross-platform, Claude memory import |
+| **Experimental** | Kept for real scenarios but **no further platform infrastructure expansion** | yaegi plugin system, block editor advanced blocks (Callout/Tabs/Mermaid and other structured blocks), OpenAPI/HTTP API spec (contract documentation, not a usable HTTP server) |
+| **Deferred / to remove** | No further investment; evaluate removal from the desktop main build | PWA deep capabilities, SEO artifacts, Web-only interactions |
 
-### 3. 范围冻结规则
+### 3. Scope freeze rules
 
-1. **平台化能力不再默认扩展**：插件 SPI、HTTP server、多后端存储、Web 部署等不再新增基础设施；确有需求需先提交 ADR 论证对核心闭环的贡献。
-2. **新功能必须说明归属**：新增功能需在 issue/PR 中标注属于「发现 / 理解 / 记录 / 检索 / 注入会话 / 会话结束沉淀」中的至少一个环节；不归属的默认不进入路线图。
-3. **实验性功能门禁**：标记为实验性的能力不允许成为其他功能的硬依赖；其文档需明确标注「实验性，接口可能变更」。
-4. **OpenAPI 语义**：`docs/api/openapi.json` 是 Wails 绑定面的契约/实验文档，不作为「可用 HTTP server」宣传；若未来恢复 HTTP server 模式需同步实现。
-5. **编辑器边界**：暂缓新增复杂编辑器块，优先保证 Markdown 稳定性、搜索和 AI 可读性（产物保持纯 Markdown，见 ADR-0004）。
+1. **Platformization capabilities no longer expand by default**: plugin SPI, HTTP server, multi-backend storage, web deployment, etc. add no new infrastructure; genuine needs must first file an ADR arguing their contribution to the core loop.
+2. **New features must state their tier**: new features must be labeled in the issue/PR as belonging to at least one stage of "Discover / Understand / Record / Retrieve / Inject into session / Deposit at session end"; unlabeled features stay out of the roadmap by default.
+3. **Experimental feature gate**: capabilities marked experimental must never become hard dependencies of other features; their documentation must clearly state "experimental, interfaces may change".
+4. **OpenAPI semantics**: `docs/api/openapi.json` is a contract/experimental document of the Wails binding surface, never marketed as a "usable HTTP server"; if an HTTP server mode ever returns, it must be implemented in sync.
+5. **Editor boundary**: adding complex editor blocks is deferred; Markdown stability, search, and AI readability come first (output stays pure Markdown, see ADR-0004).
 
-## 后果
+## Consequences
 
-- 正面：路线图有明确的取舍依据；维护成本向核心闭环集中；文档与真实能力一致（README 分级标记见 [README](../../README.md)）。
-- 负面：插件生态、PWA、SEO 等既有能力停止扩展，可能损失部分潜在用户；需在文档中向用户明示实验性边界。
-- 遗留：`llms.txt`、CLI、MCP 字段统一见 Issue #76 的收敛工作。
+- Positive: the roadmap gains a clear trade-off basis; maintenance cost concentrates on the core loop; documentation matches real capabilities (tiering marks in the README, see [README](../../README.md)).
+- Negative: existing capabilities such as the plugin ecosystem, PWA, and SEO stop expanding, potentially losing some prospective users; the experimental boundary must be made explicit to users in the documentation.
+- Leftovers: unifying `llms.txt`, CLI, and MCP fields is covered by the convergence work in Issue #76.

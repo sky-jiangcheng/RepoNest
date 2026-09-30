@@ -1,29 +1,29 @@
-# ADR-0008: PWA 移出桌面主构建
+# ADR-0008: PWA Removed from the Desktop Main Build
 
-- 状态：Accepted
-- 日期：2026-09-28
-- 关联：[ADR-0006](0006-scope-freeze.md)（本文落实其「暂缓/待移除」一档中对 PWA 深度能力的处置）
+- Status: Accepted
+- Date: 2026-09-28
+- Related: [ADR-0006](0006-scope-freeze.md) (this document implements the disposition of PWA deep capabilities in its "Deferred / to remove" tier)
 
-## 背景
+## Background
 
-ADR-0006 将 PWA 深度能力列入「暂缓/待移除：不继续投入，评估是否移出桌面主构建」。此后的清理已逐层拆掉 PWA 基础设施（`vite-plugin-pwa` 配置与依赖、manifest、service worker、安装 UI），但**决策从未落地**：README 仍挂着「可安装到桌面」的暂缓行，`docs/getting-started.md` 仍列 PWA 定位，`docs/features/settings.md` 仍描述不存在的「安装到桌面」设置项，`web/public/` 仍躺着 3 个无任何引用的 PWA 图标，两套 locale 各残留 11 个孤儿字符串。
+ADR-0006 placed PWA deep capabilities in "Deferred / to remove: no further investment; evaluate removal from the desktop main build". Subsequent cleanup tore down the PWA infrastructure layer by layer (the `vite-plugin-pwa` config and dependency, manifest, service worker, install UI), but **the decision never fully landed**: the README still carried the deferred "installable to desktop" line, `docs/getting-started.md` still listed the PWA positioning, `docs/features/settings.md` still described a nonexistent "install to desktop" setting, `web/public/` still held 3 PWA icons referenced by nothing, and both locale sets retained 11 orphan strings each.
 
-残留不只是卫生问题，是**叙事冲突**：产品是 Wails 原生窗口应用，「安装为 PWA 获得独立窗口」与原生窗口直接矛盾；文档承诺、代码事实、产品定位三者不一致，每一份不一致都在持续消耗前端预算与定位纯度。
+The leftovers are a **narrative conflict**, beyond mere hygiene: the product is a Wails native window application, and "install as a PWA for a standalone window" directly contradicts the native window. Documentation promises, code facts, and product positioning disagree in three places, and each disagreement keeps draining frontend budget and positioning purity.
 
-## 决策
+## Decision
 
-1. **PWA 移出桌面主构建**：不再提供 manifest / service worker / 安装入口。桌面安装路径唯一——Releases 分发的平台包。
-2. **web 构建保留**：前端不删，`npm run build` 照常产出，浏览器开发预览（vite dev、headless 场景的浏览器访问）不受影响——只是不再是一个「可安装的 PWA」。
-3. **残留清零**：删除 PWA 图标、孤儿 locale 字符串、失实文档行；路由注释改为按「浏览器 / 桌面壳」区分，不再以 PWA 叙事描述浏览器模式。
+1. **PWA removed from the desktop main build**: no manifest / service worker / install entry point. The desktop install path is singular — platform packages distributed via Releases.
+2. **Web build retained**: the frontend is kept; `npm run build` produces output as usual, and browser development preview (vite dev, headless browser access scenarios) is unaffected — it simply stops being an "installable PWA".
+3. **Leftovers cleared to zero**: delete the PWA icons, orphan locale strings, and inaccurate documentation lines; route comments switch to a "browser / desktop shell" distinction, and the browser mode is no longer described in PWA narrative.
 
-## 理由
+## Rationale
 
-- 原生窗口与「安装为 PWA」是同一价值的两种承诺，只应保留一个；Wails 单二进制是产品主形态。
-- 基础设施已拆完，剩下的都是维护面：失实行、孤儿资源、文档债务。清零是一次性成本，留着是持续成本。
-- 保留 web 构建的成本接近零（vite 配置本来就为 Wails 与非 HTTP 源设计），堵死的是「PWA 叙事」而非开发体验。
+- Native window and "install as PWA" are two promises of the same value; only one should remain. The Wails single binary is the product's primary form.
+- The infrastructure is already dismantled; what remains is maintenance surface: inaccurate claims, orphaned resources, documentation debt. Clearing is a one-time cost; keeping is a recurring cost.
+- Keeping the web build costs near zero (the vite config was designed for Wails and non-HTTP origins anyway); what gets closed off is the "PWA narrative", leaving the development experience intact.
 
-## 后果
+## Consequences
 
-- 正面：文档承诺与代码事实一致；`web/public/` 只剩 favicon；前端不再有安装态、离线 fallback 等需要维护的双态逻辑。
-- 负面：曾把 RepoNest 当 PWA 安装的用户失去「安装入口」这一发现路径——但他们实际依赖的桌面场景由 Releases 包覆盖，且 manifest 早已不存在，事实上已不可安装。
-- 遗留：仪表盘「生产力门面」（目标环 / 每日代码量标准 / 工作日告警）与「记忆层」定位的张力，按 2.0 收敛方向处理（详见 TODO 遗留项），不在本文范围。
+- Positive: documentation promises match code facts; `web/public/` keeps only the favicon; the frontend no longer carries dual-state logic such as install state and offline fallback.
+- Negative: users who once installed RepoNest as a PWA lose "install entry" as a discovery path — but the desktop scenario they actually rely on is covered by the Releases packages, and the manifest has long been gone, so installation was already impossible in practice.
+- Leftover: the tension between the dashboard's "productivity facade" (goal rings / daily code volume standards / workday alerts) and the "memory layer" positioning is handled along the 2.0 convergence direction (see the TODO leftovers); out of scope for this document.

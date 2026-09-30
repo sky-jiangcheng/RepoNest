@@ -1,37 +1,37 @@
 {
   "sections": [
     {
-      "title": "入门",
+      "title": "Getting Started",
       "items": [
-        { "file": "getting-started", "label": "快速开始" },
-        { "file": "data-management", "label": "数据与备份" }
+        { "file": "getting-started", "label": "Getting Started" },
+        { "file": "data-management", "label": "Data & Backup" }
       ]
     },
     {
-      "title": "功能手册",
+      "title": "Feature Manual",
       "items": [
-        { "file": "features/knowledge", "label": "知识库与笔记" },
-        { "file": "features/dashboard", "label": "仪表盘" },
-        { "file": "features/project-detail", "label": "项目详情" },
-        { "file": "features/settings", "label": "设置" },
-        { "file": "features/command-palette", "label": "命令面板与快捷键" }
+        { "file": "features/knowledge", "label": "Knowledge Base & Notes" },
+        { "file": "features/dashboard", "label": "Dashboard" },
+        { "file": "features/project-detail", "label": "Project Detail" },
+        { "file": "features/settings", "label": "Settings" },
+        { "file": "features/command-palette", "label": "Command Palette & Shortcuts" }
       ]
     },
     {
-      "title": "进阶",
+      "title": "Advanced",
       "items": [
-        { "file": "features/ai-integration", "label": "AI 集成（CLI/MCP/llms.txt）" },
-        { "file": "plugins/overview", "label": "插件手册" }
+        { "file": "features/ai-integration", "label": "AI Integration (CLI/MCP/llms.txt)" },
+        { "file": "plugins/overview", "label": "Plugin Manual" }
       ]
     },
     {
-      "title": "参考",
+      "title": "Reference",
       "items": [
-        { "file": "architecture", "label": "架构说明" },
-        { "file": "storage-optimization", "label": "存储结构优化与 AI 价值" },
-        { "file": "api/reference", "label": "API 参考" },
-        { "file": "troubleshooting", "label": "故障排查" },
-        { "file": "adr/index", "label": "架构决策（ADR）" }
+        { "file": "architecture", "label": "Architecture" },
+        { "file": "storage-optimization", "label": "Storage Layout & AI Value" },
+        { "file": "api/reference", "label": "API Reference" },
+        { "file": "troubleshooting", "label": "Troubleshooting" },
+        { "file": "adr/index", "label": "Architecture Decisions (ADR)" }
       ]
     }
   ]

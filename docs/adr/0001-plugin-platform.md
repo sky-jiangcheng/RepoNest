@@ -1,64 +1,64 @@
 ---
-status: Superseded（已被 ADR-0002 取代）
-date: 2026-08（原 RFC 0001）
+status: Superseded by ADR-0002
+date: 2026-08 (originally RFC 0001)
 ---
 
-# RFC 0001: RepoNest 架构演进 & 插件平台化
+# RFC 0001: RepoNest Architecture Evolution & Plugin Platform
 
 > **⚠️ Superseded by [ADR 0002](../adr/0002-c-end-repositioning.md)**
-> 本 RFC 中的 M2（常驻 HTTP Server / RBAC / AK-SK）、M3（插件协议网关 + scope 权限）、M4（PG/ES / K8s / reponest-server）均已废弃。
-> M1 抽象层保留，作为附加插件扩展接口的底层支撑。
+> M2 (resident HTTP Server / RBAC / AK-SK), M3 (plugin protocol gateway + scope permissions), and M4 (PG/ES / K8s / reponest-server) described in this RFC are deprecated.
+> The M1 abstraction layer is retained as the foundation supporting additional plugin extension interfaces.
 
-| 项 | 值 |
-|---|---|
-| 状态 | **Superseded** (M1 已完成，M2-M4 废弃) |
-| 设计版本 | v0.1 (M1) |
-| 最近更新 | 2026-08-07 |
-| 对应里程碑 | M1 抽象解耦 ✅ → M2/M3/M4 废弃（见 ADR 0002） |
+| Item | Value |
+|------|-------|
+| Status | **Superseded** (M1 completed; M2-M4 deprecated) |
+| Design version | v0.1 (M1) |
+| Last updated | 2026-08-07 |
+| Related milestone | M1 abstraction decoupling ✅ → M2/M3/M4 deprecated (see ADR 0002) |
 
-## 1. 背景与目标
+## 1. Background and Goals
 
-当前 RepoNest 是 **Wails + SQLite 单二进制桌面应用**，代码高度耦合：
+RepoNest is currently a **Wails + SQLite single-binary desktop application** with highly coupled code:
 
-- `main.App` 持有 `*sql.DB`，所有 handler（`handlers_*.go`）直接调用 `internal/db/*.go` 的函数式 API；
-- Git 操作在 `internal/stats/`、`internal/knowledge/` 中以包级函数形式实现，无法切换远程 Git 服务商；
-- 存储层（SQLite）与业务逻辑强绑定，未来无法扩展到 PG/ES。
+- `main.App` holds `*sql.DB`, and all handlers (`handlers_*.go`) directly call the functional API of `internal/db/*.go`;
+- Git operations are implemented as package-level functions in `internal/stats/` and `internal/knowledge/`, with no way to switch remote Git providers;
+- The storage layer (SQLite) is tightly bound to business logic, preventing future extension to PG/ES.
 
-用户目标是将 RepoNest 演进为「**核心底座 + 协议网关 + 插件生态**」的分层解耦架构，支持独立插件、多 Git 服务商适配、远端部署等场景。
+The goal is to evolve RepoNest into a layered, decoupled architecture of "**core foundation + protocol gateway + plugin ecosystem**", supporting independent plugins, multi-Git-provider adaptation, and remote deployment scenarios.
 
-本 RFC 固化 **M1（抽象解耦）→ M2（服务化底座）→ M3（插件协议闭环）→ M4（生态规模化）** 四个阶段的关键决策，作为后续 Issue 落地的蓝本。
+This RFC codifies the key decisions across four phases — **M1 (abstraction decoupling) → M2 (service-oriented foundation) → M3 (plugin protocol loop) → M4 (ecosystem scale)** — as the blueprint for subsequent Issue implementation.
 
-## 2. 决策（Decision）
+## 2. Decision
 
-### 2.1 运行形态：桌面 ↔ 服务端双轨并行，同一套 Go 内核
+### 2.1 Runtime form: desktop ↔ server dual track, one Go kernel
 
-- **不废弃 Wails**：桌面版继续是主力发布形态（零依赖、双击即用，对应当前用户核心价值）。
-- **内核拆分**：`main.App` + `handlers_*.go` 的业务逻辑下沉到 `internal/core/`，Wails Bind 层仅做薄包装。
-- **内嵌 HTTP 服务**：同一进程中，只要启动参数 `-server` 或桌面模式下**总是**监听 `127.0.0.1:18731`，对外暴露 `/api/v1/*` RESTful API。插件协议与前端 API 共享这套 HTTP。
-- **独立后端部署**：后续提供 `reponest-server` 构建目标（去掉 Wails 启动、保留 HTTP + 插件宿主），复用 90%+ 代码。
+- **Wails is retained**: the desktop version remains the primary release form (zero dependencies, double-click to run, matching the current core user value).
+- **Kernel split**: business logic from `main.App` + `handlers_*.go` moves down into `internal/core/`, with the Wails Bind layer kept as a thin wrapper.
+- **Embedded HTTP service**: within the same process, whenever started with the `-server` flag — or **always** in desktop mode — the app listens on `127.0.0.1:18731`, exposing the `/api/v1/*` RESTful API. The plugin protocol and the frontend API share this HTTP server.
+- **Standalone backend deployment**: a `reponest-server` build target will follow later (dropping the Wails bootstrap, keeping HTTP + plugin host), reusing 90%+ of the code.
 
-### 2.2 存储升级时机：M4 引入，做成可插拔后端
+### 2.2 Storage upgrade timing: introduced in M4 as pluggable backends
 
-- **M1–M3 全程 SQLite**：不引入 PG/ES，聚焦协议跑通。
-- **M4 抽象分层后**：新增 `storage.postgres` + `search.elasticsearch` 两种实现，配置文件键 `storage.backend` / `search.backend` 运行时切换。
-- **桌面版默认永远 SQLite**；PG/ES 只给 server 部署场景用。
+- **SQLite throughout M1–M3**: no PG/ES introduced; focus on getting the protocol working.
+- **After M4 abstraction layering**: add `storage.postgres` + `search.elasticsearch` implementations, switchable at runtime via the `storage.backend` / `search.backend` config keys.
+- **The desktop version always defaults to SQLite**; PG/ES are reserved for server deployment scenarios.
 
-### 2.3 插件运行时：三阶段 Tier 化演进
+### 2.3 Plugin runtime: three-stage tiered evolution
 
-| Tier | 技术 | 启用时机 | 适用场景 |
-|---|---|---|---|
-| **Tier 1** | 进程内 Go plugin / WASM | M3 首发 | 官方基础插件集、打样 |
-| **Tier 2** | 独立本地进程 + RESTful（HTTP2） | M4 中期 | 社区插件、支持 Node/Python 写插件 |
-| **Tier 3** | K8s / Docker 容器 | 企业客户要求时 | 企业级服务端隔离部署 |
+| Tier | Technology | Availability | Use cases |
+|------|-----------|--------------|-----------|
+| **Tier 1** | In-process Go plugin / WASM | M3 launch | Official base plugin set, prototyping |
+| **Tier 2** | Standalone local process + RESTful (HTTP2) | Mid M4 | Community plugins, Node/Python plugin support |
+| **Tier 3** | K8s / Docker containers | When enterprise customers require it | Enterprise-grade server-side isolated deployment |
 
-- M3 首个官方插件「项目管理插件」用 Tier 1。
-- Webhook 协议在 Tier 1 下走 Go channel 直调、Tier 2+ 走 HTTP，抽象层统一接口语义。
+- The first official M3 plugin, the "project management plugin", uses Tier 1.
+- Under Tier 1 the webhook protocol goes through direct Go channel calls; Tier 2+ goes through HTTP. The abstraction layer unifies the interface semantics.
 
-## 3. M1 架构蓝图（本轮落地）
+## 3. M1 Architecture Blueprint (landed this round)
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Wails Bind / HTTP API  (main 包，薄包装层)      │
+│  Wails Bind / HTTP API  (main pkg, thin wrapper)│
 ├─────────────────────────────────────────────────┤
 │  internal/core/                                 │
 │  ┌──────────┐  ┌────────────┐  ┌────────────┐  │
@@ -69,11 +69,11 @@ date: 2026-08（原 RFC 0001）
 │       ▼              ▼               ▼         │
 │  local git exec    adapter         mapper      │
 │  (stats pkg)     internal/db    ↔project/note  │
-│  (knowledge pkg) (SQLite 原实现)                │
+│  (knowledge pkg) (original SQLite impl)        │
 └─────────────────────────────────────────────────┘
 ```
 
-### 3.1 GitProvider 接口 (`internal/core/git`)
+### 3.1 GitProvider interface (`internal/core/git`)
 
 ```go
 type Provider interface {
@@ -84,12 +84,12 @@ type Provider interface {
 }
 ```
 
-- M1 默认实现 `LocalGitProvider`，直接调用 `internal/stats/` 和 `internal/knowledge/` 包级函数。
-- 为 M4 的 `GitLabProvider` / `GitHubProvider` / `GiteaProvider` 留扩展点。
+- The M1 default implementation is `LocalGitProvider`, directly calling the package-level functions of `internal/stats/` and `internal/knowledge/`.
+- Extension points are reserved for M4's `GitLabProvider` / `GitHubProvider` / `GiteaProvider`.
 
-### 3.2 Storage 层接口 (`internal/core/storage`)
+### 3.2 Storage layer interfaces (`internal/core/storage`)
 
-按领域拆分 Store 接口：
+Store interfaces split by domain:
 
 ```go
 type (
@@ -117,10 +117,10 @@ type Stores struct {
 }
 ```
 
-- M1 默认实现：`storage/sqlite` 包，**薄包装**现有 `internal/db` 函数式 API（避免重写 SQL 和测试）。
-- `*sql.DB` 从 `main.App` 下移到 `storage/sqlite` 内部持有。
+- M1 default implementation: the `storage/sqlite` package, a **thin wrapper** over the existing `internal/db` functional API (avoiding SQL and test rewrites).
+- `*sql.DB` moves down from `main.App` into `storage/sqlite` internals.
 
-### 3.3 知识库领域模型 (`internal/core/kb`)
+### 3.3 Knowledge base domain model (`internal/core/kb`)
 
 ```go
 type Space struct {
@@ -142,61 +142,61 @@ type Doc struct {
 }
 ```
 
-- 向上层（插件协议 scope `kb:space:*` / `kb:doc:*`）暴露统一 kb 语义。
-- 向下 `Mapper` 层把 Space/Doc 与旧的 Project/Note 模型互转。
+- Exposes unified kb semantics upward (plugin protocol scopes `kb:space:*` / `kb:doc:*`).
+- Downward, a `Mapper` layer converts between Space/Doc and the legacy Project/Note models.
 
-### 3.4 main.App 改造
+### 3.4 main.App refactoring
 
 ```go
 type App struct {
     ctx            context.Context
     gitUser        string
-    // 新引入的抽象（M1 起注入这些而非 *sql.DB）
+    // newly introduced abstractions (injected from M1 onward instead of *sql.DB)
     Git            git.Provider
     Stores         storage.Stores
     KB             kb.Facade
 
-    // 保留（过渡期兼容旧调用，M2 内清完）
+    // retained (transition-period compatibility with legacy calls, cleaned up within M2)
     db             *sql.DB
 
-    // 扫描/缓存状态
+    // scan/cache state
     scanMu         sync.Mutex
-    // ...（保持不变）
+    // ... (unchanged)
 }
 ```
 
-- 过渡期：M1 内 `handlers_*.go` 不直接替换实现，而是新增接口字段；旧代码路径仍可用。
-- 联调阶段：逐个 handler 把「直接 `db.Xxx()`」替换为「`a.Stores.Project.Xxx()`」风格。
+- Transition period: within M1, `handlers_*.go` are not directly replaced; interface fields are added instead, and the legacy code paths keep working.
+- Integration phase: each handler is migrated one by one from "direct `db.Xxx()`" calls to the "`a.Stores.Project.Xxx()`" style.
 
-## 4. 替代方案（Alternatives Considered）
+## 4. Alternatives Considered
 
-### 4.1 一步到位上 gRPC + PG + ES + 容器化
+### 4.1 Going straight to gRPC + PG + ES + containerization
 
-**反对**：当前产品仍以桌面单二进制为核心价值，一步到位引入运维复杂度且没有首个插件验证需求。
+**Rejected**: the product's core value is still the desktop single binary; jumping straight in adds operational complexity with no first plugin to validate the demand.
 
-### 4.2 废弃 SQLite、直接切换 PG
+### 4.2 Dropping SQLite and switching directly to PG
 
-**反对**：PG 对桌面用户是纯负担，且破坏「零依赖单文件」卖点。存储抽象保留后，PG 是后续可选项而非强替换。
+**Rejected**: PG is a pure burden for desktop users and breaks the "zero-dependency single file" selling point. With the storage abstraction in place, PG remains a future option rather than a forced replacement.
 
-### 4.3 只支持 Tier 2（独立进程）插件形态
+### 4.3 Supporting only Tier 2 (standalone process) plugins
 
-**反对**：桌面用户体验极差（需手动启动插件进程、配端口）。Tier 1 首发 + Tier 2 跟进是更合理的节奏。
+**Rejected**: the desktop user experience is very poor (manually starting plugin processes, configuring ports). Tier 1 first + Tier 2 follow-up is a more reasonable cadence.
 
-## 5. 后果与风险（Consequences）
+## 5. Consequences and Risks
 
-- **正面**：M1 后代码形态即支持未来的远程 Provider、可插拔存储、插件协议域模型；接口回归测试通过即等于行为零变化。
-- **风险**：过渡期 App 同时持有接口与底层 `db` 字段，存在双写一致性隐患。M1 联调阶段需把所有调用路径完整迁移到接口。
-- **度量**：M1 完成的判定标准——「`go test ./...` 全量通过」且「对 `main.App.db` 的直接引用在业务代码中降低到 0 或仅剩 SQLite 实现层内部」。
+- **Positive**: after M1, the code shape supports future remote Providers, pluggable storage, and the plugin protocol domain model; passing the interface regression tests equals zero behavior change.
+- **Risk**: during the transition, App holds both the interfaces and the underlying `db` field, creating a dual-write consistency hazard. The M1 integration phase must fully migrate all call paths to the interfaces.
+- **Metrics**: M1 completion criteria — "`go test ./...` passes in full" and "direct references to `main.App.db` in business code reduced to 0 or remaining only inside the SQLite implementation layer".
 
-## 6. 关联 Issue
+## 6. Related Issues
 
-| # | 标题 | 里程碑 |
-|---|---|---|
-| 1 | 抽象 GitProvider 接口 + LocalGitProvider 实现 | M1 |
-| 2 | 抽象 Storage 层 Store 接口，SQLite 默认实现 | M1 |
-| 3 | 定义 Space/Doc 知识库领域模型与映射层 | M1 |
-| 4 | 本 RFC 文档 | M1 |
-| 5 | 桌面模式内嵌 HTTP 服务骨架（/api/v1/health） | M2 |
-| 6 | RBAC 引擎（scope 中间件） | M2 |
-| 7 | AK/SK 签名中间件 | M2 |
-| … | 详见主里程碑 Issue 清单 | … |
+| # | Title | Milestone |
+|---|-------|-----------|
+| 1 | Abstract GitProvider interface + LocalGitProvider implementation | M1 |
+| 2 | Abstract Storage layer Store interfaces, SQLite default implementation | M1 |
+| 3 | Define Space/Doc knowledge base domain model and mapping layer | M1 |
+| 4 | This RFC document | M1 |
+| 5 | Desktop-mode embedded HTTP service skeleton (/api/v1/health) | M2 |
+| 6 | RBAC engine (scope middleware) | M2 |
+| 7 | AK/SK signature middleware | M2 |
+| … | See the main milestone issue list for details | … |

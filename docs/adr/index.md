@@ -1,23 +1,23 @@
 ---
-title: 架构决策（ADR）
+title: Architecture Decision Records (ADR)
 order: 21
 ---
 
-# 架构决策记录（ADR）
+# Architecture Decision Records (ADR)
 
-| 编号 | 标题 | 状态 |
-|------|------|------|
-| [0001](0001-plugin-platform.md) | 插件平台（M1-M4：HTTP server / RBAC / PG-ES / K8s） | Superseded（被 0002 取代） |
-| [0002](0002-c-end-repositioning.md) | C 端重新定位：本地优先「代码项目第二大脑」+ 进程内插件 | Accepted |
-| [0003](0003-fts5-search.md) | FTS5 trigram 全文搜索 | Accepted |
-| [0004](0004-block-editor.md) | 块编辑器（产物保持纯 Markdown） | Accepted |
-| [0005](0005-service-layer.md) | 服务层重构（service / app / domain 分层） | Accepted |
-| [0006](0006-scope-freeze.md) | 范围冻结与功能分级（核心闭环优先） | Accepted |
-| [0007](0007-session-memory-protocol.md) | 会话记忆协议（context / handoff 双工具） | Accepted |
-| [0008](0008-pwa-removal.md) | PWA 移出桌面主构建（落实 ADR-0006 暂缓档） | Accepted |
+| # | Title | Status |
+|---|-------|--------|
+| [0001](0001-plugin-platform.md) | Plugin platform (M1-M4: HTTP server / RBAC / PG-ES / K8s) | Superseded by 0002 |
+| [0002](0002-c-end-repositioning.md) | C-end repositioning: local-first "second brain for code projects" + in-process plugins | Accepted |
+| [0003](0003-fts5-search.md) | FTS5 trigram full-text search | Accepted |
+| [0004](0004-block-editor.md) | Block editor (output stays pure Markdown) | Accepted |
+| [0005](0005-service-layer.md) | Service layer refactor (service / app / domain layering) | Accepted |
+| [0006](0006-scope-freeze.md) | Scope freeze and feature tiering (core loop first) | Accepted |
+| [0007](0007-session-memory-protocol.md) | Session memory protocol (context / handoff dual tools) | Accepted |
+| [0008](0008-pwa-removal.md) | PWA removed from the desktop main build (implements the deferred tier of ADR-0006) | Accepted |
 
-## 约定
+## Conventions
 
-- 每个重大不可逆决策一篇：背景 → 决策 → 后果
-- 被 superseded 的 ADR 保留原文与横幅，不删除
-- 新 ADR 从 `0008` 递增编号，文件名 `NNNN-kebab-title.md`
+- One ADR per major irreversible decision: Background → Decision → Consequences
+- Superseded ADRs keep their original text and banner; they are never deleted
+- New ADRs increment from `0008`, file name `NNNN-kebab-title.md`

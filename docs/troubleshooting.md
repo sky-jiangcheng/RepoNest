@@ -1,87 +1,87 @@
 ---
-title: 故障排查
+title: Troubleshooting
 order: 10
 ---
 
-# 故障排查
+# Troubleshooting
 
-## 常见问题
+## Common Issues
 
-### 仪表盘显示「暂未发现仓库」
+### Dashboard shows "No repositories found yet"
 
-**原因**：扫描根目录未配置或指定目录内无 Git 仓库。
+**Cause**: scan roots are unconfigured or contain no Git repositories.
 
-**解决**：进入 **设置 → 扫描目录**，添加包含 Git 仓库的目录，点击 **重新扫描**。
+**Fix**: open **Settings → Scan Directories**, add directories containing Git repositories, and click **Rescan**.
 
-> 首次扫描仅登记仓库名称，不扫描历史提交数据。
-
----
-
-### 仓库卡片只显示名称，无统计数据
-
-**原因**：仓库未收藏，或收藏后未回填历史数据。
-
-**解决**：
-1. 点击卡片上的星标收藏仓库
-2. 点击 **刷新历史** 按钮，等待 git log 回填完成
+> The first scan only registers repository names; it does not scan historical commit data.
 
 ---
 
-### 统计数据显示为零
+### Repo cards show only the name, no statistics
 
-**原因**：历史记录尚未回填，或所选日期无提交。
+**Cause**: the repository is not starred, or history was not backfilled after starring.
 
-**解决**：在仓库卡片上点击 **刷新历史**，系统会扫描该仓库近 365 天的 git log。确认 git 已安装且在 PATH 中（从 Finder/Dock 启动时应用会自动补全常见 PATH）。
-
----
-
-### 如何快速找到某个仓库？
-
-仪表盘搜索框联合搜索仓库 / 笔记 / 待办；或使用 `⌘/Ctrl+K` 命令面板（见[命令面板](features/command-palette.md)）。搜索结果中可直接点击星标切换收藏状态。
+**Fix**:
+1. Click the star on the card to star the repository
+2. Click the **Refresh History** button and wait for the git log backfill to finish
 
 ---
 
-### 如何调整项目分组？
+### Statistics show zero
 
-多个仓库被错误归为一组（或相反）时，进入项目详情页，点击头部操作按钮：
+**Cause**: history has not been backfilled yet, or there were no commits on the selected dates.
 
-- **向下拆分**：多仓库项目拆分为每仓库一个项目（原项目保留首个仓库的笔记与待办）
-- **向上合并**：合并同父目录的兄弟项目（仓库、笔记、待办随迁）
-
-两个操作均为单事务，失败时不会留下半完成状态。
+**Fix**: click **Refresh History** on the repo card; the system scans that repository's git log for the past 365 days. Confirm git is installed and on PATH (when launched from Finder/Dock the app automatically patches in common PATH entries).
 
 ---
 
-### 知识库搜索搜不到两字中文词？
+### How do I find a repository quickly?
 
-FTS5 trigram 索引最短匹配 3 字符；更短的查询自动降级为 LIKE 全表扫描（仍可命中，只是无相关性排序）。无需处理。
-
----
-
-### 插件没有加载？
-
-1. 确认插件目录结构：`<配置目录>/plugins/<插件名>/plugin.go`，导出 `Name` 与 `Init`
-2. **设置 → 插件 → 重新加载**，查看加载状态与错误信息
-3. 详见[插件手册](plugins/overview.md)
+The dashboard search box searches repositories / notes / todos together; or use the `⌘/Ctrl+K` command palette (see [Command Palette](features/command-palette.md)). In the search results you can click the star directly to toggle starring.
 
 ---
 
-## 日志文件位置
+### How do I adjust project grouping?
 
-| 平台 | 日志路径 |
+When multiple repositories are grouped incorrectly (or the opposite), open the project detail page and click the header action buttons:
+
+- **Split down**: split a multi-repo project into one project per repository (the original project keeps the first repository's notes and todos)
+- **Merge up**: merge sibling projects under the same parent directory (repositories, notes, and todos move along)
+
+Both operations are a single transaction and leave no half-finished state on failure.
+
+---
+
+### Knowledge base search misses two-character Chinese words?
+
+The FTS5 trigram index matches a minimum of 3 characters; shorter queries automatically fall back to a `LIKE` full-table scan (hits still work, just without relevance ranking). Nothing to fix.
+
+---
+
+### Plugins not loading?
+
+1. Check the plugin directory structure: `<config directory>/plugins/<plugin name>/plugin.go`, exporting `Name` and `Init`
+2. **Settings → Plugins → Reload**, then check the load status and error messages
+3. See the [Plugin Manual](plugins/overview.md)
+
+---
+
+## Log File Locations
+
+| Platform | Log path |
 |------|---------|
 | macOS | `~/Library/Logs/reponest.log` |
-| Linux | `$XDG_STATE_HOME/reponest/reponest.log`（默认 `~/.local/state/reponest/reponest.log`） |
+| Linux | `$XDG_STATE_HOME/reponest/reponest.log` (default `~/.local/state/reponest/reponest.log`) |
 | Windows | `%APPDATA%\reponest\logs\reponest.log` |
 
-日志同时记录 PATH 环境与插件运行时状态，报告问题时请附带。
+Logs also record the PATH environment and plugin runtime state; attach them when reporting issues.
 
-## 数据安全须知
+## Data Safety Notes
 
-- RepoNest 是**本地优先**桌面应用：不监听网络端口、不上传任何数据；统计通过本机 `git` CLI 读取
-- 数据库与配置存储在用户应用数据目录（位置见[快速开始](getting-started.md)），卸载不会自动删除；备份、迁移与彻底清除见[数据与备份](data-management.md)
-- 桌面 WebView 响应带 CSP 等安全头（`default-src 'self'` 等）
+- RepoNest is a **local-first** desktop app: it listens on no network ports and uploads no data; statistics are read via the local `git` CLI
+- Database and configuration live in the user application data directory (see [Getting Started](getting-started.md) for locations); uninstalling does not delete them automatically; see [Data & Backup](data-management.md) for backup, migration, and full removal
+- Desktop WebView responses carry security headers such as CSP (`default-src 'self'` etc.)
 
-## 报告问题
+## Reporting Issues
 
-如发现 Bug 或有功能建议，请在 [GitHub Issues](https://github.com/sky-jiangcheng/repo-nest/issues) 提交（含版本号、平台、日志片段）。安全漏洞请走[私密报告渠道](https://github.com/sky-jiangcheng/repo-nest/security/advisories/new)。
+Found a bug or have a feature suggestion? File it at [GitHub Issues](https://github.com/sky-jiangcheng/repo-nest/issues) (include version, platform, and log excerpts). For security vulnerabilities use the [private reporting channel](https://github.com/sky-jiangcheng/repo-nest/security/advisories/new).

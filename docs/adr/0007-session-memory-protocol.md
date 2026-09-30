@@ -1,59 +1,59 @@
-# ADR-0007: 会话记忆协议（context / handoff 双工具）
+# ADR-0007: Session Memory Protocol (context / handoff Dual Tools)
 
-- 状态：Accepted
-- 日期：2026-09-28
-- 关联：[ADR-0006](0006-scope-freeze.md)（核心闭环优先）、[ADR-0005](0005-service-layer.md)（服务层统一）
+- Status: Accepted
+- Date: 2026-09-28
+- Related: [ADR-0006](0006-scope-freeze.md) (core loop first), [ADR-0005](0005-service-layer.md) (service layer unification)
 
-## 背景
+## Background
 
-ADR-0006 将核心闭环定为「发现 → 理解 → 记录 → 检索 → AI 使用」，但闭环的两端在 agent 视角下是断的：
+ADR-0006 defined the core loop as "Discover → Understand → Record → Retrieve → AI use", but the two ends of the loop are broken from an agent's perspective:
 
-1. **会话开始**：agent 拿到一个新任务后，需要自己链式调用 `projects_list` → `notes_search` → `notes_read` 3-4 次才能拼出项目上下文；多数 agent 直接跳过这一步，带着零上下文开工。
-2. **会话结束**：agent 学到的东西（决策、坑、下一步）随会话消失。`notes_create` 存在但没有协议——agent 不知道何时写、写什么结构，人类也无法预测产出格式。
+1. **Session start**: after receiving a new task, an agent must chain 3-4 calls itself (`projects_list` → `notes_search` → `notes_read`) to assemble project context; most agents skip this step entirely and start with zero context.
+2. **Session end**: what the agent learned (decisions, gotchas, next steps) vanishes with the session. `notes_create` exists but carries no protocol — the agent does not know when to write or what structure to write, and humans cannot predict the output format.
 
-「AI 项目记忆层」的叙事要成立，记忆必须在**会话边界自动发生**，而不是依赖用户记得去保存。
+For the "AI project memory layer" narrative to hold, memory must happen **automatically at session boundaries** rather than relying on users remembering to save.
 
-## 决策
+## Decision
 
-新增三个 MCP 工具，构成会话记忆协议（含冷启动）：
+Three new MCP tools form the session memory protocol (cold start included):
 
-### `reponest_context`（会话开始）
+### `reponest_context` (session start)
 
-一次调用返回项目完整上下文的 Markdown 文档：
+A single call returns a Markdown document of the project's full context:
 
-- 技术栈 / README 摘要 / 语言占比 / 依赖 / 贡献者 / 活跃度（来自 `repo_meta` 挖掘缓存，未缓存时后台异步挖掘并在文档中声明）
-- 最近提交（实时 git log）
-- 开放待办
-- 高相关知识笔记；**带 `handoff` 标签的笔记排最前**（它们记录上次会话如何结束）
+- Tech stack / README summary / language shares / dependencies / contributors / activity (from the `repo_meta` mining cache; when uncached, background async mining runs and is declared in the document)
+- Recent commits (live git log)
+- Open todos
+- Highly relevant knowledge notes; **notes tagged `handoff` sort first** (they record how the previous session ended)
 
-项目解析协议（`ResolveProject`）：`project_id` 精确解析 → `project_name` 名称/路径模糊匹配 → 无参且仅一个项目时自动解析。多匹配时返回项目目录（含 ID 表格）让 agent 选择，绝不猜测注入错误项目的上下文。
+Project resolution protocol (`ResolveProject`): `project_id` exact resolution → `project_name` fuzzy match on name/path → auto-resolution when called with no arguments and exactly one project exists. On multiple matches, a project directory (with ID table) is returned for the agent to choose; the context of a wrongly guessed project is never injected.
 
-### `reponest_handoff`（会话结束）
+### `reponest_handoff` (session end)
 
-结构化交接协议，入参为 `summary`（必填）+ `changes` / `decisions` / `gotchas` / `next_steps`（数组，至少一项非空）+ `agent`（写入方标识）。渲染为固定 Markdown 模板落库（`kind=knowledge`、`source=mcp`、tags 自动含 `handoff`）。
+A structured handoff protocol. Inputs: `summary` (required) + `changes` / `decisions` / `gotchas` / `next_steps` (arrays, at least one non-empty) + `agent` (writer identity). Rendered into a fixed Markdown template and persisted (`kind=knowledge`, `source=mcp`, tags automatically include `handoff`).
 
-固定模板是刻意的：标题结构是写入方与所有未来读者（人类 + agent）之间的契约，`reponest_context` 靠 `handoff` 标签将其排序置顶。
+The fixed template is deliberate: the heading structure is a contract between the writer and all future readers (humans + agents), and `reponest_context` relies on the `handoff` tag to sort it to the top.
 
-### `reponest_scan`（冷启动）
+### `reponest_scan` (cold start)
 
-会话记忆协议要成立，前提是数据库里已有项目。原先只有桌面应用能完成「播种扫描根 + 扫描」，导致文档宣称的「MCP 不需要桌面应用」是空话——纯 MCP 安装的 `reponest_context` 只会返回「无项目」。为此把扫描能力下沉到服务层并暴露为第三个工具：
+The session memory protocol presumes projects already exist in the database. Only the desktop app could previously perform "seed scan roots + scan", making the documented claim "MCP requires no desktop app" empty talk — a pure-MCP installation's `reponest_context` would only return "no projects". To fix this, scan capability moves down into the service layer and is exposed as a third tool:
 
-- `Service.EnsureDefaultScanRoots`：首次运行播种平台默认扫描根（`scan_roots_seeded` 标记；已有扫描根时不覆盖）；
-- `Service.ScanNow`：同步执行完整扫描管线并返回仓库/项目计数（`TriggerScan` 保留给桌面端的后台异步场景，二者共用 `scanning` 互斥）；
-- `reponest_scan`：调用两者，使首次可用漏斗从「安装→扫描→收藏→刷新→使用」压缩为「安装→`reponest_scan`→`reponest_context`」。
+- `Service.EnsureDefaultScanRoots`: on first run, seeds the platform-default scan roots (`scan_roots_seeded` marker; existing scan roots are left untouched);
+- `Service.ScanNow`: synchronously runs the full scan pipeline and returns repo/project counts (`TriggerScan` is kept for the desktop's background async scenario; both share the `scanning` mutex);
+- `reponest_scan`: calls both, compressing the first-run funnel from "install → scan → star → refresh → use" to "install → `reponest_scan` → `reponest_context`".
 
-桌面端首启也改为复用 `Service.EnsureDefaultScanRoots`，两端行为一致。
+The desktop first-launch flow also switches to reusing `Service.EnsureDefaultScanRoots`, keeping behavior identical on both ends.
 
-## 理由
+## Rationale
 
-- **零参数即可用**：单项目安装直接 `reponest_context()` 拿全上下文，把「记忆加载」的成本降到一次调用。
-- **跨 agent**：交接落在本地 SQLite 而非任何 agent 私有记忆格式，Claude Code 写的交接 Cursor 直接读。
-- **服务层共享**：三个工具实现在 `internal/service`（`context.go` / `handoff.go` / `scan.go`），桌面端复用同一实现（ADR-0005 分层）。
-- **多匹配不猜测**：错误上下文比没有上下文更危险，歧义时返回目录由 agent 二次选择。
+- **Usable with zero arguments**: a single-project installation gets full context straight from `reponest_context()`, reducing the cost of "loading memory" to one call.
+- **Cross-agent**: handoffs land in local SQLite rather than any agent-private memory format; a handoff written by Claude Code reads directly in Cursor.
+- **Service layer sharing**: all three tools are implemented in `internal/service` (`context.go` / `handoff.go` / `scan.go`), and the desktop reuses the same implementation (ADR-0005 layering).
+- **No guessing on multiple matches**: wrong context is more dangerous than no context; on ambiguity, a directory is returned for the agent to choose again.
 
-## 后续方向（未决）
+## Future Directions (open)
 
-- 会话自动捕捉：解析 `~/.claude/projects/*/*.jsonl` 生成会话摘要（零人工参与，需评估隐私与体积）
-- 多源记忆导入：Cursor、Codex、OpenCode 的记忆格式
-- 语义检索：本地 embedding（评估 sqlite-vec），补充 FTS5 的字面匹配盲区
-- Claude Code hook 集成文档：SessionEnd hook 自动触发 `reponest_handoff`
+- Automatic session capture: parse `~/.claude/projects/*/*.jsonl` to generate session summaries (zero manual involvement; privacy and size to be evaluated)
+- Multi-source memory import: memory formats of Cursor, Codex, and OpenCode
+- Semantic retrieval: local embeddings (evaluate sqlite-vec) to complement FTS5's literal-match blind spot
+- Claude Code hook integration documentation: SessionEnd hook triggering `reponest_handoff` automatically

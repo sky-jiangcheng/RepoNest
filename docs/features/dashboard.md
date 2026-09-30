@@ -1,50 +1,50 @@
 ---
-title: 仪表盘
+title: Dashboard
 order: 2
 ---
 
-# 仪表盘
+# Dashboard
 
-仪表盘展示所有项目的每日提交统计、目标进度与全年提交热力图。
+The dashboard shows daily commit statistics for all projects, goal progress, and a year-round commit heatmap.
 
-## 页面结构（自上而下）
+## Page Structure (top to bottom)
 
-### 目标进度区
+### Goal Progress Area
 
-- **进度环**：今日（或所选日期）个人新增行数 vs 每日目标；非工作日不显示目标
-- **副标题**：距达标差值、个人新增 / 文件数 / 涉及仓库数
-- **摘要条**：团队新增 / 删除、个人新增 / 文件、待办总数
+- **Progress ring**: today's (or the selected date's) personal added lines vs the daily goal; the goal is hidden on non-workdays
+- **Subtitle**: gap to goal, personal additions / file count / repositories touched
+- **Summary bar**: team additions / deletions, personal additions / files, total todos
 
-### 提交热力图
+### Commit Heatmap
 
-近 52 周每日提交密度（GitHub 风格），点击任意格子跳转到该日期查看当天项目数据。统计范围跟随当前 git 作者（设置 → 作者配置）。
+Daily commit density over the last 52 weeks (GitHub style); clicking any cell jumps to that date to view per-project data for the day. The stats scope follows the current git author (Settings → Author).
 
-### 控制区
+### Controls
 
-- **日期切换**：昨天 / 今天 / 任意日期
-- **联合搜索框**：实时搜索仓库、笔记与待办（防抖 300ms，结果可直接星标或跳转）
-- **过滤器**：全部 / 仅收藏
-- **排序**：名称 / 个人新增 / 文件数 / 仓库数
-- **重新扫描**：两击确认后触发异步扫描，进度实时展示，完成后自动刷新数据
+- **Date switcher**: yesterday / today / any date
+- **Combined search box**: real-time search across repositories, notes, and todos (300ms debounce; results can be starred or opened directly)
+- **Filter**: all / starred only
+- **Sort**: name / personal additions / file count / repository count
+- **Rescan**: triggers an async scan after a two-click confirmation, shows live progress, and refreshes data automatically on completion
 
-### 项目网格
+### Project Grid
 
-- **已收藏仓库**：完整统计卡片（今日新增、目标进度条、仓库/文件/新增/删除、净增、团队总量、待办与笔记角标）
-- **其他仓库**：极简卡片（名称 + 星标按钮），需要时再收藏展开
+- **Starred repositories**: full stat cards (today's additions, goal progress bar, repos/files/added/deleted, net change, team totals, todo & note badges)
+- **Other repositories**: minimal cards (name + star button); star them to expand when needed
 
-## 功能详解
+## Feature Details
 
-### 仓库收藏
+### Starring Repositories
 
-点击星标收藏仓库：卡片展开为完整统计，出现 **刷新历史** 按钮（按需回填近 365 天数据）。取消收藏立即折叠为极简卡片。
+Click the star to star a repository: the card expands into full stats and gains a **Refresh history** button (on-demand backfill of the last 365 days). Unstarring immediately collapses it back to a minimal card.
 
-### 目标进度
+### Goal Progress
 
-**设置 → 代码标准** 配置每日目标行数（默认 500，范围 100-10000）。
+Configure the daily goal in lines under **Settings → Code Standard** (default 500, range 100-10000).
 
-- 进度环与卡片目标条显示完成度，达标显示 🎉
-- 工作日未达标时卡片显示「未达标」告警；周末不告警
+- The progress ring and the card's goal bar show completion; reaching the goal shows 🎉
+- When a workday is below the goal, cards show a "below standard" warning; weekends never warn
 
-### 项目分组
+### Project Grouping
 
-自动按父目录分组（Monorepo 识别），手动拆分/合并见[项目详情](project-detail.md)。
+Projects group automatically by parent directory (Monorepo detection); for manual splitting/merging see [Project Detail](project-detail.md).

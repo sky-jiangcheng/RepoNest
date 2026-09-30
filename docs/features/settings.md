@@ -1,41 +1,41 @@
 ---
-title: 设置
+title: Settings
 order: 5
 ---
 
-# 设置
+# Settings
 
-设置页分六个标签页：扫描目录、代码标准、作者配置、外观、插件、操作。
+The settings page has six tabs: Scan Roots, Code Standard, Author, Appearance, Plugins, and Actions.
 
-## 扫描目录
+## Scan Roots
 
-- 添加 / 移除扫描根目录（保存后需重新扫描生效）
-- 首次启动自动播种的默认根目录见[快速开始](../getting-started.md)
+- Add / remove scan root directories (a rescan is required after saving for changes to take effect)
+- For the default roots seeded automatically on first launch, see [Getting Started](../getting-started.md)
 
-## 代码标准
+## Code Standard
 
-| 配置 | 说明 | 默认 |
+| Setting | Description | Default |
 |------|------|------|
-| 每日目标行数 | 工作日达标线，进度环与卡片告警依据 | 500（范围 100-10000） |
-| 最大扫描深度 | 扫描根向下的目录层级 | 2（范围 1-2） |
+| Daily goal lines | Workday target; basis for the progress ring and card warnings | 500 (range 100-10000) |
+| Max scan depth | Directory levels scanned down from scan roots | 2 (range 1-2) |
 
-## 作者配置
+## Author
 
-**git 作者名称**：个人统计的过滤作者（与 `git log --author` 一致）。未配置时自动读取 `git config user.name`。
+**Git author name**: the author filter for personal stats (same semantics as `git log --author`). When unset, it is read automatically from `git config user.name`.
 
-## 外观
+## Appearance
 
-浅色 / 深色 / 跟随系统 三选一，即时生效并记忆。
+Light / dark / follow system; applies instantly and is remembered.
 
-## 插件
+## Plugins
 
-- **自动导入开关**：启动时是否自动运行所有知识源导入
-- **已加载插件**：各插件目录的加载状态与错误信息，**重新加载** 按钮热重载
-- **知识导入源**：内置（Claude 记忆）与插件注册的导入器，可单独 **立即导入**
+- **Auto-import toggle**: whether to run all knowledge source imports automatically at startup
+- **Loaded plugins**: load status and error messages per plugin directory; the **Reload** button hot-reloads
+- **Knowledge import sources**: built-in (Claude memory) and plugin-registered importers, each with an individual **Import now** button
 
-插件开发见[插件手册](../plugins/overview.md)。
+For plugin development, see the [Plugin Manual](../plugins/overview.md).
 
-## 操作
+## Actions
 
-- **立即重新扫描所有项目**：触发全量扫描（与仪表盘按钮等价）
-- **导入 Claude 记忆**：手动触发一次导入，完成后可跳转知识库查看
+- **Rescan all projects now**: triggers a full scan (equivalent to the dashboard button)
+- **Import Claude memory**: triggers one import manually; you can jump to the knowledge base to review when it finishes

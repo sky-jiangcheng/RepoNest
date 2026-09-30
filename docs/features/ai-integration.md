@@ -1,72 +1,72 @@
 ---
-title: AI 集成（MCP/llms.txt）
+title: AI Integration (MCP/llms.txt)
 order: 7
 ---
 
-# AI 集成
+# AI Integration
 
-RepoNest 面向 AI 代理提供读取通道与自检工具，全部复用同一 `internal/service` 实现（与桌面端行为一致）。
+RepoNest provides AI agents with read channels and self-check tools, all reusing the same `internal/service` implementation (identical behavior to the desktop app).
 
-## 价值定位：RepoNest 是 AI 的数据源，而非 AI 本身
+## Value Positioning: RepoNest Is a Data Source for AI, Not AI Itself
 
-**RepoNest 不调用任何大语言模型**——代码里没有 OpenAI / Anthropic / 任何 API key 配置，没有模型选择、没有 endpoint 设置。它的 AI 功能全部是「把项目知识出口给 AI 工具用」，而不是内置聊天或生成能力。更准确地说：
+**RepoNest calls no large language model** — there is no OpenAI / Anthropic / any API key configuration in the code, no model selection, no endpoint settings. All of its AI features amount to "exporting project knowledge for AI tools to consume", rather than built-in chat or generation. More precisely:
 
-- RepoNest 是**数据底座**：把 git 原始信息建模成结构化、可索引、可物化的本地知识库（详见[存储结构优化与 AI 价值](../storage-optimization.md)）；
-- AI 工具（Claude Code / Cursor 等）通过 MCP 的 13 个工具来**消费**这层数据，按需取数、精确检索。
+- RepoNest is the **data foundation**: it models raw git information into a structured, indexable, materialized local knowledge base (see [Storage Optimization & AI Value](../storage-optimization.md));
+- AI tools (Claude Code / Cursor, etc.) **consume** this data layer through the 13 MCP tools, fetching on demand and searching precisely.
 
-这一层「为什么比让 AI 直接读 git 更优」的论证，见[存储结构优化与 AI 价值](../storage-optimization.md)。
+For the argument of "why this beats letting AI read git directly", see [Storage Optimization & AI Value](../storage-optimization.md).
 
-### 配置项（均与模型 / API 无关）
+### Configuration Keys (none tied to models / APIs)
 
-`internal/service/config.go` 白名单只含 4 个配置键，**没有任何一项涉及 LLM**：
+The whitelist in `internal/service/config.go` contains only 4 keys, **none of them LLM-related**:
 
-| 键 | 类型 | 默认 | 用途 |
+| Key | Type | Default | Purpose |
 |----|------|------|------|
-| `auto_import` | 0 / 1 | `1` | 是否自动导入 Claude 记忆（**唯一与 AI 相关的配置**） |
-| `daily_code_standard` | 整数 | `500` | 每日代码行数目标，用于仪表盘达标展示。名字带 “code standard” 但非 AI 规范，易误读 |
-| `scan_depth` | 整数 | `2` | 扫描目录深度 |
-| `git_author` | 字符串 | 系统 git 用户 | 影响「我的」统计 / 热力图归属 |
+| `auto_import` | 0 / 1 | `1` | Whether to import Claude memory automatically (**the only AI-related setting**) |
+| `daily_code_standard` | integer | `500` | Daily code line goal, used for dashboard goal display. The name says "code standard" but it is not an AI spec; easy to misread |
+| `scan_depth` | integer | `2` | Scan directory depth |
+| `git_author` | string | System git user | Affects attribution of "my" stats / heatmap |
 
-## MCP Server（`reponest-mcp`）
+## MCP Server (`reponest-mcp`)
 
-MCP 是唯一的 AI 执行接口（`reponest` CLI 未随版本发布）。stdio 协议，进程内单次开库，13 个工具（含 4 个写操作：扫描 + 笔记创建/更新 + 会话交接）：
+MCP is the only AI execution interface (the `reponest` CLI is not shipped with releases). stdio protocol, single in-process DB open, 13 tools (including 4 write operations: scan + note create/update + session handoff):
 
-| 工具 | 说明 | 读写 |
+| Tool | Description | R/W |
 |------|------|------|
-| `reponest_scan` | 冷启动：播种默认扫描根目录并同步扫描，发现本地 Git 仓库（纯 MCP 安装可用，无需桌面应用） | 写 |
-| `reponest_context` | 会话开始一次注入项目全上下文（技术栈 / README / 待办 / 高相关笔记，交接笔记置顶） | 读 |
-| `reponest_handoff` | 会话结束结构化交接（summary/changes/decisions/gotchas/next_steps），落库并供下次 `reponest_context` 置顶读取；落库笔记带 `handoff` 标签，`reponest_notes_update` 拒绝覆盖 | 写 |
-| `reponest_notes_list` | 全部笔记 | 读 |
-| `reponest_notes_search` | FTS5 搜索（query） | 读 |
-| `reponest_notes_read` | 按 ID 读笔记 | 读 |
-| `reponest_notes_create` | 新建知识笔记 | 写 |
-| `reponest_notes_update` | 更新笔记内容与元数据（部分更新；拒绝覆盖 `handoff` 协议笔记） | 写 |
-| `reponest_projects_list` | 全部项目 | 读 |
-| `reponest_projects_stats` | 项目统计（按 id） | 读 |
-| `reponest_ask` | 问答式检索，Top-5 文本 | 读 |
-| `reponest_agent_score` | 检查本地 AI 就绪度（DB/笔记/搜索/MCP/llms.txt/SKILL.md/i18n） | 读 |
-| `reponest_integrity` | 审计数据可信度（FTS 索引漂移 / 孤儿行 / 缓存新鲜度 / 覆盖率） | 读 |
+| `reponest_scan` | Cold start: seed the default scan roots and scan synchronously to discover local Git repositories (usable from a pure MCP install, no desktop app needed) | Write |
+| `reponest_context` | Inject the full project context in one call at session start (tech stack / README / todos / highly relevant notes, handoff notes pinned first) | Read |
+| `reponest_handoff` | Structured handoff at session end (summary/changes/decisions/gotchas/next_steps), persisted and pinned for the next `reponest_context` read; the persisted note carries a `handoff` tag and `reponest_notes_update` refuses to overwrite it | Write |
+| `reponest_notes_list` | All notes | Read |
+| `reponest_notes_search` | FTS5 search (query) | Read |
+| `reponest_notes_read` | Read a note by ID | Read |
+| `reponest_notes_create` | Create a knowledge note | Write |
+| `reponest_notes_update` | Update note content and metadata (partial update; refuses to overwrite `handoff` protocol notes) | Write |
+| `reponest_projects_list` | All projects | Read |
+| `reponest_projects_stats` | Project stats (by id) | Read |
+| `reponest_ask` | Question-style retrieval, top-5 text | Read |
+| `reponest_agent_score` | Check local AI readiness (DB/notes/search/MCP/llms.txt/SKILL.md/i18n) | Read |
+| `reponest_integrity` | Audit data trustworthiness (FTS index drift / orphan rows / cache freshness / coverage) | Read |
 
-### 就绪度 vs 数据可信度
+### Readiness vs Data Trustworthiness
 
-两个自检工具问的是**不同的问题**，不要混用：
+The two self-check tools answer **different questions** and must not be conflated:
 
-| 工具 | 回答的问题 | 不能回答的问题 |
+| Tool | Answers | Cannot answer |
 |------|-----------|----------------|
-| `reponest_agent_score` | 这个安装配置好了吗？（有没有笔记、MCP 通不通、i18n 齐不齐） | 数据本身对不对 |
-| `reponest_integrity` | 数据还能信吗？（索引有没有漂移、有没有孤儿行、缓存新不新鲜） | 配置齐不齐 |
+| `reponest_agent_score` | Is this installation configured correctly? (any notes? does MCP work? is i18n complete?) | Whether the data itself is correct |
+| `reponest_integrity` | Can the data still be trusted? (has the index drifted? any orphan rows? is the cache fresh?) | Whether configuration is complete |
 
-**为什么需要第二个**：FTS5 索引一旦与 `project_notes` 失配，搜索会**静默少返回结果**，而 `agent_score` 依然会报「Search operational」——它测的是通路，不是内容。`reponest_integrity` 用 FTS5 的 `_docsize` 影子表（external-content 表的 `SELECT rowid` 读的是内容表，比不出来）对比索引真实文档数，并检查同步触发器是否齐全。详见 [`internal/integrity` 的检查清单](../../internal/integrity/integrity.go)。
+**Why the second one exists**: once the FTS5 index gets out of sync with `project_notes`, search **silently returns fewer results**, while `agent_score` still reports "Search operational" — it tests the pathway, not the content. `reponest_integrity` compares the index's actual document count against the FTS5 `_docsize` shadow table (for external-content tables, `SELECT rowid` reads the content table and cannot detect the drift), and checks that the sync triggers are all in place. See the [checklist in `internal/integrity`](../../internal/integrity/integrity.go).
 
-当 AI 发现「搜出来的东西好像不全」时，应该先跑 `reponest_integrity`，而不是直接下结论说知识库内容少。
+When an AI suspects "the search results seem incomplete", it should run `reponest_integrity` first before concluding that the knowledge base simply holds little content.
 
-### 接入 Claude Code
+### Connecting Claude Code
 
 ```bash
 claude mcp add reponest -- /path/to/reponest-mcp
 ```
 
-或写入 `.mcp.json`（项目级）/ `~/.claude.json`（用户级）：
+Or write it into `.mcp.json` (project level) / `~/.claude.json` (user level):
 
 ```json
 {
@@ -76,11 +76,11 @@ claude mcp add reponest -- /path/to/reponest-mcp
 }
 ```
 
-### 会话结束自动交接（SessionEnd hook）
+### Automatic Handoff at Session End (SessionEnd hook)
 
-「零成本沉淀」的真实含义不是「agent 记得自觉调用」——靠自觉等于没有承诺。Claude Code 的 **SessionEnd hook** 把交接变成会话生命周期的一部分：会话一结束，交接必然发生，不依赖 agent 的记性。这也是新用户装完第一天就能感受到「下次开局即带全上下文」的路径。
+The real meaning of "zero-cost accumulation" here goes beyond "the agent remembering to call it on its own" — relying on goodwill equals having no guarantee. Claude Code's **SessionEnd hook** makes the handoff part of the session lifecycle: as soon as a session ends, the handoff is guaranteed to happen, independent of the agent's memory. This is also the path that lets a new user feel "the next session starts with full context" from day one.
 
-写入 `.claude/settings.json`（项目级，随仓库分享给协作者）：
+Write to `.claude/settings.json` (project level, shared with collaborators through the repository):
 
 ```json
 {
@@ -99,7 +99,7 @@ claude mcp add reponest -- /path/to/reponest-mcp
 }
 ```
 
-配套脚本 `.claude/hooks/reponest-handoff.sh`（记得 `chmod +x`）：
+The companion script `.claude/hooks/reponest-handoff.sh` (remember `chmod +x`):
 
 ```sh
 #!/bin/sh
@@ -115,38 +115,38 @@ claude -p --mcp-config .mcp.json \
   >/dev/null 2>&1 || true
 ```
 
-设计要点与代价（写清楚，别让叙事变成吹牛）：
+Design points and costs (spelled out, so the narrative stays honest):
 
-- **触发时机**：会话结束时由 Claude Code 触发，触发原因（`clear` / `logout` / `prompt_input_exit` / `other`）以 JSON 形式写入 stdin；脚本可读 stdin 按需跳过（例如「只是清了上下文」不必交接）。
-- **成本**：一次有界的 headless 回合（`claude -p`），远小于它保存的整场会话上下文；hook 有默认超时（60s），脚本以 `|| true` 静默收尾，不影响会话退出。
-- **降级路径**：没有 `claude` CLI 时直接跳过；MCP 未注册时 headless 调用失败并被吞掉——协议要求交接必须由 `reponest_handoff` 写入，hook 只负责「必定触发」，从不绕过协议直写数据库。
-- **协议保护**：交接笔记带 `handoff` 标签，`reponest_notes_update` 拒绝覆盖它们（防误覆盖），下一次会话由 `reponest_context` 置顶完整渲染。
-- hook 的事件名与配置字段随 Claude Code 版本演进，接入前以 `claude --help` 和官方 hooks 文档为准。
+- **Trigger timing**: fired by Claude Code at session end; the reason (`clear` / `logout` / `prompt_input_exit` / `other`) is written to stdin as JSON; the script can read stdin and skip as needed (e.g. "just cleared the context" does not need a handoff).
+- **Cost**: one bounded headless turn (`claude -p`), a fraction of the full session context it preserves; the hook has a default timeout (60s) and the script ends silently with `|| true`, without affecting session exit.
+- **Degradation path**: skips immediately when the `claude` CLI is missing; when MCP is not registered, the headless call fails and is swallowed — the protocol requires the handoff to be written by `reponest_handoff`, and the hook only guarantees "it always fires", never bypassing the protocol to write the database directly.
+- **Protocol protection**: handoff notes carry a `handoff` tag and `reponest_notes_update` refuses to overwrite them (against accidental clobbering); the next session renders them in full, pinned by `reponest_context`.
+- The hook's event names and config fields evolve with Claude Code versions; verify against `claude --help` and the official hooks documentation before integrating.
 
-### 接入 Cursor / 其他 MCP 客户端
+### Connecting Cursor / Other MCP Clients
 
-在对应客户端的 MCP 配置中添加同样的 `command` 指向 `reponest-mcp` 二进制（Cursor：`Settings → MCP → Add Server`）。
+Add the same `command` pointing to the `reponest-mcp` binary in the client's MCP configuration (Cursor: `Settings → MCP → Add Server`).
 
-## llms.txt 与 Markdown 导出（应用内）
+## llms.txt and Markdown Export (in-app)
 
-- **llms.txt**：`GenerateLLMsTxt` 生成知识库总览 Markdown（项目目录 + 技术栈 + 最近 20 条知识笔记），适合喂给 LLM 建立上下文。**llms.txt 是导出格式**（应用内生成，不随仓库分发），不作为独立产品方向扩张（见 ADR-0006）
-- **笔记导出**：任意笔记导出为带 YAML frontmatter 的 `.md`（`ExportNoteAsMarkdown`）
-- **Claude 记忆导入**：`~/.claude/projects/*/memory/*.md` 幂等导入（见[知识库](knowledge.md)）
+- **llms.txt**: `GenerateLLMsTxt` generates a knowledge base overview in Markdown (project directory + tech stack + the 20 most recent knowledge notes), suitable for feeding an LLM to establish context. **llms.txt is an export format** (generated in-app, not distributed with the repository) and is not a standalone product direction (see ADR-0006)
+- **Note export**: any note can be exported as `.md` with YAML frontmatter (`ExportNoteAsMarkdown`)
+- **Claude memory import**: idempotent import of `~/.claude/projects/*/memory/*.md` (see [Knowledge Base](knowledge.md))
 
-## agent-score 自检
+## agent-score Self-Check
 
-agent-score 已合并为 MCP 工具 `reponest_agent_score`，无需独立构建。通过任意 MCP 客户端调用即可获取 7 项 AI 就绪度评分。
+agent-score has been merged into the MCP tool `reponest_agent_score`; no separate build is needed. Call it from any MCP client to get the 7-point AI readiness score.
 
-## 为什么不直接让 AI 读 git 仓库
+## Why Not Just Let AI Read the Git Repository
 
-一个常见疑问：既然 Claude Code / Cursor 都能直接 `git log`、读文件，为什么还要经过 RepoNest？核心答案是**成本与确定性**：
+A common question: since Claude Code / Cursor can run `git log` and read files directly, why go through RepoNest? The core answer is **cost and determinism**:
 
-- **读得贵**：每次让 AI 直接 `git log` 或逐文件扫描都是一次性消费，重复读 = 重复 token；
-- **读得乱 / 不全**：大仓必超上下文窗口、被截断，模型还可能幻觉或漏读二进制 / `.gitignore`；
-- **读得慢**：每次重算统计，秒级任务退化成分钟级。
+- **Reading is expensive**: every direct `git log` or file-by-file scan is one-off consumption; repeated reads = repeated tokens;
+- **Reading is messy / incomplete**: large repositories inevitably exceed the context window and get truncated, and the model may hallucinate or skip binaries / `.gitignore`;
+- **Reading is slow**: recomputing stats every time turns second-scale work into minute-scale work.
 
-RepoNest 在**扫描时一次性**把 git 原始数据解析并物化进本地 SQLite（`daily_stats` 预聚合统计、`repo_meta` 缓存挖掘结果、`project_notes_fts` 建全文索引），之后 AI 只通过 MCP 工具**按需取数、精确命中**。完整对比与存储结构细节见[存储结构优化与 AI 价值](../storage-optimization.md)。
+RepoNest parses and materializes raw git data into local SQLite **once, at scan time** (`daily_stats` pre-aggregates stats, `repo_meta` caches mining results, `project_notes_fts` builds the full-text index); afterwards AI only fetches on demand and hits precisely through the MCP tools. For the full comparison and storage details, see [Storage Optimization & AI Value](../storage-optimization.md).
 
-## 面向 AI 代理的技能卡
+## Skill Card for AI Agents
 
-仓库根目录的 [SKILL.md](https://github.com/sky-jiangcheng/repo-nest/blob/master/SKILL.md) 是给代理阅读的能力卡片（命令、工具表、路径），可直接投喂。
+[SKILL.md](https://github.com/sky-jiangcheng/repo-nest/blob/master/SKILL.md) at the repository root is a capability card for agents to read (commands, tool table, paths) and can be fed in directly.

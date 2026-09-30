@@ -1,35 +1,35 @@
 ---
-title: 命令面板与快捷键
+title: Command Palette & Shortcuts
 order: 6
 ---
 
-# 命令面板与快捷键
+# Command Palette & Shortcuts
 
-## 快捷键
+## Keyboard Shortcuts
 
-| 快捷键 | 功能 | 说明 |
+| Shortcut | Action | Description |
 |--------|------|------|
-| `⌘/Ctrl + K` | 打开 / 关闭命令面板 | 全局生效 |
-| `↑` / `↓` | 移动选中项 | 面板内导航 |
-| `↵ Enter` | 打开选中项 | 跳转到对应项目 |
-| `Esc` | 关闭面板 | 焦点返回触发元素 |
+| `⌘/Ctrl + K` | Open / close the command palette | Works globally |
+| `↑` / `↓` | Move the selection | In-panel navigation |
+| `↵ Enter` | Open the selected item | Jumps to the corresponding project |
+| `Esc` | Close the panel | Focus returns to the trigger element |
 
-> 此外：编辑器内 `/` 呼起块面板（见[知识库](knowledge.md)）；待办与笔记删除均为两击确认。
+> Also: typing `/` inside the editor opens the block panel (see [Knowledge Base](knowledge.md)); deleting todos and notes both use two-click confirmation.
 
-## 命令面板
+## Command Palette
 
-`⌘/Ctrl + K` 打开，一个输入框联合三类结果：
+Opened with `⌘/Ctrl + K`; one input box combines three kinds of results:
 
-- **笔记与待办**：FTS5 全文搜索（标题 / 内容 / 待办标题），回车跳转所属项目
-- **项目**：按项目名过滤，回车进入项目详情
-- **快捷入口**：未输入时展示最近项目
+- **Notes & todos**: FTS5 full-text search (title / content / todo titles); Enter jumps to the owning project
+- **Projects**: filtered by project name; Enter opens the project detail page
+- **Quick access**: recent projects shown when the input is empty
 
-无障碍实现：ARIA combobox-in-dialog，焦点陷阱 + 关闭后焦点返还，`aria-activedescendant` 驱动键盘选中。
+Accessibility implementation: ARIA combobox-in-dialog, focus trap + focus restore on close, keyboard selection driven by `aria-activedescendant`.
 
-## 仪表盘联合搜索
+## Dashboard Combined Search
 
-仪表盘搜索框与命令面板能力一致，额外支持：
+The dashboard search box matches the command palette's capabilities, plus:
 
-- 结果中直接星标 / 取消星标仓库
-- 300ms 防抖实时搜索
-- 点击外部自动收起
+- Star / unstar repositories directly in the results
+- Real-time search with a 300ms debounce
+- Auto-collapse on outside click

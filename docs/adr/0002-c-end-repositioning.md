@@ -1,46 +1,46 @@
-# ADR 0002: 产品定位转向 C 端「代码项目第二大脑」，采用 in-process 插件形态
+# ADR 0002: Product Repositioning to C-end "Second Brain for Code Projects" with In-process Plugins
 
-- 状态：Accepted
-- 日期：2026-08-07
-- 关联：RFC 0001（已被本 ADR Supersede）
+- Status: Accepted
+- Date: 2026-08-07
+- Related: RFC 0001 (superseded by this ADR)
 
-## 背景
+## Background
 
-RFC 0001 将产品规划为「插件平台」，包含常驻 HTTP Server / RBAC / AK-SK（M2）、插件协议网关 + scope 权限（M3）、PG/ES / K8s / reponest-server（M4）等面向 B 端部署的能力。
+RFC 0001 planned the product as a "plugin platform" with B-end deployment capabilities: a resident HTTP Server / RBAC / AK-SK (M2), a plugin protocol gateway + scope permissions (M3), and PG/ES / K8s / reponest-server (M4).
 
-经过市场与用户反馈评估，该定位过于复杂且偏离桌面工具的核心价值。产品真正差异化在于：作为本地 Git 仓库的可视化工具，同时沉淀成为用户的「代码项目第二大脑」——跨项目的笔记、待办与仓库知识挖掘。
+Market and user feedback evaluation concluded that this positioning was overly complex and drifted away from the core value of a desktop tool. The real differentiation lies in: a visualization tool for local Git repositories that also accumulates into the user's "second brain for code projects" — cross-project notes, todos, and repository knowledge mining.
 
-## 决策
+## Decision
 
-1. **核心定位**：产品为 C 端「代码项目第二大脑」。知识库（笔记/待办/仓库知识）为主入口，仪表盘展示提交统计。
-2. **插件形态**：采用 in-process 插件（进程内加载，接口见 `internal/core/plugin`），而非外部插件协议网关。
-   - 选择理由：外部网关（M3）需要网络协议、鉴权与部署，复杂度高；C 端桌面工具无需多进程隔离。
-   - 插件在应用进程内加载，通过 `PluginContext` 访问知识库、存储并注册事件与知识源。
-3. **废弃 M2/M3/M4**：常驻 HTTP Server、RBAC、AK-SK、插件协议网关、scope 权限、PG/ES、K8s、reponest-server 均不再实施。
-4. **保留 M1 抽象层**：作为附加插件扩展接口的底层支撑，例如 `storage.Stores`、`ScanTxer`、KB Facade 中已落地的抽象，继续保留并为插件提供基础能力。
+1. **Core positioning**: the product is a C-end "second brain for code projects". The knowledge base (notes/todos/repository knowledge) is the primary entry point; the dashboard displays commit statistics.
+2. **Plugin form**: adopt in-process plugins (loaded within the process, interfaces in `internal/core/plugin`) rather than an external plugin protocol gateway.
+   - Rationale: an external gateway (M3) requires network protocols, authentication, and deployment — high complexity; a C-end desktop tool needs no multi-process isolation.
+   - Plugins load inside the application process and access the knowledge base and storage, registering events and knowledge sources, through `PluginContext`.
+3. **Deprecate M2/M3/M4**: the resident HTTP Server, RBAC, AK-SK, plugin protocol gateway, scope permissions, PG/ES, K8s, and reponest-server are all dropped.
+4. **Keep the M1 abstraction layer**: as the foundation supporting additional plugin extension interfaces. Abstractions already landed, such as `storage.Stores`, `ScanTxer`, and the KB Facade, are retained and provide base capabilities for plugins.
 
-## 影响
+## Impact
 
-- 开发重点转向本地知识库体验与 AI-ready 能力（llms.txt、`.md` 导出、本地问答、MCP）。
-- 无需服务端组件，保持单二进制分发。
-- 插件机制聚焦单机内扩展：导入知识源、监听笔记/扫描/导入事件。
+- Development focus shifts to the local knowledge base experience and AI-ready capabilities (llms.txt, `.md` export, local Q&A, MCP).
+- No server-side components; single-binary distribution is preserved.
+- The plugin mechanism focuses on on-machine extension: importing knowledge sources, listening for note/scan/import events.
 
-## 插件加载选型（issue #33 验证结论）
+## Plugin Loading Selection (verified conclusions from issue #33)
 
-对两种 in-process 插件加载方案进行了原型验证：
+Two in-process plugin loading approaches were validated via prototypes:
 
-| 维度 | Go plugin (`plugin.Open`) | yaegi (traefik/yaegi) |
-|------|--------------------------|-----------------------|
-| 跨平台 | 不支持 Windows（仅 Linux/macOS/FreeBSD） | 纯 Go，三平台一致 |
-| 加载方式 | 需预编译 `.so`，且必须与宿主完全相同的 Go 版本构建 | 加载 `.go` 脚本，无需预编译，与宿主 Go 版本解耦 |
-| panic 隔离 | recover 可防护 | recover 可防护（已验证） |
-| 目录缺失 | 需自行处理 | 正常跳过（已验证） |
-| 生态 | 标准库，长期稳定 | 活跃维护，解释执行 |
+| Dimension | Go plugin (`plugin.Open`) | yaegi (traefik/yaegi) |
+|-----------|--------------------------|-----------------------|
+| Cross-platform | Windows unsupported (Linux/macOS/FreeBSD only) | Pure Go, consistent across all three platforms |
+| Loading | Requires precompiled `.so`, built with exactly the same Go version as the host | Loads `.go` scripts, no precompilation, decoupled from the host Go version |
+| Panic isolation | recover can protect | recover can protect (verified) |
+| Missing directory | Handle it yourself | Skipped gracefully (verified) |
+| Ecosystem | Standard library, stable long-term | Actively maintained, interpreted execution |
 
-**决策：采用 yaegi。** 决定性因素是跨平台支持——RepoNest 明确面向 Windows / macOS / Linux 三平台分发，Go plugin 在 Windows 上不可用，无法满足验收。yaegi 为纯 Go 解释器，可在所有目标平台以一致方式加载 `.go` 插件脚本，且不要求插件与宿主版本严格绑定。
+**Decision: adopt yaegi.** The decisive factor is cross-platform support — RepoNest explicitly ships to Windows / macOS / Linux, and Go plugin is unavailable on Windows, failing the acceptance criteria. yaegi is a pure Go interpreter that loads `.go` plugin scripts consistently on every target platform and requires no strict version binding between plugin and host.
 
-## 理由
+## Rationale
 
-- 降低实现与维护复杂度，缩短交付周期。
-- 符合桌面工具用户对隐私、离线、轻量的预期。
-- 将差异化资源集中在知识库与 AI 集成，而非平台基建。
+- Lower implementation and maintenance complexity; shorter delivery cycles.
+- Matches desktop tool users' expectations of privacy, offline use, and lightness.
+- Concentrates differentiated resources on the knowledge base and AI integration rather than platform infrastructure.

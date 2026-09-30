@@ -1,22 +1,22 @@
 ---
-title: 知识源导入
+title: Knowledge Source Import
 order: 8
 ---
 
-# 知识源导入
+# Knowledge Source Import
 
-> ⚠️ **实验性**：插件系统接口可能变更，不作为平台扩展方向（见 [ADR-0006](../adr/0006-scope-freeze.md)）。
+> ⚠️ **Experimental**: the plugin system interface may change and is not an extension direction for the platform (see [ADR-0006](../adr/0006-scope-freeze.md)).
 
-RepoNest 支持通过 yaegi 解释执行的 Go 脚本向知识库幂等导入文档。
+RepoNest supports idempotent imports of documents into the knowledge base via Go scripts interpreted by yaegi.
 
-## 内置知识源
+## Built-in Knowledge Sources
 
-| 源 | 说明 |
+| Source | Description |
 |----|------|
-| `claude` | 导入 `~/.claude/projects/*/memory/*.md`，按项目名 / 仓库路径匹配归属 |
+| `claude` | Imports `~/.claude/projects/*/memory/*.md`, matching ownership by project name / repository path |
 
-启动自动导入可在 **设置 → 插件** 开关（`auto_import` 配置项）。手动触发见设置页。
+Startup auto-import can be toggled under **Settings → Plugins** (the `auto_import` config key). For manual triggering, see the Settings page.
 
-## 幂等导入语义
+## Idempotent Import Semantics
 
-运行时按 `(project_id, source, title)` upsert：重复导入**更新**既有笔记而非重复创建。
+The runtime upserts by `(project_id, source, title)`: importing the same content again **updates** the existing note instead of creating a duplicate.
