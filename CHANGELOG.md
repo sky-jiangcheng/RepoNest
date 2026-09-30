@@ -4,7 +4,7 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
-## [Unreleased]
+## [1.7.10] - 2026-09-30
 
 ### Added
 
@@ -303,7 +303,8 @@
 
 - 首个正式版本：Wails 桌面应用骨架、GitHub Actions 多平台构建发布
 
-[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.9...HEAD
+[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.10...HEAD
+[1.7.10]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.9...v1.7.10
 [1.7.9]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.8...v1.7.9
 [1.7.8]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.7...v1.7.8
 [1.7.7]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.6...v1.7.7
