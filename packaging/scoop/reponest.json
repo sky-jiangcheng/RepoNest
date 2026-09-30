@@ -4,7 +4,7 @@
   "homepage": "https://github.com/sky-jiangcheng/repo-nest",
   "license": "MIT",
   "url": "https://github.com/sky-jiangcheng/repo-nest/releases/download/v1.9.5/reponest-windows-amd64.zip",
-  "hash": "sha256:0eea2b981c460d8a0a41ce08fa7fdfa0a02a67c1169ddab54405e9fba531d73b",
+  "hash": "sha256:63767822cf8620a619dd839fea953f2c3c8e10b6c07c0e6ebe96b3e6d3aec104",
   "bin": "reponest.exe",
   "checkver": {
     "url": "https://api.github.com/repos/sky-jiangcheng/repo-nest/releases/latest",
