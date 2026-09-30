@@ -22,7 +22,7 @@ RepoNest 对 git 仓库做的不是「压缩 / 去重」类存储优化，而是
 | 4 | **二级索引** | `idx_projects_starred / collected / collected_at` 加速收藏筛选；`idx_note_versions(note_id, created_at DESC)` 支持版本回溯 |
 | 5 | **统计物化（核心）** | `daily_stats` 按 `(repository_id, stat_date, author)` 把 `git log` 原始 commits **预聚合**（`ON CONFLICT DO UPDATE` 幂等）。heatmap / summary 直接 `GROUP BY` 该表，**不重跑 `git log`** |
 | 6 | **挖掘结果缓存** | `repo_meta` 用 `ON CONFLICT DO UPDATE` + `updated_at` 判断失效，增量重挖，避免重复扫描文件系统 |
-| 7 | **工程层调优** | SQLite WAL + 单连接调优，并发读写不阻塞；8 个版本化迁移自动执行，迁移不可变、仅追加 |
+| 7 | **工程层调优** | SQLite WAL + 单连接调优，并发读写不阻塞；12 个版本化迁移自动执行，迁移不可变、仅追加 |
 
 > 第 5 项是「AI 价值」的根本来源：git 仓库的原始信息（commit 历史、文件路径、文件内容）是**易变且昂贵的**，每次让 AI 直接 `git log` / 逐文件读都是一次性消费。RepoNest 在**扫描时一次性解析**，之后查询不再触碰 `git` 命令。
 

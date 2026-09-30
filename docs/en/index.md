@@ -4,7 +4,7 @@ title: RepoNest Documentation
 
 # RepoNest Documentation
 
-<p class="subtitle"><strong>The local-first memory layer for AI coding agents</strong> — discover your Git repos, understand what changed, capture knowledge as searchable Markdown, and hand it to any agent in one tool call.<br><strong>A local-first, cross-agent project memory layer</strong>: it automatically discovers local Git projects, understands what is happening in each project right now and what knowledge has been captured, and injects and withdraws that context at session boundaries, so any agent can reuse the same project context.</p>
+<p class="subtitle"><strong>The local-first memory layer for AI coding agents</strong> — automatically discover local Git projects, understand what changed and what knowledge has been captured, and hand searchable project context to any agent at session boundaries.</p>
 
 <!--NAV_LINKS-->
 
