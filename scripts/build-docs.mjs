@@ -1,16 +1,20 @@
 #!/usr/bin/env node
-// scripts/build-docs.mjs — 文档站生成器。
+// scripts/build-docs.mjs — 文档站生成器（双语）。
 //
-// 以 docs/**/*.md 为唯一内容源，按 docs/sidebar.json 的导航结构渲染出
-// 同目录的 .html（套用原手写文档站的模板样式）。生成物不入库
-//（.gitignore 忽略 docs/**/*.html），GitHub Pages 部署时由
+// 内容源分两个 locale：
+//   en  docs/en/**/*.md   → 输出到 docs/ 根路径（默认语言，/repo-nest/ 即英文）
+//   zh  docs/**/*.md（不含 docs/en/）→ 输出到 docs/zh/ 子路径
+//
+// 两个树的相对结构互为镜像；英文页链接到尚未翻译的页面（如 ADR 详情）时
+// 自动回退到中文版输出路径。侧栏标签取 docs/sidebar.json 的 label/label_en。
+// 生成物不入库（.gitignore 忽略 docs/**/*.html），GitHub Pages 部署时由
 // .github/workflows/pages.yml 先执行本脚本。
 //
 // 依赖 marked（复用 web/node_modules），运行方式：
 //   node scripts/build-docs.mjs
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, rmSync, mkdirSync } from 'node:fs'
+import { dirname, join, relative, resolve, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
@@ -24,7 +28,44 @@ const { marked } = requireFromWeb('marked')
 const sidebar = JSON.parse(readFileSync(join(docsDir, 'sidebar.json'), 'utf8'))
 const version = JSON.parse(readFileSync(join(root, 'web', 'package.json'), 'utf8')).version
 const REPO = 'https://github.com/sky-jiangcheng/repo-nest'
-const PAGES = 'https://sky-jiangcheng.github.io/repo-nest/'
+
+// --- Locale registry -------------------------------------------------------------
+// srcRoot: where the locale's .md sources live; outRoot: where its .html goes.
+// English is the default language: en pages land at the site root, zh under /zh/.
+
+const locales = {
+  en: {
+    srcRoot: join(docsDir, 'en'),
+    outRoot: docsDir,
+    htmlLang: 'en',
+    titleSuffix: 'RepoNest Docs',
+    brandSmall: `Docs · v${version}`,
+    backLabel: '← GitHub repository',
+    switcher: { self: 'English', other: '中文' },
+    landingRedirect: true, // root landing only: send zh browsers to /zh/ once per session
+  },
+  zh: {
+    srcRoot: docsDir,
+    outRoot: join(docsDir, 'zh'),
+    htmlLang: 'zh-CN',
+    titleSuffix: 'RepoNest 文档',
+    brandSmall: `用户文档 · v${version}`,
+    backLabel: '← 返回 GitHub 仓库',
+    switcher: { self: '中文', other: 'English' },
+    landingRedirect: false,
+  },
+}
+
+const isEnSource = (rel) => rel === 'en' || rel.startsWith('en/')
+
+// Source file for `base` in a locale; null when that locale has no translation.
+const sourceOf = (locale, base) => {
+  const p = join(locales[locale].srcRoot, base + '.md')
+  return existsSync(p) ? p : null
+}
+
+// Output file for `base` in a locale (independent of source existence).
+const outputFileOf = (locale, base) => join(locales[locale].outRoot, base + '.html')
 
 // --- Markdown helpers ---------------------------------------------------------
 
@@ -45,48 +86,90 @@ function parseDoc(mdPath) {
   return { title, body }
 }
 
-function renderMarkdown(mdPath) {
+// Rewrite relative .md links for one page. Links stay inside the page's locale
+// when a same-locale source exists; otherwise they fall back to the other
+// locale's output (e.g. an English page linking an untranslated ADR detail
+// lands on the Chinese page instead of 404ing). Links leaving docs/ (README,
+// packaging, TODO...) become GitHub blob URLs — no .html is generated for them.
+function rewriteLinks(html, mdPath, locale, pageOutDir) {
+  const other = locale === 'en' ? 'zh' : 'en'
+  return html.replace(/href="([^"#]*?)\.(md|go)(#[^"]*)?"/g, (m, path, ext, hash) => {
+    if (path === '' || path.startsWith('http')) return m
+    const target = resolve(dirname(mdPath), path + '.' + ext)
+    const relDocs = relative(docsDir, target)
+    if (relDocs.startsWith('..') || ext === 'go') {
+      // Outside docs/: point at the repo blob. Chinese pages link the
+      // Chinese README companion.
+      let relRepo = relative(root, target).split('\\').join('/')
+      if (locale === 'zh' && relRepo === 'README.md') relRepo = 'README.zh-CN.md'
+      return `href="${REPO}/blob/master/${relRepo}${hash ?? ''}"`
+    }
+    const base = relDocs.replace(/^en\//, '').replace(/\.md$/, '')
+    // Prefer the page's own locale; fall back to the other one when this page
+    // links something not yet translated; if neither has it, link the source
+    // on GitHub instead of shipping a guaranteed 404.
+    const targetLocale = sourceOf(locale, base) ? locale : sourceOf(other, base) ? other : null
+    if (!targetLocale) {
+      console.warn(`⚠ 未解析的 .md 链接（${locale} ${mdPath}）: ${path}.md`)
+      const relRepo = relative(root, target).split('\\').join('/')
+      return `href="${REPO}/blob/master/${relRepo}${hash ?? ''}"`
+    }
+    return `href="${relative(pageOutDir, outputFileOf(targetLocale, base)).split('\\').join('/')}${hash ?? ''}"`
+  })
+}
+
+function renderMarkdown(mdPath, locale, pageOutDir) {
   const { title, body } = parseDoc(mdPath)
   let html = marked.parse(body, { gfm: true })
-  // Rewrite relative .md links: links into docs/ become same-position .html
-  // pages (the output file sits next to the source, so the relative path is
-  // unchanged); links to files outside docs/ (README, packaging, TODO...) are
-  // rewritten to GitHub blob URLs, because no .html is ever generated for
-  // them and the raw .md path would 404 on the Pages site.
-  html = html.replace(/href="([^"#]*?)\.md(#[^"]*)?"/g, (m, path, hash) => {
-    if (path === '' || path.startsWith('http')) return m
-    const target = resolve(dirname(mdPath), path + '.md')
-    const relDocs = relative(docsDir, target)
-    if (!relDocs.startsWith('..') && existsSync(target)) {
-      return `href="${path}.html${hash ?? ''}"`
-    }
-    const relRepo = relative(root, target).split('\\').join('/')
-    return `href="${REPO}/blob/master/${relRepo}${hash ?? ''}"`
-  })
+  html = rewriteLinks(html, mdPath, locale, pageOutDir)
   return { title, html }
+}
+
+// --- Nav & switcher --------------------------------------------------------------
+
+const labelFor = (locale, obj) => (locale === 'en' ? (obj.label_en ?? obj.label) : obj.label)
+const titleFor = (locale, sec) => (locale === 'en' ? (sec.title_en ?? sec.title) : sec.title)
+
+// href from a page's output dir to `base` rendered in `locale`'s tree,
+// falling back to the other locale when this one has no translation.
+function hrefFor(locale, base, pageOutDir) {
+  const target = sourceOf(locale, base) ? locale : (locale === 'en' ? 'zh' : 'en')
+  return relative(pageOutDir, outputFileOf(target, base)).split('\\').join('/')
+}
+
+const navHtml = (locale, pageOutDir) => sidebar.sections.map(sec => `
+      <h3>${titleFor(locale, sec)}</h3>
+${sec.items.map(it => `      <a href="${hrefFor(locale, it.file, pageOutDir)}" data-page="${it.file}">${labelFor(locale, it)}</a>`).join('\n')}
+`).join('')
+
+// English | 中文 — links to the same page in the other locale when it exists.
+function switcherHtml(locale, base, pageOutDir) {
+  const loc = locales[locale]
+  const other = locale === 'en' ? 'zh' : 'en'
+  if (!sourceOf(other, base)) {
+    return `<span class="lang-switch"><span class="lang-current">${loc.switcher.self}</span></span>`
+  }
+  return `<span class="lang-switch"><span class="lang-current">${loc.switcher.self}</span> · <a href="${relative(pageOutDir, outputFileOf(other, base)).split('\\').join('/')}">${loc.switcher.other}</a></span>`
 }
 
 // --- Template -------------------------------------------------------------------
 
-// Sidebar links must resolve from every generated page, and pages live at
-// different depths (docs/x.html vs docs/features/x.html). Each page therefore
-// gets a relPrefix ("", "../", "../..") that nav links are prefixed with.
-const navHtml = (prefix) => sidebar.sections.map(sec => `
-      <h3>${sec.title}</h3>
-${sec.items.map(it => `      <a href="${prefix}${it.file}.html" data-page="${it.file}">${it.label}</a>`).join('\n')}
-`).join('')
-
-function page(title, activeFile, contentHtml, prefix = '', extraHead = '') {
+function page(title, activeFile, contentHtml, locale, base, extraHead = '') {
+  const loc = locales[locale]
+  const outPath = outputFileOf(locale, base)
+  const pageOutDir = dirname(outPath)
   const active = activeFile
     ? `document.querySelectorAll('.sidebar a[data-page]').forEach(a => { if (a.dataset.page === ${JSON.stringify(activeFile)}) a.classList.add('active') })`
     : ''
-  const nav = navHtml(prefix)
+  const landingScript = loc.landingRedirect && base === 'index'
+    ? `try{if(!sessionStorage.getItem('rn-lang')&&(navigator.language||'').toLowerCase().startsWith('zh')&&document.referrer.indexOf(location.host)===-1){sessionStorage.setItem('rn-lang','zh');location.replace('zh/index.html')}}catch(e){}`
+    : ''
   return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${loc.htmlLang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title ? title + ' · ' : ''}RepoNest 文档</title>
+  <title>${title ? title + ' · ' : ''}${loc.titleSuffix}</title>
 ${extraHead}  <style>
     :root { --bg: #f8f9fa; --text: #1a1a2e; --muted: #6c757d; --accent: #4caf50; --border: #e2e8f0; --sidebar-w: 240px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -98,6 +181,9 @@ ${extraHead}  <style>
     .sidebar-brand h1 { font-size: 18px; font-weight: 700; }
     .sidebar-brand span { color: var(--accent); }
     .sidebar-brand small { display: block; font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+    .lang-switch { display: block; margin-top: 6px; font-size: 11px; color: rgba(255,255,255,0.5); }
+    .lang-switch .lang-current { font-weight: 700; color: #fff; }
+    .lang-switch a { color: rgba(255,255,255,0.75); }
     .sidebar nav { padding: 8px 0; }
     .sidebar h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.4); padding: 12px 20px 6px; }
     .sidebar a { display: block; padding: 6px 20px; color: rgba(255,255,255,0.75); font-size: 13px; }
@@ -131,17 +217,19 @@ ${extraHead}  <style>
   <aside class="sidebar">
     <div class="sidebar-brand">
       <h1>Repo<span>Nest</span></h1>
-      <small>用户文档 · v${version}</small>
+      <small>${loc.brandSmall}</small>
+      ${switcherHtml(locale, base, pageOutDir)}
     </div>
-    <nav>${nav}
+    <nav>${navHtml(locale, pageOutDir)}
     </nav>
   </aside>
   <main class="main">
 ${contentHtml}
     <hr>
-    <a href="${REPO}" class="back-to-top">← 返回 GitHub 仓库</a>
+    <a href="${REPO}" class="back-to-top">${loc.backLabel}</a>
   </main>
   <script>${active}</script>
+  <script>${landingScript}</script>
 </body>
 </html>
 `
@@ -149,42 +237,65 @@ ${contentHtml}
 
 // --- Build -----------------------------------------------------------------------
 
-// Every .md under docs/ gets a page, sidebar entry or not: ADR detail pages,
-// for instance, are linked from several docs but intentionally kept out of
-// the navigation. Skipping them would ship dead links by construction.
-function collectMdFiles(dir) {
+function collectMdFiles(dir, skip) {
   const out = []
   for (const name of readdirSync(dir)) {
     const p = join(dir, name)
-    if (statSync(p).isDirectory()) out.push(...collectMdFiles(p))
+    if (skip && p === skip) continue
+    if (statSync(p).isDirectory()) out.push(...collectMdFiles(p, skip))
     else if (name.endsWith('.md')) out.push(p)
   }
   return out
 }
 
-const built = []
-const sidebarFiles = new Set(sidebar.sections.flatMap(s => s.items.map(it => it.file)))
-const missingSidebar = [...sidebarFiles].filter(f => !existsSync(join(docsDir, f + '.md')))
-if (missingSidebar.length > 0) {
-  for (const f of missingSidebar) console.error(`✗ sidebar 条目缺失源文件: docs/${f}.md`)
-  process.exitCode = 1
-}
-
-for (const mdPath of collectMdFiles(docsDir)) {
-  const base = relative(docsDir, mdPath).replace(/\.md$/, '').split('\\').join('/')
-  const depth = base.split('/').length - 1
-  const prefix = '../'.repeat(depth)
-  const { title, html } = renderMarkdown(mdPath)
-  const outPath = join(docsDir, base + '.html')
-  if (base === 'index') {
-    // Landing page: inject quick nav links into the <!--NAV_LINKS--> slot.
-    const quick = sidebar.sections.flatMap(s => s.items).slice(0, 7)
-      .map(it => `      <a href="${prefix}${it.file}.html">${it.label}</a>`).join('\n')
-    writeFileSync(outPath, page(title || 'RepoNest 文档', '', html.replace('<!--NAV_LINKS-->', quick), prefix))
-  } else {
-    writeFileSync(outPath, page(title, base, html, prefix))
+// Generated HTML is never committed; wipe last build's output so pages whose
+// sources moved or were removed can't linger at stale URLs.
+function cleanGeneratedHtml(dir) {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name)
+    if (statSync(p).isDirectory()) { cleanGeneratedHtml(p); continue }
+    if (name.endsWith('.html')) rmSync(p)
   }
-  built.push(relative(root, outPath))
 }
 
-console.log(`✓ 生成 ${built.length} 个页面（v${version}）：\n  ${built.join('\n  ')}`)
+// Sanity gates: every sidebar entry needs a source in BOTH locales, otherwise
+// the missing tree ships a broken nav by construction.
+const sidebarFiles = new Set(sidebar.sections.flatMap(s => s.items.map(it => it.file)))
+let failed = false
+for (const locale of Object.keys(locales)) {
+  const missing = [...sidebarFiles].filter(f => !sourceOf(locale, f))
+  if (missing.length > 0) {
+    for (const f of missing) console.error(`✗ sidebar 条目缺失 ${locale} 源文件: ${relative(root, join(loc.srcRoot, f + '.md'))}`)
+    failed = true
+  }
+}
+if (failed) { process.exitCode = 1 } else {
+
+cleanGeneratedHtml(docsDir)
+mkdirSync(join(docsDir, 'zh'), { recursive: true })
+
+const built = []
+for (const locale of Object.keys(locales)) {
+  const loc = locales[locale]
+  const sources = locale === 'en' ? collectMdFiles(loc.srcRoot) : collectMdFiles(docsDir, join(docsDir, 'en'))
+  for (const mdPath of sources) {
+    const rel = relative(loc.srcRoot, mdPath).replace(/\.md$/, '').split('\\').join('/')
+    const base = rel
+    const outPath = outputFileOf(locale, base)
+    const pageOutDir = dirname(outPath)
+    const { title, html } = renderMarkdown(mdPath, locale, pageOutDir)
+    mkdirSync(pageOutDir, { recursive: true })
+    if (base === 'index') {
+      // Landing page: inject quick nav links into the <!--NAV_LINKS--> slot.
+      const quick = sidebar.sections.flatMap(s => s.items).slice(0, 7)
+        .map(it => `      <a href="${hrefFor(locale, it.file, pageOutDir)}">${labelFor(locale, it)}</a>`).join('\n')
+      writeFileSync(outPath, page(title || loc.titleSuffix, '', html.replace('<!--NAV_LINKS-->', quick), locale, base))
+    } else {
+      writeFileSync(outPath, page(title, base, html, locale, base))
+    }
+    built.push(relative(root, outPath))
+  }
+}
+
+console.log(`✓ 生成 ${built.length} 个页面（v${version}，en 默认 / zh 在 zh/）：\n  ${built.join('\n  ')}`)
+}

@@ -4,6 +4,15 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [Unreleased]
+
+### 新增
+
+- **文档双语化，英文为默认语言**：手册 15 个核心页面全部提供英文版（`docs/en/`，中文源保留在 `docs/`），
+  README 拆分为英文主文件 + `README.zh-CN.md`（互链切换）。文档站改为双 locale 构建：
+  英文输出到站点根路径，中文在 `/zh/` 子路径，每页侧栏带语言切换器，英文站根页对中文浏览器
+  一次性重定向到中文版。ADR 与产品评审等内部文档暂保持中文。
+
 ## [1.9.5] - 2026-09-30
 
 ### 新增
