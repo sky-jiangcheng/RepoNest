@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"reponest/internal/core/git"
-	pluginruntime "reponest/internal/core/plugin/runtime"
-	"reponest/internal/db"
-	"reponest/internal/version"
+	"repo-nest/internal/core/git"
+	pluginruntime "repo-nest/internal/core/plugin/runtime"
+	"repo-nest/internal/db"
+	"repo-nest/internal/version"
 )
 
 // ImportEventPayload is the data broadcast after a knowledge-source import.

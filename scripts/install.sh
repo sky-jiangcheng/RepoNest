@@ -4,7 +4,7 @@ set -e
 
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="reponest"
-REPO="sky-jiangcheng/RepoNest"
+REPO="sky-jiangcheng/repo-nest"
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)

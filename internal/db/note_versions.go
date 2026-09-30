@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"reponest/internal/diff"
+	"repo-nest/internal/diff"
 )
 
 // ListNoteVersions returns the recent version history for a note, ordered by

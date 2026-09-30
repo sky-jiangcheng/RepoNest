@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 
-	"reponest/internal/db"
-	"reponest/internal/domain"
-	"reponest/internal/knowledge"
-	"reponest/internal/stats"
+	"repo-nest/internal/db"
+	"repo-nest/internal/domain"
+	"repo-nest/internal/knowledge"
+	"repo-nest/internal/stats"
 )
 
 // GetProjectDetail returns a project with all its repositories and stats.

@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"reponest/internal/db"
-	"reponest/internal/domain"
+	"repo-nest/internal/db"
+	"repo-nest/internal/domain"
 )
 
 // statsBackfillDays is how far back the range refreshers query git history.

@@ -6,8 +6,8 @@
 package git
 
 import (
-	"reponest/internal/knowledge"
-	"reponest/internal/stats"
+	"repo-nest/internal/knowledge"
+	"repo-nest/internal/stats"
 )
 
 // Provider is the single abstraction for all Git interactions used by

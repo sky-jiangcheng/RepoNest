@@ -1,4 +1,4 @@
-module reponest
+module repo-nest
 
 go 1.25.5
 

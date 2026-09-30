@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"reponest/internal/db"
-	"reponest/internal/service"
+	"repo-nest/internal/db"
+	"repo-nest/internal/service"
 )
 
 // Regression: the headless server is a third JSON boundary (besides Wails and

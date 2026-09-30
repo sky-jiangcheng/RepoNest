@@ -23,8 +23,8 @@ const { marked } = requireFromWeb('marked')
 
 const sidebar = JSON.parse(readFileSync(join(docsDir, 'sidebar.json'), 'utf8'))
 const version = JSON.parse(readFileSync(join(root, 'web', 'package.json'), 'utf8')).version
-const REPO = 'https://github.com/sky-jiangcheng/RepoNest'
-const PAGES = 'https://sky-jiangcheng.github.io/RepoNest/'
+const REPO = 'https://github.com/sky-jiangcheng/repo-nest'
+const PAGES = 'https://sky-jiangcheng.github.io/repo-nest/'
 
 // --- Markdown helpers ---------------------------------------------------------
 

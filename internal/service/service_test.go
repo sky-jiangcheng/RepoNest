@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"testing"
 
-	"reponest/internal/core/git"
-	"reponest/internal/db"
-	"reponest/internal/domain"
-	"reponest/internal/stats"
+	"repo-nest/internal/core/git"
+	"repo-nest/internal/db"
+	"repo-nest/internal/domain"
+	"repo-nest/internal/stats"
 )
 
 // fakeGit is an in-memory git.Provider used to test the stats refresh and

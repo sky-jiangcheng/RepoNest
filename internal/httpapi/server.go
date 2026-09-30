@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"reponest/internal/service"
+	"repo-nest/internal/service"
 )
 
 // New returns an http.Handler (ServeMux) that serves RepoNest's capabilities

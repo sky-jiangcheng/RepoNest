@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	pluginruntime "reponest/internal/core/plugin/runtime"
-	"reponest/internal/importers/claude"
-	"reponest/internal/platform"
+	pluginruntime "repo-nest/internal/core/plugin/runtime"
+	"repo-nest/internal/importers/claude"
+	"repo-nest/internal/platform"
 )
 
 // pluginsDir resolves the plugin directory; a thin seam over platform so the

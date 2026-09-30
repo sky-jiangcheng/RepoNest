@@ -12,7 +12,7 @@
 #       name: '/absolute/path/to/RepoNest/dsh-plugin-reponest/src/index.ts'
 #
 # For a permanent install, prefer `pnpm dsh plugin add ./dsh-plugin-reponest`
-# (or `github:sky-jiangcheng/RepoNest` once the plugin is its own repo), which
+# (or `github:sky-jiangcheng/repo-nest` once the plugin is its own repo), which
 # installs it as an npm package instead of a transient --patch overlay.
 - insert:
   - id: reponest

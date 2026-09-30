@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"reponest/internal/core/plugin"
-	"reponest/internal/db"
+	"repo-nest/internal/core/plugin"
+	"repo-nest/internal/db"
 )
 
 // SourceName is the stable knowledge-source identifier registered by this

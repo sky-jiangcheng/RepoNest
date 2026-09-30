@@ -3,8 +3,8 @@ package app
 import (
 	"testing"
 
-	"reponest/internal/db"
-	"reponest/internal/service"
+	"repo-nest/internal/db"
+	"repo-nest/internal/service"
 )
 
 // setupTestApp creates an in-memory App for integration testing, using the

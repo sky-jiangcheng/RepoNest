@@ -18,11 +18,11 @@ import (
 	"net/http"
 	"os"
 
-	"reponest/internal/db"
-	"reponest/internal/httpapi"
-	"reponest/internal/platform"
-	"reponest/internal/service"
-	"reponest/internal/version"
+	"repo-nest/internal/db"
+	"repo-nest/internal/httpapi"
+	"repo-nest/internal/platform"
+	"repo-nest/internal/service"
+	"repo-nest/internal/version"
 )
 
 func main() {

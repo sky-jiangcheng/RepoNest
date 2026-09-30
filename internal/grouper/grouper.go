@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"reponest/internal/scanner"
+	"repo-nest/internal/scanner"
 )
 
 // ProjectGroup represents a grouped project containing one or more repositories.

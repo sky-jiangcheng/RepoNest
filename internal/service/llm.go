@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"reponest/internal/db"
-	"reponest/internal/domain"
+	"repo-nest/internal/db"
+	"repo-nest/internal/domain"
 )
 
 // GenerateLLMsTxt returns an aggregated Markdown document suitable for AI

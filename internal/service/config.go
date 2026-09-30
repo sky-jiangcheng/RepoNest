@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"reponest/internal/db"
+	"repo-nest/internal/db"
 )
 
 // ConfigData holds the application configuration sent to the frontend.

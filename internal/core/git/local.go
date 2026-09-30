@@ -1,8 +1,8 @@
 package git
 
 import (
-	"reponest/internal/knowledge"
-	"reponest/internal/stats"
+	"repo-nest/internal/knowledge"
+	"repo-nest/internal/stats"
 )
 
 // LocalGitProvider is the default Provider implementation that shells out to

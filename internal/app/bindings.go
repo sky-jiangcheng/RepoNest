@@ -3,9 +3,9 @@ package app
 import (
 	"context"
 
-	pluginruntime "reponest/internal/core/plugin/runtime"
-	"reponest/internal/domain"
-	"reponest/internal/service"
+	pluginruntime "repo-nest/internal/core/plugin/runtime"
+	"repo-nest/internal/domain"
+	"repo-nest/internal/service"
 )
 
 // --- Projects ---------------------------------------------------------------

@@ -7,7 +7,7 @@ package app
 import (
 	"context"
 
-	"reponest/internal/service"
+	"repo-nest/internal/service"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )

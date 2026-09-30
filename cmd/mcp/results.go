@@ -9,8 +9,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
-	"reponest/internal/service"
-	"reponest/internal/version"
+	"repo-nest/internal/service"
+	"repo-nest/internal/version"
 )
 
 func makeTextResult(text string) *mcp.CallToolResult {

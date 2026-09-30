@@ -1,11 +1,11 @@
 # RepoNest install script for Windows
-# Run in PowerShell: iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 | iex
+# Run in PowerShell: iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
 $InstallDir = "$env:LOCALAPPDATA\RepoNest"
 $BinaryName = "reponest.exe"
-$Repo = "sky-jiangcheng/RepoNest"
+$Repo = "sky-jiangcheng/repo-nest"
 $Target = "windows-amd64"
 
 Write-Host "Downloading RepoNest for Windows..."

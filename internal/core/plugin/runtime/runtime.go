@@ -9,7 +9,7 @@
 //	func Source() string                                   // optional, defaults to Name
 //	func Import(ctx *plugin.Context) ([]plugin.ImportDoc, error) // optional knowledge source
 //
-// Scripts import "reponest/internal/core/plugin" for the host-provided types.
+// Scripts import "repo-nest/internal/core/plugin" for the host-provided types.
 // All plugin calls are wrapped in recover() so a panicking plugin can never
 // crash the host process.
 package runtime
@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"reponest/internal/core/plugin"
-	"reponest/internal/db"
+	"repo-nest/internal/core/plugin"
+	"repo-nest/internal/db"
 )
 
 // PluginStatus describes the load result of one plugin, surfaced on the
