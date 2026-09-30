@@ -12,16 +12,16 @@ RepoNest 是一款本地优先的桌面应用（Wails v2，单文件、零运行
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh | bash
 ```
 
 ### Windows
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 | iex
 ```
 
-或从 [GitHub Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的二进制文件。
+或从 [GitHub Releases](https://github.com/sky-jiangcheng/repo-nest/releases) 下载对应平台的二进制文件。
 
 ## 首次启动
 
@@ -94,6 +94,7 @@ go build -o reponest-mcp ./cmd/mcp/
 
 ## 下一步
 
+- [数据与备份](data-management.md)：备份、换机迁移、重置与卸载
 - [仪表盘](features/dashboard.md)：目标进度、热力图与排序
 - [知识库与笔记](features/knowledge.md)：块编辑器与全文搜索
 - [设置](features/settings.md)：扫描、标准、外观、插件

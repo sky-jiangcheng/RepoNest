@@ -3,7 +3,8 @@
     {
       "title": "入门",
       "items": [
-        { "file": "getting-started", "label": "快速开始" }
+        { "file": "getting-started", "label": "快速开始" },
+        { "file": "data-management", "label": "数据与备份" }
       ]
     },
     {

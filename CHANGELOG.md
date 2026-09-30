@@ -6,7 +6,21 @@
 
 ## [Unreleased]
 
-暂无未发布变更。
+### Added
+
+- 手册新增[数据与备份](docs/data-management.md)页：备份、换机迁移、重置与卸载指引
+- 新增 `CONTRIBUTING.md` 与 `CODE_OF_CONDUCT.md`
+- README 新增目录与「命名分层」规范说明
+
+### Changed
+
+- 项目标识更名为 `repo-nest`：Go module 名、npm 包名、GitHub 仓库名（旧 URL 由 GitHub 自动重定向）；命令名、数据目录与 MCP 工具前缀 `reponest` 保持不变（冻结标识）
+- 品牌分层落地（对齐「品牌负责被记住，品类词负责被搜索」原则）：窗口标题与 HTML `<title>` 采用完整展示名 `RepoNest: Local Git Knowledge Base`（替换过时的 Dashboard 叙事，见 ADR-0002 重定位）；`wails.json` comments 同步
+- 架构文档新增「命名分层」一节，固化冻结标识（命令名/数据目录/MCP 前缀 `reponest`）不随品牌变化
+
+### Fixed
+
+- 架构文档「构建与产物」表移除重复的 `reponest-mcp` 行
 
 ## [1.7.9] - 2026-09-03
 
@@ -289,30 +303,30 @@
 
 - 首个正式版本：Wails 桌面应用骨架、GitHub Actions 多平台构建发布
 
-[Unreleased]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.9...HEAD
-[1.7.9]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.8...v1.7.9
-[1.7.8]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.7...v1.7.8
-[1.7.7]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.6...v1.7.7
-[1.7.6]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.5...v1.7.6
-[1.7.5]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.4...v1.7.5
-[1.7.4]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.3...v1.7.4
-[1.7.3]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.2...v1.7.3
-[1.7.2]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.1...v1.7.2
-[1.7.1]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.7.0...v1.7.1
-[1.7.0]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.6.3...v1.7.0
-[1.6.3]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.6.2...v1.6.3
-[1.6.2]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.6.1...v1.6.2
-[1.6.1]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.6.1
-[1.5.7]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.5.5...v1.5.7
-[1.5.6]: https://github.com/sky-jiangcheng/RepoNest/compare/v1.5.5...v1.5.6
-[1.5.5]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.5
-[1.5.3]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.3
-[1.5.2]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.2
-[1.5.1]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.1
-[1.5.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.5.0
-[1.4.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.4.0
-[1.3.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.3.0
-[1.2.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.2.0
-[1.1.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.1.0
-[1.0.0]: https://github.com/sky-jiangcheng/RepoNest/releases/tag/v1.0.0
+[Unreleased]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.9...HEAD
+[1.7.9]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.8...v1.7.9
+[1.7.8]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.7...v1.7.8
+[1.7.7]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.6...v1.7.7
+[1.7.6]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.5...v1.7.6
+[1.7.5]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.4...v1.7.5
+[1.7.4]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.3...v1.7.4
+[1.7.3]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.2...v1.7.3
+[1.7.2]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.6.3...v1.7.0
+[1.6.3]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.6.2...v1.6.3
+[1.6.2]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.6.1...v1.6.2
+[1.6.1]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.6.1
+[1.5.7]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.5.5...v1.5.7
+[1.5.6]: https://github.com/sky-jiangcheng/repo-nest/compare/v1.5.5...v1.5.6
+[1.5.5]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.5.5
+[1.5.3]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.5.3
+[1.5.2]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.5.2
+[1.5.1]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.5.1
+[1.5.0]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.5.0
+[1.4.0]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.4.0
+[1.3.0]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.3.0
+[1.2.0]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.2.0
+[1.1.0]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.1.0
+[1.0.0]: https://github.com/sky-jiangcheng/repo-nest/releases/tag/v1.0.0
 

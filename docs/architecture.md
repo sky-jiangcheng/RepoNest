@@ -73,7 +73,19 @@ styles/     设计系统：tokens / reset / components / layouts / features
 | 产物 | 来源 | 说明 |
 |------|------|------|
 | `reponest` | 根包 | Wails 桌面应用（`scripts/build.sh`） |
-| `reponest-mcp` | `cmd/mcp` | MCP stdio 服务器（知识库查询工具） |
 | `reponest-mcp` | `cmd/mcp` | MCP stdio 服务器（知识库查询 + agent-score 自检） |
 
 CI（`.github/workflows/release.yml`）多平台构建 + macOS 签名公证；文档站（`pages.yml`）由 `scripts/build-docs.mjs` 从 `docs/**/*.md` 生成后部署 GitHub Pages。
+
+## 命名分层
+
+品牌展示层与机器标识层**有意不一致**——标识层（URL、包名、数据目录、对外契约）不随品牌措辞变化，保证升级链与数据迁移稳定：
+
+| 层 | 取值 | 说明 |
+|------|------|------|
+| 品牌名 | `RepoNest` | `productName`、应用内 Logo、文档文案 |
+| 完整展示名 | `RepoNest: Local Git Knowledge Base` | 窗口标题（`main.go` 的 Wails `options.Title`）与 HTML `<title>` |
+| 仓库与包标识 | `repo-nest` | GitHub 仓库名、Go module 名、npm 包名 |
+| 冻结标识 | `reponest` | 二进制/命令名、用户数据目录（`internal/platform` 的 `dirName`）、MCP server 名与工具前缀 |
+
+冻结标识不参与「品牌统一」：数据目录已经历 gitboard → gitbuddy → reponest 两轮迁移（`internal/platform/platform.go` 的 legacy 迁移逻辑），MCP 工具名是对 AI 客户端的对外契约。

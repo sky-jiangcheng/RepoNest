@@ -1,6 +1,19 @@
-# RepoNest
+# RepoNest: Local Git Knowledge Base
 
 本地优先的**代码项目上下文库**：自动发现本地 Git 项目，快速理解每个项目「现在发生了什么、沉淀了哪些知识」，让用户和 AI 都能记录、检索与复用项目上下文。
+
+## 目录
+
+- [截屏预览](#截屏预览)
+- [功能特性](#功能特性)
+- [快速开始](#快速开始)
+- [从源码构建](#从源码构建)
+- [项目分组规则](#项目分组规则)
+- [项目结构（1.7.0 重构后）](#项目结构170-重构后)
+- [命名分层](#命名分层)
+- [文档](#文档)
+- [参与贡献](#参与贡献)
+- [许可](#许可)
 
 优先级声明：本项目当前以**本地知识理解与 AI 上下文出口**为核心；仪表盘与统计是支持能力，插件/PWA/Web-only 能力不再默认扩展（见 [ADR-0006](docs/adr/0006-scope-freeze.md)）。
 
@@ -83,7 +96,7 @@
 
 ### 下载安装
 
-从 [Releases](https://github.com/sky-jiangcheng/RepoNest/releases) 下载对应平台的最新版本。
+从 [Releases](https://github.com/sky-jiangcheng/repo-nest/releases) 下载对应平台的最新版本。
 
 **方式一：直接下载**
 
@@ -93,8 +106,8 @@
 
 | 平台 | 命令 |
 |------|------|
-| macOS / Linux | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.sh \| bash` |
-| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/RepoNest/master/scripts/install.ps1 \| iex` |
+| macOS / Linux | `curl -fsSL https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.sh \| bash` |
+| Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 \| iex` |
 
 启动后直接打开桌面窗口（Wails 应用，无需浏览器）：
 
@@ -179,6 +192,19 @@ web/src/
 
 架构决策见 [ADR](docs/adr/)（尤其 [ADR-0005 服务层重构](docs/adr/0005-service-layer.md)）；分层与数据流详见[架构说明](docs/architecture.md)。前后端接口契约（Wails 绑定面）见 [API 参考](docs/api/reference.md)。
 
+## 命名分层
+
+品牌名与机器标识**有意不一致**：展示层负责被记住，标识层负责稳定（URL、升级链、数据迁移、对外契约都不随品牌措辞变化）。
+
+| 层 | 取值 | 落点 |
+|------|------|------|
+| 品牌名（展示层） | `RepoNest` | `productName`、应用内 Logo、文档与 UI 文案 |
+| 完整展示名 | `RepoNest: Local Git Knowledge Base` | 窗口标题、HTML `<title>`、README 标题 |
+| 仓库与包标识 | `repo-nest` | GitHub 仓库名、Go module 名、npm 包名、文档站 URL |
+| 冻结标识（永不随品牌变） | `reponest` | 命令名 / 二进制名（`outputfilename`）、用户数据目录、MCP server 名 `reponest-mcp` 与工具前缀 `reponest_*` |
+
+冻结标识的历史原因：数据目录 `reponest` 已经历 gitboard → gitbuddy → reponest 两轮自动迁移，再次改名意味着第三次数据搬家；MCP 工具名是对 AI 客户端的对外契约，改名会使已有配置与允许列表失效。贡献时请勿「顺手统一」这些名字。
+
 ## 文档
 
 | 文档 | 内容 |
@@ -193,9 +219,11 @@ web/src/
 | [SKILL.md](SKILL.md) | 面向 AI 代理的能力卡片 |
 | [TODO.md](TODO.md) | 已知事项与待办 |
 
-[在线文档](https://sky-jiangcheng.github.io/RepoNest/)（GitHub Pages，随 master 自动部署）。
+[在线文档](https://sky-jiangcheng.github.io/repo-nest/)（GitHub Pages，随 master 自动部署）。
 
 ## 参与贡献
+
+开发环境与提交规范详见 [CONTRIBUTING.md](CONTRIBUTING.md)。快速上手：
 
 开发环境：**Go 1.25+**、**Node.js 20+**、Git。
 

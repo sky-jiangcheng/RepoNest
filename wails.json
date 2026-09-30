@@ -1,6 +1,6 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "reponest",
+  "name": "repo-nest",
   "outputfilename": "reponest",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
@@ -16,6 +16,6 @@
     "productName": "RepoNest",
     "productVersion": "1.7.9",
     "copyright": "",
-    "comments": "Local Git Dashboard"
+    "comments": "Local Git Knowledge Base"
   }
 }
