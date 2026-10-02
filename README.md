@@ -30,6 +30,27 @@ Any agent's next session picks up exactly where the last one ended
 [![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
+```mermaid
+flowchart TB
+    subgraph HUMAN[👤 Human user — visible in the IDE]
+        DESKTOP[Desktop App] 
+        VSCODE[VS Code extension<br/>VS Code · Cursor · Windsurf]
+    end
+    subgraph AGENT[🤖 AI agent user — tool surface]
+        MCP[reponest-mcp · 13 MCP tools]
+        DSH[dsh Harness plugin · llms.txt]
+    end
+    subgraph CORE[🧠 Local knowledge base — single source of truth]
+        SVC[internal/service] --- DB[(SQLite + FTS5)]
+    end
+    INIT[⚡ reponest-init · one-command registration]
+    INIT --> MCP
+    DESKTOP --> SVC
+    VSCODE --> SVC
+    MCP --> SVC
+    DSH --> SVC
+```
+
 > A single-file Wails v2 desktop app (Go + React, embedded SQLite, zero CGO) for **macOS / Windows / Linux**.
 > Works offline with no cloud dependency; AI reads the same local database through the independently distributed [`reponest-mcp`](#set-up-the-ai-execution-interface-reponest-mcp) MCP server.
 > Switch agents without losing context: a handoff written by Claude Code is read directly by Cursor.

@@ -31,6 +31,20 @@ Or download the binary for your platform from [GitHub Releases](https://github.c
 
 Launching opens the desktop window directly (a Wails app — no browser needed).
 
+The five-minute path — the first two steps are required, the last two only affect dashboard statistics; MCP-only users (no desktop app) can simply have their agent call `reponest_scan` once:
+
+```mermaid
+flowchart LR
+    A[Configure scan dirs] --> B[Run scan
+discover repos & mine knowledge]
+    B --> C[Star repos
+optional]
+    C --> D[Backfill 365-day history
+optional]
+    B -. MCP-only users .-> E[agent calls
+reponest_scan]
+```
+
 ### 1. Configure Scan Directories
 
 On first launch, default scan roots are seeded automatically:

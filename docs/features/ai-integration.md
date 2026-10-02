@@ -31,6 +31,23 @@ RepoNest 面向 AI 代理提供读取通道与自检工具，全部复用同一 
 
 MCP 是唯一的 AI 执行接口（`reponest` CLI 未随版本发布）。stdio 协议，进程内单次开库，13 个工具（含 4 个写操作：扫描 + 笔记创建/更新 + 会话交接）：
 
+会话记忆协议的两端在时序上是这样落位的：
+
+```mermaid
+sequenceDiagram
+    participant A as AI Agent
+    participant R as reponest-mcp
+    participant K as 知识库 SQLite
+    A->>R: reponest_context（会话开始）
+    R->>K: 项目解析 + 上下文组装（交接置顶）
+    K-->>A: 全项目上下文 Markdown
+    Note over A,K: 干活：notes_search / ask / read / create / update
+    A->>R: reponest_handoff（会话结束，summary 必填）
+    R->>K: 渲染统一模板落库，handoff 标签，拒绝后续覆盖
+    K-->>A: 返回 note_id
+    Note over K,A: 下一个会话（任何 agent）经 context 置顶读到
+```
+
 | 工具 | 说明 | 读写 |
 |------|------|------|
 | `reponest_scan` | 冷启动：播种默认扫描根目录并同步扫描，发现本地 Git 仓库（纯 MCP 安装可用，无需桌面应用） | 写 |

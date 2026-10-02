@@ -10,8 +10,14 @@
 // 生成物不入库（.gitignore 忽略 docs/**/*.html），GitHub Pages 部署时由
 // .github/workflows/pages.yml 先执行本脚本。
 //
-// 依赖 marked（复用 web/node_modules），运行方式：
+// 依赖 marked + mermaid + jsdom（复用 web/node_modules），运行方式：
 //   node scripts/build-docs.mjs
+//
+// mermaid 图在构建时渲染为内联 SVG（write-time render）：```mermaid 代码块
+// 经 mermaid.render() 产出 SVG 直写进 HTML，页面零运行时依赖、离线可用，
+// 与 GitHub 对 ```mermaid 的原生渲染保持同源可读。渲染需要 jsdom 环境
+// （mermaid 依赖 DOM + getBBox 布局量测），polyfill 见 renderMermaid()。
+// 若渲染器不可用则自动降级为「保留源码文本」的 <pre>，构建不失败。
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, rmSync, mkdirSync } from 'node:fs'
 import { dirname, join, relative, resolve, basename } from 'node:path'
@@ -24,6 +30,58 @@ const docsDir = join(root, 'docs')
 // Resolve marked from web/node_modules (the project keeps a single dep tree).
 const requireFromWeb = createRequire(join(root, 'web', 'noop.js'))
 const { marked } = requireFromWeb('marked')
+
+// --- Build-time mermaid renderer -------------------------------------------------
+//
+// mermaid 11 needs a DOM (plus SVG text-metrics hooks jsdom does not provide).
+// The polyfills below are the minimum that makes mermaid.render() work headless:
+// CSSStyleSheet (adoptedStyleSheets path) and getBBox/getComputedTextLength
+// (label measurement — 8px/char is a rough but stable approximation; layout
+// differences vs a real browser are cosmetic, not structural).
+let mermaidRender = null
+const mermaidPending = []  // in-flight render promises, resolved before writeFileSync
+try {
+  const { JSDOM } = requireFromWeb('jsdom')
+  const dom = new JSDOM('<!DOCTYPE html><body><div id="container"></div></body>', {
+    pretendToBeVisual: true,
+    url: 'http://localhost/',
+  })
+  const w = dom.window
+  w.CSSStyleSheet = class {
+    constructor() { this.cssRules = [] }
+    replaceSync() {}
+    insertRule() { return 0 }
+  }
+  w.SVGElement.prototype.getBBox = function () {
+    const len = (this.textContent || '').length
+    return { x: 0, y: 0, width: Math.max(len * 8, 40), height: 20 }
+  }
+  w.SVGElement.prototype.getComputedTextLength = function () {
+    return (this.textContent || '').length * 8
+  }
+  for (const k of ['document', 'window', 'CSSStyleSheet', 'DOMParser', 'XMLSerializer',
+    'Element', 'Node', 'HTMLElement', 'SVGElement', 'Text', 'CustomEvent', 'location']) {
+    // navigator is a getter-only global in newer Node — skip it rather than fail.
+    try { if (w[k] !== undefined) globalThis[k] = w[k] } catch { /* getter-only global */ }
+  }
+  if (w.navigator) {
+    try { Object.defineProperty(globalThis, 'navigator', { value: w.navigator, configurable: true }) } catch { /* keep host navigator */ }
+  }
+  globalThis.getComputedStyle = w.getComputedStyle.bind(w)
+  // mermaid lives in web/node_modules; import it via the same dep tree as marked.
+  const { default: mermaid } = await import(requireFromWeb.resolve('mermaid'))
+  mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' })
+  let seq = 0
+  mermaidRender = async (source) => {
+    const { svg } = await mermaid.render(`mmd-${Date.now()}-${seq++}`, source)
+    return svg
+  }
+  // smoke-test the pipeline once; on failure fall back to source-text output
+  await mermaidRender('flowchart LR\n  A --> B')
+  console.log('✓ mermaid 构建时渲染已启用（jsdom polyfill）')
+} catch (err) {
+  console.warn(`⚠ mermaid 渲染器不可用（${String(err).slice(0, 80)}），图将降级为源码文本`)
+}
 
 const sidebar = JSON.parse(readFileSync(join(docsDir, 'sidebar.json'), 'utf8'))
 const version = JSON.parse(readFileSync(join(root, 'web', 'package.json'), 'utf8')).version
@@ -121,6 +179,31 @@ function rewriteLinks(html, mdPath, locale, pageOutDir) {
 function renderMarkdown(mdPath, locale, pageOutDir) {
   const { title, body } = parseDoc(mdPath)
   let html = marked.parse(body, { gfm: true })
+  // ```mermaid fenced blocks → inline SVG at build time (mermaidRender, above);
+  // when the renderer is unavailable, keep the source as a readable <pre>.
+  // GitHub renders ```mermaid natively, so the same sources stay readable on
+  // github.com either way.
+  html = html.replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g, (m, code) => {
+    const decoded = code
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    if (mermaidRender) {
+      try {
+        // Queue the render now; the build loop awaits mermaidPending and splices
+        // each SVG into the slot before writing the file.
+        const idx = mermaidPending.length
+        mermaidPending.push(
+          mermaidRender(decoded).then(
+            (svg) => ({ svg }),
+            (err) => { console.warn(`⚠ 一张 mermaid 图渲染失败：${String(err).slice(0, 80)}`); return { svg: null } },
+          ),
+        )
+        return '<div class="mermaid-slot" data-idx="' + idx + '"></div>'
+      } catch {
+        /* fall through to source text */
+      }
+    }
+    return `<pre class="mermaid-fallback">${decoded}</pre>`
+  })
   html = rewriteLinks(html, mdPath, locale, pageOutDir)
   return { title, html }
 }
@@ -143,13 +226,17 @@ ${sec.items.map(it => `      <a href="${hrefFor(locale, it.file, pageOutDir)}" d
 `).join('')
 
 // English | 中文 — links to the same page in the other locale when it exists.
+// Rendered as two fixed pill buttons (current = solid, other = outline) so the
+// pair never wraps asymmetrically or orphans the separator — the old
+// `English · 中文` inline text used to leave a dangling separator on narrow
+// viewports.
 function switcherHtml(locale, base, pageOutDir) {
   const loc = locales[locale]
   const other = locale === 'en' ? 'zh' : 'en'
   if (!sourceOf(other, base)) {
-    return `<span class="lang-switch"><span class="lang-current">${loc.switcher.self}</span></span>`
+    return `<span class="lang-switch"><span class="lang-pill lang-current">${loc.switcher.self}</span></span>`
   }
-  return `<span class="lang-switch"><span class="lang-current">${loc.switcher.self}</span> · <a href="${relative(pageOutDir, outputFileOf(other, base)).split('\\').join('/')}">${loc.switcher.other}</a></span>`
+  return `<span class="lang-switch"><span class="lang-pill lang-current">${loc.switcher.self}</span><a class="lang-pill lang-other" href="${relative(pageOutDir, outputFileOf(other, base)).split('\\').join('/')}">${loc.switcher.other}</a></span>`
 }
 
 // --- Template -------------------------------------------------------------------
@@ -181,9 +268,10 @@ ${extraHead}  <style>
     .sidebar-brand h1 { font-size: 18px; font-weight: 700; }
     .sidebar-brand span { color: var(--accent); }
     .sidebar-brand small { display: block; font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px; }
-    .lang-switch { display: block; margin-top: 6px; font-size: 11px; color: rgba(255,255,255,0.5); }
-    .lang-switch .lang-current { font-weight: 700; color: #fff; }
-    .lang-switch a { color: rgba(255,255,255,0.75); }
+    .lang-switch { display: inline-flex; gap: 0; margin-top: 8px; font-size: 11px; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; overflow: hidden; }
+    .lang-switch .lang-pill { display: block; padding: 3px 10px; color: rgba(255,255,255,0.75); background: transparent; }
+    .lang-switch .lang-pill.lang-current { font-weight: 700; color: #fff; background: rgba(255,255,255,0.12); }
+    .lang-switch a.lang-pill.lang-other:hover { color: #fff; background: rgba(255,255,255,0.08); text-decoration: none; }
     .sidebar nav { padding: 8px 0; }
     .sidebar h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.4); padding: 12px 20px 6px; }
     .sidebar a { display: block; padding: 6px 20px; color: rgba(255,255,255,0.75); font-size: 13px; }
@@ -209,6 +297,9 @@ ${extraHead}  <style>
     .main .nav-links a { background: var(--bg); border: 1px solid var(--border); padding: 6px 14px; border-radius: 6px; font-size: 13px; color: var(--text); }
     .main .nav-links a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
     .main hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+    .mermaid-container { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; overflow-x: auto; text-align: center; }
+    .mermaid-container svg { max-width: 100%; height: auto; }
+    .mermaid-fallback { background: #eef2f7; color: #334155; padding: 16px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; }
     .main .back-to-top { display: inline-block; font-size: 13px; color: var(--muted); margin-top: 32px; }
     @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; padding: 24px; } }
   </style>
@@ -284,14 +375,25 @@ for (const locale of Object.keys(locales)) {
     const outPath = outputFileOf(locale, base)
     const pageOutDir = dirname(outPath)
     const { title, html } = renderMarkdown(mdPath, locale, pageOutDir)
+    // Wait out any queued mermaid renders, then splice each SVG into its slot.
+    let finalHtml = html
+    if (mermaidPending.length > 0) {
+      const svgs = await Promise.all(mermaidPending.splice(0))
+      finalHtml = html.replace(/<div class="mermaid-slot" data-idx="(\d+)"><\/div>/g, (m, idx) => {
+        const rendered = svgs[Number(idx)]
+        return rendered?.svg
+          ? `<div class="mermaid-container">${rendered.svg}</div>`
+          : '<pre class="mermaid-fallback">diagram rendering failed — see the mermaid source in docs/</pre>'
+      })
+    }
     mkdirSync(pageOutDir, { recursive: true })
     if (base === 'index') {
       // Landing page: inject quick nav links into the <!--NAV_LINKS--> slot.
       const quick = sidebar.sections.flatMap(s => s.items).slice(0, 7)
         .map(it => `      <a href="${hrefFor(locale, it.file, pageOutDir)}">${labelFor(locale, it)}</a>`).join('\n')
-      writeFileSync(outPath, page(title || loc.titleSuffix, '', html.replace('<!--NAV_LINKS-->', quick), locale, base))
+      writeFileSync(outPath, page(title || loc.titleSuffix, '', finalHtml.replace('<!--NAV_LINKS-->', quick), locale, base))
     } else {
-      writeFileSync(outPath, page(title, base, html, locale, base))
+      writeFileSync(outPath, page(title, base, finalHtml, locale, base))
     }
     built.push(relative(root, outPath))
   }

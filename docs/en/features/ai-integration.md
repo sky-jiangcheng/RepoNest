@@ -31,6 +31,23 @@ The whitelist in `internal/service/config.go` contains only 4 configuration keys
 
 MCP is the only AI execution interface (the `reponest` CLI is not shipped with releases). stdio protocol, the database is opened once per process, 13 tools (including 4 write operations: scan + note create/update + session handoff):
 
+The two ends of the session memory protocol, in sequence:
+
+```mermaid
+sequenceDiagram
+    participant A as AI Agent
+    participant R as reponest-mcp
+    participant K as Knowledge base (SQLite)
+    A->>R: reponest_context (session start)
+    R->>K: resolve project + assemble context (handoffs first)
+    K-->>A: full project context Markdown
+    Note over A,K: work: notes_search / ask / read / create / update
+    A->>R: reponest_handoff (session end, summary required)
+    R->>K: render to the fixed template, tag 'handoff', protected from overwrites
+    K-->>A: returns note_id
+    Note over K,A: the next session (any agent) reads it first via context
+```
+
 | Tool | Description | Read/Write |
 |------|-------------|------------|
 | `reponest_scan` | Cold start: seeds the default scan roots and scans them synchronously, discovering local Git repositories (works with a pure MCP install, no desktop app needed) | Write |

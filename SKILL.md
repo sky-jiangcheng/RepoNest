@@ -6,11 +6,11 @@ RepoNest is a local-first, cross-agent project memory layer. It discovers local 
 
 The tools form a session loop. Use it in every working session on a RepoNest-tracked project:
 
-```
-First run     → reponest_scan      → discover local Git repos (headless; no desktop app needed)
-Session start → reponest_context   → one call, full project context (handoffs first)
-   ... work ...
-Session end   → reponest_handoff   → record what happened for the next session
+```mermaid
+flowchart LR
+    A[Session start<br/>reponest_context] --> W[Work<br/>notes_search / ask / read / create]
+    W --> E[Session end<br/>reponest_handoff]
+    E -.next session reads it first.-> A
 ```
 
 0. **First run**: on a fresh install call `reponest_scan` once — it seeds the default scan roots and scans them synchronously, so the knowledge base is populated without ever opening the desktop app. Call it again any time `reponest_context` reports no projects. (Humans: `node scripts/reponest-init/index.mjs --with-hook` registers the MCP server and the SessionEnd handoff hook in one command — see ADR-0009.)

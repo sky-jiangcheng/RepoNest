@@ -13,15 +13,16 @@ order: 20
 
 ## 分层（后端）
 
-```
-main.go                  Wails 入口：DB 初始化、扫描根播种、窗口/AssetServer/安全头
-   │
-internal/app             绑定层：每方法 1-3 行委托 service（transport glue）
-   │
-internal/service         业务核心（笔记/搜索/上下文/交接等业务规则在此层）
-   │            │
-internal/db   internal/core/git
-(SQLite 查询)   (Git Provider 抽象，本地 CLI 实现)
+```mermaid
+flowchart TB
+    MAIN[main.go · Wails 入口<br/>DB 初始化 / 扫描根播种 / 窗口与安全头]
+    APP[internal/app · 绑定层<br/>每方法 1-3 行委托 service]
+    SVC[internal/service · 业务核心<br/>笔记 / 搜索 / 上下文 / 交接]
+    DB[(internal/db · SQLite)]
+    GIT[internal/core/git · Git Provider 抽象<br/>本地 CLI 实现]
+    MAIN --> APP --> SVC
+    SVC --> DB
+    SVC --> GIT
 ```
 
 **Wails 桌面、MCP（cmd/mcp）与 headless HTTP（cmd/server）三种入口共享同一 service 实现**——行为永远一致，新功能只需实现一次。两个例外直连 db：`internal/core/plugin/runtime`（插件知识导入的 upsert 管线）与 `internal/importers/claude`（Claude 记忆读取），均为 service 之外的既有约定。

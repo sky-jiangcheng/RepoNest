@@ -36,8 +36,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install docs dependencies (marked via web)
-        run: npm install --prefix web marked
+      - name: Install docs dependencies (marked + mermaid + jsdom via web)
+        run: npm install --prefix web marked mermaid jsdom
 
       - name: Generate docs HTML
         run: node scripts/build-docs.mjs

@@ -31,6 +31,20 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scri
 
 启动后直接打开桌面窗口（Wails 应用，无需浏览器）。
 
+五分钟上手路径如下——前两步必做，后两步只影响仪表盘统计；纯 MCP 用户（不装桌面应用）可以让 agent 直接调一次 `reponest_scan`：
+
+```mermaid
+flowchart LR
+    A[配置扫描目录] --> B[执行扫描
+发现仓库并挖掘知识]
+    B --> C[收藏仓库
+可选]
+    C --> D[回填 365 天历史
+可选]
+    B -. 纯 MCP 用户 .-> E[agent 调用
+reponest_scan]
+```
+
 ### 1. 配置扫描目录
 
 首次启动会自动播种默认扫描根目录：

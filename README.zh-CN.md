@@ -32,6 +32,27 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
+```mermaid
+flowchart TB
+    subgraph HUMAN[👤 个人用户 —— 在 IDE 里看见]
+        DESKTOP[桌面 App] 
+        VSCODE[VS Code 扩展<br/>VS Code · Cursor · Windsurf]
+    end
+    subgraph AGENT[🤖 AI Agent 用户 —— 工具面调用]
+        MCP[reponest-mcp · 13 个 MCP 工具]
+        DSH[dsh Harness 插件 · llms.txt]
+    end
+    subgraph CORE[🧠 本地知识库 —— 单一事实源]
+        SVC[internal/service] --- DB[(SQLite + FTS5)]
+    end
+    INIT[⚡ reponest-init · 一键注册]
+    INIT --> MCP
+    DESKTOP --> SVC
+    VSCODE --> SVC
+    MCP --> SVC
+    DSH --> SVC
+```
+
 > 单文件 Wails v2 桌面应用（Go + React，SQLite 内嵌，零 CGO），跨平台 **macOS / Windows / Linux**。
 > 离线可用，无云端依赖；AI 通过独立分发的 [`reponest-mcp`](#安装-ai-执行接口reponest-mcp) MCP server 读取同一本地数据库。
 > 换 agent 不丢上下文：Claude Code 写下的交接，Cursor 接手时直接读。

@@ -22,8 +22,31 @@ The frontend landing page is the **knowledge base**, and the navigation order is
 
 The core loop:
 
+```mermaid
+flowchart LR
+    D[Discover] --> U[Understand]
+    U --> R[Capture]
+    R --> S[Retrieve]
+    S --> A[Hand to AI]
+    A -. session boundaries .-> D
 ```
-Discover local projects → Understand projects → Capture knowledge → Retrieve knowledge → Hand it to AI
+
+The session memory loop (both ends of the protocol):
+
+```mermaid
+sequenceDiagram
+    participant Agent as AI Agent<br/>(Claude Code / Cursor / VS Code extension)
+    participant RN as RepoNest<br/>(MCP / headless / desktop)
+    participant KB as Local knowledge base<br/>(SQLite + FTS5)
+    Agent->>RN: reponest_scan (first run, no desktop app needed)
+    RN->>KB: seed scan roots, discover Git repos, mine knowledge
+    Agent->>RN: reponest_context (session start)
+    RN->>KB: tech stack / README / todos / notes, handoffs first
+    KB-->>Agent: one call, full project context
+    Note over Agent,KB: …work happens…
+    Agent->>RN: reponest_handoff (session end)
+    RN->>KB: structured handoff persisted, tagged 'handoff'
+    Note over KB,Agent: the next session (any agent) reads it automatically
 ```
 
 The "hand it to AI" step happens at **session boundaries**: `reponest_scan` builds the knowledge base, `reponest_context` injects the full context once when a session starts, and `reponest_handoff` captures a structured handoff when it ends — reusable across agents.
@@ -35,6 +58,57 @@ The "hand it to AI" step happens at **session boundaries**: `reponest_scan` buil
 - **AI consumption**: the MCP session memory protocol (`reponest_scan` / `reponest_context` / `reponest_handoff`) plus llms.txt, ready for direct consumption by Claude Code, Cursor, and others
 
 Feature tiers (core / supporting / experimental / deferred) and the scope-freeze rules are described in [ADR-0006](adr/0006-scope-freeze.md).
+
+## The Big Picture: two audiences, one set of artifacts
+
+RepoNest's artifacts serve two audiences at once: **you, sitting in the IDE** (who need to see it and click it) and **AI agents** (who need to read it and write it). Both paths share one local knowledge base — which is exactly why switching agents never loses context:
+
+```mermaid
+flowchart TB
+    subgraph HUMAN[👤 Human user — visible in the IDE]
+        direction TB
+        DESKTOP[Desktop App<br/>dashboard / knowledge base / project detail]
+        VSCODE[VS Code extension<br/>command palette / sidebar search<br/>VS Code · Cursor · Windsurf]
+        BLOG[Blog / decision essays<br/>blog/ · ADRs]
+    end
+
+    subgraph AGENT[🤖 AI agent user — tool surface]
+        direction TB
+        MCP[reponest-mcp<br/>13 MCP tools<br/>stdio · the single AI interface]
+        DSH[dsh Harness plugin<br/>3 model-visible tools]
+        LLMSTXT[llms.txt export<br/>whole-DB AI-readable context]
+    end
+
+    subgraph CORE[🧠 Local knowledge base — single source of truth]
+        direction TB
+        SERVICE[internal/service<br/>one business logic]
+        DB[(SQLite + FTS5<br/>notes · todos · projects · activity)]
+        SERVICE --> DB
+    end
+
+    subgraph INIT[⚡ Onboarding — one command to meet]
+        INITCMD[reponest-init<br/>detect binary → write configs → install hook]
+    end
+
+    INITCMD -->|writes .mcp.json / .cursor / .vscode| MCP
+    INITCMD -->|Claude Code hook| HOOK[SessionEnd auto handoff]
+    HOOK --> MCP
+
+    DESKTOP --> SERVICE
+    VSCODE -->|MCP stdio + headless HTTP| SERVICE
+    MCP --> SERVICE
+    DSH -->|headless HTTP| SERVICE
+    LLMSTXT --> SERVICE
+    SERVICE --> OUT[Markdown export · version history · LCS diff]
+    OUT --> HUMAN
+
+    style HUMAN fill:#f0f7ff,stroke:#4a90d9
+    style AGENT fill:#f0fff4,stroke:#4caf50
+    style CORE fill:#fffaf0,stroke:#e6a23c
+    style INIT fill:#fdf2f8,stroke:#d946a0
+```
+
+How to read it: **the top two rows are the shelf** — the desktop App and the VS Code extension meet humans, the MCP toolset, dsh plugin and llms.txt meet agents; **the middle is the vault** — every entry point calls the same service layer with zero logic duplication; **the bottom is the wiring** — `reponest-init` connects the agent side in one command, and the SessionEnd hook makes the handoff happen automatically at session end. The full distribution argument lives in [ADR-0009](adr/0009-ide-presence.md).
 
 ## About These Docs
 

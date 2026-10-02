@@ -13,15 +13,16 @@ A single-binary **Wails v2** desktop app: Go backend + React SPA (`web/dist` emb
 
 ## Layering (backend)
 
-```
-main.go                  Wails entry: DB init, scan root seeding, window/AssetServer/security headers
-   │
-internal/app             Binding layer: 1-3 lines per method delegating to the service (transport glue)
-   │
-internal/service         Business core (notes/search/context/handoff business rules live in this layer)
-   │            │
-internal/db   internal/core/git
-(SQLite queries)   (Git Provider abstraction, local CLI implementation)
+```mermaid
+flowchart TB
+    MAIN[main.go · Wails entry<br/>DB init / scan-root seeding / window & security headers]
+    APP[internal/app · binding layer<br/>1-3 lines per method, delegating to the service]
+    SVC[internal/service · business core<br/>notes / search / context / handoff]
+    DB[(internal/db · SQLite)]
+    GIT[internal/core/git · Git Provider abstraction<br/>local CLI implementation]
+    MAIN --> APP --> SVC
+    SVC --> DB
+    SVC --> GIT
 ```
 
 **All three entry points — the Wails desktop app, MCP (`cmd/mcp`), and headless HTTP (`cmd/server`) — share the same service implementation**, so behavior is always consistent and every new feature is implemented only once. Two exceptions talk to db directly: `internal/core/plugin/runtime` (the upsert pipeline for plugin knowledge imports) and `internal/importers/claude` (Claude memory reads) — both are pre-existing conventions outside the service.
