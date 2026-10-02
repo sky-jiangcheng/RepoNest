@@ -14,6 +14,7 @@
 ### 变更
 
 - **品牌重做**：`build/icon.svg`、`docs/favicon.*`、`web/public/favicon.*`、`ide/vscode/media/*` 依据新品牌标记重生成；配套调整图标按钮 / 空状态 / callout 的 CSS 与移除 UI 文案中的 emoji
+- **评估类待办收口（Sprint 14）**：P31/P33/P34/P36 逐条验证并落结论（均为「保持现状」——`Domain/types.go` 已收拢、`TrendChart` 实为 chart.js 封装而非纯 SVG、`project_overview.go` 内聚合理且后台 `mineAndCache` 的 `recover()` 已生效、`knowledge.go` 各探测函数仅以 `repoPath` 入参无共享状态）；P32 完成 Wails 绑定层审计（46 个方法无死绑定/无重复，`bindings.go` 顶部落「绑定 ↔ MCP 工具」审计块）
 
 ## [1.12.0] - 2026-10-02
 

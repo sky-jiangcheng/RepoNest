@@ -60,6 +60,11 @@
 | P38 | ProjectDetail 拆分（316→214 行 + useProjectDetail hook 122 行） | S11 |
 | P37 | SKILL.md 工作流指引 + MCP 工具参数/示例增强 | S12 |
 | D24 | PWA 移出桌面主构建（ADR-0008：残留清零 + 图标/孤儿 locale 清理） | S13 |
+| P31 | `Domain/types.go` 评估 → 核心实体已收拢，DTO 按分层归位 | S14 |
+| P32 | Wails 绑定层审计 → 46 方法无死绑定，`bindings.go` 顶部落审计块 | S14 |
+| P33 | `TrendChart` 评估 → 实为 chart.js 封装（非纯 SVG），保留 | S14 |
+| P34 | `project_overview.go` 评估 → 不拆，`mineAndCache` recover 已生效 | S14 |
+| P36 | `knowledge.go` 进一步拆分评估 → 内聚度高暂不拆 | S14 |
 
 </details>
 
@@ -145,9 +150,9 @@
 
 > 第四轮新增。按 AI 产品优先级排序。
 
-### P34: `service/project_overview.go` 评估（221 行）
+### P34: `service/project_overview.go` 评估（239 行）
 
-- [ ] 确认函数内聚度合理，**不拆**，验证 `MineAndCacheAsync` recover 已生效
+- [x] 确认函数内聚度合理，**不拆**：9 个方法均为 project/stats/level/star/search/overview/mining/summary/list 的薄 service 委托，同属「项目读模型」域。异步挖掘在 `GetProjectOverview` 内以 goroutine 触发 `mineAndCache`，`project_overview.go:139` 的 `defer recover()` 已确认生效（后台 panic 记日志不崩主进程）
 
 ### P35: 前端 CSS 架构迁移（4,055 行全局 CSS）
 
@@ -155,9 +160,9 @@
 - [ ] 保留全局 CSS 仅用于 reset、design tokens、跨组件基础样式
 - [ ] 逐组件迁移，每轮 sprint 处理 1-2 个组件（下一步：KnowledgeCard）
 
-### P36: `knowledge.go` 进一步拆分评估（515 行）
+### P36: `knowledge.go` 进一步拆分评估（536 行）
 
-- [ ] 评估函数间共享参数情况，**暂不拆**（内聚度高），若新增知识挖掘维度再评估
+- [x] 评估函数间共享参数情况，**暂不拆**：12 个函数全部以 `repoPath string` 为入参、各自独立作用于仓库路径，无跨函数共享可变状态，内聚度高（单一「repo 知识探测」职责）。若后续再增挖掘维度，首选切出依赖探测子簇（`DetectDependencies` + `parseNpmDeps/parseGoDeps/parseCargoDeps`，约 150 行）为 `dependencies.go`
 
 ### P37: SKILL.md 工作流指引增强
 
@@ -203,15 +208,15 @@
 
 ### P31: `Domain/types.go` 评估 🔻低
 
-- [ ] 评估是否收拢核心 domain 类型（当前 132 行，类型散落在各包）
+- [x] 评估是否收拢核心 domain 类型：**已收拢**，`internal/domain/types.go`（132 行）已集中 13 个核心持久化实体（Project/Repository/Todo/Note/NoteWithProject/NoteVersion/NoteDiff/TodoCount/NoteCount/DailyStat/HeatmapDay/SearchHit/RepoMeta）。各包里另见的 `service.ProjectResponse`、`knowledge.RepoKnowledge` 等是响应/DTO 形状，按分层归各层，非「散落的 domain 实体」，无需再收拢
 
 ### P32: Wails 绑定层审计 🔸中
 
-- [ ] 审计 `bindings.go` 218 行每个方法：有 MCP 对应？desktop-only？
+- [x] 审计 `bindings.go` 46 个方法（218→254 行含审计注释）：**无死绑定/无重复**。逐方法标注 MCP 对应 vs desktop-only，结论落为 `bindings.go` 顶部审计块。13 个绑定有对应 `reponest_*` 工具（notes/project/scan/context/search 面），其余为 GUI 状态、todos、config、插件管理、文件导出、笔记版本/pin/move 等刻意仅供桌面端；`reponest_ask/handoff/agent_score/integrity/notes_read` 为 agent-only、无绑定（直接走 service）
 
 ### P33: `TrendChart` 组件评估 🔻低
 
-- [ ] 评估 100 行纯 SVG 趋势图是否需要或用 CSS 替代
+- [x] **原描述已过时**：`TrendChart.tsx` 不是「纯 SVG」，而是 `chart.js` / `react-chartjs-2` 的 `<Line>` 配置封装（约 100 行 options/data），被 `ProjectDetail`（经 `useProjectDetail`）实际使用。折线图用 CSS 替代不成立——chart.js 已承担该职责，手写 CSS 折线图反而更重。**结论：保留**，作为 chart.js 的薄封装合理
 
 ---
 
@@ -254,10 +259,10 @@
 - [x] `mineAndCacheAsync` 后台 goroutine 加 recover（`project_overview.go:138`）
 - [x] `.zcode/` 已移出跟踪，不需要 history rewrite
 - [ ] P29 `parseTimestamp` 鲁棒性（低优先级，git log 格式稳定）
-- [ ] P31 `Domain/types.go` 评估（132 行，暂不需要收拢）
-- [ ] P32 Wails 绑定层审计（218 行，确认 MCP 对应关系）
-- [ ] P33 `TrendChart` 评估（100 行纯 SVG，「支持」级功能）
-- [ ] P36 `knowledge.go` 进一步拆分评估（515 行，内聚度高暂不拆）
+- [x] P31 `Domain/types.go` 评估（核心实体已收拢，DTO 按分层归各层）
+- [x] P32 Wails 绑定层审计（无死绑定，`bindings.go` 顶部审计块）
+- [x] P33 `TrendChart` 评估（实为 chart.js 封装非纯 SVG，保留）
+- [x] P36 `knowledge.go` 进一步拆分评估（内聚度高暂不拆，见 P36 结论）
 
 ---
 
@@ -274,5 +279,6 @@
 | ~~**Sprint 11**~~ | ~~P38 ProjectDetail hook 提取~~ | ✅ |
 | ~~**Sprint 12**~~ | ~~P37 SKILL.md 工作流指引~~ | ✅ |
 | ~~**Sprint 13**~~ | ~~D24 PWA 移出桌面主构建（ADR-0008 落地）~~ | ✅ |
+| **Sprint 14** | P31/P32/P33/P34/P36 评估类小项收口（验证 + 落结论，含 P32 绑定审计块） | ✅ 共 5 项 |
 | **2.0 规划** | D25 仪表盘生产力门面收缩 + C11 插件系统评估 + P35 全量 CSS Modules | 按版本 |
 | **按需** | P29, P31, P32, P33, P36 | 随重构穿插 |

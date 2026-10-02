@@ -8,6 +8,36 @@ import (
 	"repo-nest/internal/service"
 )
 
+// --- Wails binding ↔ MCP tool audit (P32, 2026-10-02) -----------------------
+//
+// Every binding below is intentional — either backed by a reponest_* MCP tool
+// (the agent-facing surface) or a deliberate desktop-only GUI/admin affordance.
+// No dead or duplicate bindings were found. Sections map to the groups below.
+//
+// MCP-backed (same capability is exposed to agents too):
+//   GetProjects→projects_list, GetProjectStats→projects_stats,
+//   GetProjectOverview→context, TriggerScan→scan,
+//   ListNotes/ListAllNotes→notes_list, SearchNotes/SearchAll→notes_search,
+//   CreateNote/CreateNoteWithMeta→notes_create,
+//   UpdateNote/UpdateNoteFull/UpdateNoteMeta→notes_update.
+//
+// Desktop-only (no MCP equivalent by design — GUI state, admin, or file UX):
+//   Projects: UpdateProjectLevel, ToggleStar, RefreshProjectHistory
+//   Scan: GetScanStatus (progress polling)
+//   Dashboard: GetSummary, GetHeatmapData, GetStatusBar, GetTodoCounts, GetNoteCounts
+//   Notes lifecycle: DeleteNote, PinNote, MoveNote, ListNoteVersions,
+//                    RestoreNoteVersion, DiffNoteVersions
+//   Todos: ListTodos, CreateTodo, ToggleTodo, DeleteTodo, ReorderTodos
+//   Config: GetConfig, UpdateConfig, UpdateScanRoots
+//   Exports: GenerateLLMsTxt, ExportNoteAsMarkdown
+//   Plugins/knowledge sources: GetPluginStatuses, GetKnowledgeSources,
+//                              TriggerKnowledgeImport, TriggerAllKnowledgeImports,
+//                              ReloadPlugins, ImportClaudeMemory
+//
+// Conversely these MCP tools have no binding (agent-only flows, served straight
+// off the service layer): reponest_ask, reponest_handoff, reponest_agent_score,
+// reponest_integrity, reponest_notes_read.
+
 // --- Projects ---------------------------------------------------------------
 
 // GetProjects returns enriched project summaries, optionally filtered by date
