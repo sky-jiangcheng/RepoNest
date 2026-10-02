@@ -17,6 +17,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"repo-nest/internal/db"
 	"repo-nest/internal/httpapi"
@@ -24,6 +25,10 @@ import (
 	"repo-nest/internal/service"
 	"repo-nest/internal/version"
 )
+
+// headerTimeout bounds request-header reads on the loopback API; every
+// legitimate local client sends its headers in one segment.
+const headerTimeout = 10 * time.Second
 
 func main() {
 	port := flag.String("port", envOr("REPONEST_HTTP_PORT", "18765"), "HTTP port for the headless API (loopback only)")
@@ -40,7 +45,14 @@ func main() {
 	svc := service.New(database, gitUser)
 
 	mux := httpapi.New(svc)
-	srv := &http.Server{Addr: "127.0.0.1:" + *port, Handler: mux}
+	// ReadHeaderTimeout bounds how long a local process can hold a half-open
+	// connection before sending a request; without it, slowloris-style hangs
+	// accumulate unbounded goroutines.
+	srv := &http.Server{
+		Addr:              "127.0.0.1:" + *port,
+		Handler:           mux,
+		ReadHeaderTimeout: headerTimeout,
+	}
 
 	// Best-effort cleanup on exit (e.g. when the plugin stops the process).
 	defer func() { _ = svc.Close() }()

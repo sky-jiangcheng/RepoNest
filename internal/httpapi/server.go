@@ -10,11 +10,14 @@
 // Trust boundary: this API has NO authentication — it serves the complete
 // local knowledge base (notes, todos, mined repo knowledge). It is safe only
 // because cmd/server binds it to 127.0.0.1, so reachability is equivalent to
-// "another process on this machine". Anyone embedding this handler (tests,
-// plugins, future transports) must preserve that property: loopback-only,
-// never 0.0.0.0, and never documented as a network service. Exposing it
-// beyond loopback would publish the user's private code knowledge to the
-// network.
+// "another process on this machine". The loopbackGuard middleware keeps that
+// property honest against the one vector a bind address cannot stop — a
+// browser reaching 127.0.0.1 via DNS rebinding — by rejecting any request
+// whose Host or Origin does not name the local machine. Anyone embedding this
+// handler (tests, plugins, future transports) must preserve that property:
+// loopback-only, never 0.0.0.0, and never documented as a network service.
+// Exposing it beyond loopback would publish the user's private code knowledge
+// to the network.
 package httpapi
 
 import (
@@ -30,7 +33,8 @@ import (
 // New returns an http.Handler (ServeMux) that serves RepoNest's capabilities
 // as JSON endpoints. The supplied service must already be constructed with a
 // valid database; callers do not need to invoke service.Startup for read-only
-// endpoints.
+// endpoints. The handler is wrapped in loopbackGuard — see the package trust
+// boundary comment.
 func New(svc *service.Service) http.Handler {
 	mux := http.NewServeMux()
 	h := &handler{svc: svc}
@@ -39,7 +43,7 @@ func New(svc *service.Service) http.Handler {
 	mux.HandleFunc("/api/ai_context", h.aiContext)
 	mux.HandleFunc("/api/search", h.search)
 	mux.HandleFunc("/api/project/", h.project)
-	return mux
+	return loopbackGuard(mux)
 }
 
 type handler struct {

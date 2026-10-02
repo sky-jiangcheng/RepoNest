@@ -26,7 +26,9 @@ func TestSearchHitsNotEmptyNull(t *testing.T) {
 	h := New(svc)
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/search?q=anything", nil))
+	req := httptest.NewRequest(http.MethodGet, "/api/search?q=anything", nil)
+	req.Host = "127.0.0.1:18765" // loopback guard: non-local Host is rejected
+	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
@@ -57,7 +59,9 @@ func TestSearchQueryTooLong(t *testing.T) {
 	h := New(service.New(database, "me"))
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/search?q="+strings.Repeat("a", maxSearchQueryLen+1), nil))
+	req := httptest.NewRequest(http.MethodGet, "/api/search?q="+strings.Repeat("a", maxSearchQueryLen+1), nil)
+	req.Host = "127.0.0.1:18765"
+	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
 	}
@@ -67,7 +71,9 @@ func TestSearchQueryTooLong(t *testing.T) {
 
 	// A query at the boundary is still served, not rejected.
 	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/search?q="+strings.Repeat("a", maxSearchQueryLen), nil))
+	req = httptest.NewRequest(http.MethodGet, "/api/search?q="+strings.Repeat("a", maxSearchQueryLen), nil)
+	req.Host = "127.0.0.1:18765"
+	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("boundary query: status = %d, want 200", rec.Code)
 	}
@@ -99,7 +105,9 @@ func TestEndpoints(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			h.ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, nil))
+			req := httptest.NewRequest(tc.method, tc.path, nil)
+			req.Host = "127.0.0.1:18765"
+			h.ServeHTTP(rec, req)
 			if rec.Code != tc.wantStatus {
 				t.Fatalf("status = %d, want %d (body %s)", rec.Code, tc.wantStatus, rec.Body.String())
 			}
