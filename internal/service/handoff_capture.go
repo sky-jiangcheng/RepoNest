@@ -5,6 +5,7 @@ import (
 
 	"repo-nest/internal/db"
 	"repo-nest/internal/importers/claude"
+	"repo-nest/internal/importers/memsrc"
 )
 
 // claudeCaptureConfigKey gates M1 session auto-capture. Default OFF: capture
@@ -46,6 +47,22 @@ func (s *Service) CaptureClaudeHandoff(projectID int64) (*HandoffResult, error) 
 	in := handoffFromSession(sess)
 	in.ProjectID = projectID
 	return s.CreateHandoffNote(in)
+}
+
+// CaptureClaudeSessionByCwd resolves the project for a working directory (its
+// last path segment matched against RepoNest projects/repos via the shared
+// matcher) and runs the same gated on-demand capture. It exists for the B-end
+// SessionEnd hook: Claude Code runs `reponest-capture` with the closing
+// session's cwd; this turns that into a handoff without the caller needing the
+// numeric project id. Still honours the `claude_session_capture` default-off gate.
+func (s *Service) CaptureClaudeSessionByCwd(cwd string) (*HandoffResult, error) {
+	projects, _ := db.GetAllProjects(s.db)
+	repos, _ := db.GetAllRepositories(s.db)
+	pid := memsrc.MatchProject(memsrc.LastPathSegment(cwd), projects, repos)
+	if pid == 0 {
+		return nil, fmt.Errorf("no RepoNest project matches cwd %q", cwd)
+	}
+	return s.CaptureClaudeHandoff(pid)
 }
 
 // handoffFromSession maps a parsed Claude session onto a HandoffInput,

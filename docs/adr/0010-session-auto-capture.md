@@ -1,6 +1,6 @@
 # ADR-0010: 会话自动捕捉——零人工参与的 Claude Code 会话交接（M1）
 
-- 状态：Accepted-in-principle（解析核心 + **按需捕获已接线**：`Service.CaptureClaudeHandoff` + `claude_session_capture` 默认关 + desktop binding，走共享 `CreateHandoffNote`；B端 SessionEnd-hook 自动化为下一步）
+- 状态：Accepted-in-principle（解析核心 + 按需捕获（服务/绑定/前端）+ B端 SessionEnd-hook CLI `cmd/reponest-capture` 均已落地；`claude_session_capture` 默认关，走共享 `CreateHandoffNote`，未开启零隐私暴露）
 - 日期：2026-10-02
 - 关联：[ADR-0007](0007-session-memory-protocol.md)（context/handoff 协议与 `handoff` 标签）、[ADR-0009](0009-ide-presence.md)（SessionEnd hook 一键接入）、[ADR-0006](0006-scope-freeze.md)（范围冻结）、TODO 会话记忆路线 M1
 
@@ -42,4 +42,5 @@ M1 要补的是「零人工参与」的下限：**不依赖 agent 主动调用**
 4. **风险文档为交付物的一部分**：设置项与文档需写清「本功能会读取 `~/.claude/projects/*.jsonl` 会话逐字稿（含潜在敏感信息），产物仅存本地 SQLite、不外传」，并把 hook 自动触发标为面向 B端的进阶项。
 5. 待补（实现细化）：`Session`→`service.HandoffInput` 映射的字段取舍（最后 assistant 文本进 Summary、工具名进 Changes、首次指令进 title 上下文）、是否给自动 handoff 加「auto-captured」标签与 agent 推送版区分。
 6. **接线进度（2026-10-03）**：按需捕获已落地——`claude.LatestSessionForRootPath`（按 `path→slug` 约定找最新会话）+ `Service.CaptureClaudeHandoff(projectID)`：受 `claude_session_capture` 配置门控（默认关，仅 `=="1"` 才读盘），映射 `Session`→`HandoffInput`（最后 assistant 文本→Summary，缺则退回首条指令；工具名 + git 分支→Changes，恒满足「至少一节」；打 `auto-captured` 标签区分），走共享 `CreateHandoffNote`。desktop binding `App.CaptureClaudeHandoff` 已加。**仍待**：B端 SessionEnd-hook 自动化触发（复用 ADR-0009 hook）。
-7. **前端入口已接（2026-10-03）**：`web/src/api/endpoints.ts` 加 `captureClaudeHandoff`（transport 按方法名字符串动态派发 Wails 绑定，无需手改 wailsjs）；`Settings → PluginsTab` 新增 Claude 捕捉开关 + 「按项目 ID 捕捉最近会话」按钮 + `openclaw_project`/`hermes_project` 目标项目输入（让 opt-in 全局记忆源人类可配）。tsc + vitest 端点契约测试通过。B端 SessionEnd-hook 自动化仍为下一步。
+7. **前端入口已接（2026-10-03）**：`web/src/api/endpoints.ts` 加 `captureClaudeHandoff`（transport 按方法名字符串动态派发 Wails 绑定，无需手改 wailsjs）；`Settings → PluginsTab` 新增 Claude 捕捉开关 + 「按项目 ID 捕捉最近会话」按钮 + `openclaw_project`/`hermes_project` 目标项目输入（让 opt-in 全局记忆源人类可配）。tsc + vitest 端点契约测试通过。
+8. **B端 SessionEnd-hook 自动化已接（2026-10-03）**：`cmd/reponest-capture` CLI 作为 Claude Code SessionEnd hook 目标（从 `-cwd`/stdin `.cwd`/进程 cwd 解析会话目录）→ `Service.CaptureClaudeSessionByCwd`（cwd 末段匹配项目 + 走同一 `CaptureClaudeHandoff`）。仍受 `claude_session_capture` 默认关约束；未开启/无匹配项目时打印错误但**退出码 0**，绝不打断用户会话收尾。`reponest-init` 的 hook 示例指向此命令。

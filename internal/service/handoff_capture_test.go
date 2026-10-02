@@ -1,6 +1,8 @@
 package service
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -79,5 +81,50 @@ func TestTruncateBytesRuneBoundary(t *testing.T) {
 	// Under max is a no-op.
 	if truncateBytes("abc", 10) != "abc" {
 		t.Error("short string should be unchanged")
+	}
+}
+
+const hookSession = `{"type":"session_meta","sessionId":"sess-hook","timestamp":"2026-01-02T00:00:00Z","cwd":"/Users/tester/ProjX","gitBranch":"main"}
+{"type":"user","sessionId":"sess-hook","message":{"role":"user","content":[{"type":"text","text":"fix the thing"}]}}
+{"type":"assistant","sessionId":"sess-hook","message":{"role":"assistant","content":[{"type":"text","text":"done and tested"}]}}
+`
+
+func TestCaptureClaudeSessionByCwd(t *testing.T) {
+	svc, _ := setupService(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	root := "/Users/tester/ProjX"
+	pid := seedProject(t, svc.db, "ProjX", root)
+	if pid == 0 {
+		t.Fatal("seed project failed")
+	}
+	// Latest session transcript at the project's slug dir.
+	slug := strings.ReplaceAll(root, "/", "-")
+	dir := filepath.Join(home, ".claude", "projects", slug)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sess.jsonl"), []byte(hookSession), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Disabled by default -> capture refuses (privacy gate).
+	if _, err := svc.CaptureClaudeSessionByCwd("/anywhere/ProjX"); err == nil {
+		t.Fatal("expected error when claude_session_capture is off")
+	}
+	// No matching project -> error, independent of the gate.
+	if err := svc.UpdateConfig("claude_session_capture", "1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.CaptureClaudeSessionByCwd("/no/where/NoSuchProject"); err == nil {
+		t.Error("expected error for unmatched cwd")
+	}
+	// Enabled + matching project -> handoff written.
+	res, err := svc.CaptureClaudeSessionByCwd("/whatever/ProjX")
+	if err != nil {
+		t.Fatalf("capture by cwd: %v", err)
+	}
+	if res.NoteID == 0 {
+		t.Errorf("expected a persisted note, got %+v", res)
 	}
 }

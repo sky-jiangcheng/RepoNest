@@ -233,7 +233,7 @@
 - [x] **解析核心已落地**（`internal/importers/claude/session.go`）：`ParseSession` 流式解析 `~/.claude/projects/<slug>/<id>.jsonl`，宽松跳过未知/超长行、忽略 sidechain，抽取稳定信封字段（sessionId/cwd/gitBranch/timestamp）+ 最后一条 assistant 文本 + 首次 user 指令 + 去重工具名；实测对齐真机 v2.1.278（`session_test.go`）
 - [x] **按需捕获已接线**（决策：默认关 + C端按需 / B端可选 hook）：`claude.LatestSessionForRootPath` + `Service.CaptureClaudeHandoff(projectID)` 走共享 `CreateHandoffNote`，受 `claude_session_capture`（默认关，仅 =="1" 才读盘）门控；`Session→HandoffInput`（最后 assistant 文本→Summary、工具+git 分支→Changes、打 `auto-captured` 标签）；desktop binding `App.CaptureClaudeHandoff`；单测覆盖。
 - [x] **前端入口已接**：`endpoints.ts.captureClaudeHandoff`（transport 按方法名动态派 Wails 绑定，无需手改 wailsjs）+ `Settings→PluginsTab` 的 Claude 捕捉开关、「按项目 ID 捕捉」按钮、`openclaw_project`/`hermes_project` 目标项目输入；tsc + 端点契约测试绿
-- [ ] 余：B端 SessionEnd-hook 自动化触发（复用 ADR-0009）；桌面「按需」入口已就绪
+- [x] **B端 SessionEnd-hook 自动化已接**：`cmd/reponest-capture` CLI（解析 `-cwd`/stdin `.cwd`/进程 cwd）→ `Service.CaptureClaudeSessionByCwd`（cwd 末段匹配项目→同一门控捕获）；未开启/无匹配项目**退出码 0** 不打断会话收尾；`reponest-init` hook 示例指向它；单测覆盖
 - [x] 体积与隐私评估：ADR-0010 已定「默认关 + 只读路径白名单 + 尾部 N 有界提取 + 宽松失败 + golden-file」，边界与既有 claude *memory* importer（读 `memory/*.md`，非 jsonl 逐字稿）划清
 
 ### M2: 多 agent 记忆源导入 → [ADR-0011](docs/adr/0011-multi-agent-memory-importers.md)
