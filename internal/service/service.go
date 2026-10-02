@@ -105,9 +105,9 @@ func (s *Service) Startup() {
 		}
 		// Load script plugins first, then register the built-in importers:
 		// Runtime.Load resets the source map, so registering before it would
-		// silently drop the built-in Claude memory importer.
+		// silently drop the built-in importers.
 		s.rt.Load(pluginsDir())
-		s.registerClaudeImporter()
+		s.registerBuiltinImporters()
 		log.Printf("plugin runtime ready: %d plugin(s), %d source(s)",
 			len(s.rt.PluginStatuses()), len(s.rt.SourceStatuses()))
 

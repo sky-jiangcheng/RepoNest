@@ -11,6 +11,7 @@
 - **图标单一事实源 + `icon-check` CI 门**：品牌标记只保留 `build/icon.svg` 一份，桌面 appicon、Windows `.ico`、VS Code 扩展图标与文档站 favicon 全部由重写后的 `scripts/generate-icons.mjs` 生成；CI 新增 `icon-check` job，用带容差的像素比对校验各派生图标与母图一致，只改母图或只改派生（半落地重做）会被拦下
 - **统一 UI 图标组件 `<Icon>`**：新增 `web/src/components/Icon.tsx` 作为描边几何 UI 图标的唯一出口（17 个图标，并提供 `iconMarkup()` 给 Markdown callout 等非 React HTML 复用）。`App`、`BlockEditor`、`ErrorBoundary`、`NoteSection`、`ProjectCard`、`TodoSection`、`Dashboard`、`Knowledge`、`ProjectDetail`、`KnowledgeCard`、`ProjectSearchDropdown` 中的内联 `<svg>`、`★ ▲▼ ✕ ?` 字形与 emoji（语言旗标、callout、达成提示）统一替换为该组件，并补齐 `aria-label`
 - **会话记忆路线图三篇设计提案（ADR-0010/0011/0012）**：把 M1 会话自动捕捉 / M2 多 agent 记忆源导入 / M3 语义检索从待办细化为落地设计——各自盘点现有可复用链路（`handoff` 标签与 `CreateHandoffNote`、`plugin.KnowledgeImporter`+`RegisterSource`+`upsertDoc`、FTS5 trigram），并核实关键外部事实：`modernc.org/sqlite/vec` 使向量检索在零 CGO 下可行（M3 存储侧解禁、本地 embedding 生成是唯一硬门），Cursor 历史存于未公开的 `state.vscdb`（M2 判定为最脆弱、缓行）。三篇均记为 Proposed 并列出实现前必须拍板的决策门
+- **Codex 会话导入器（M2 首个新源）**：新增 `internal/importers/codex`，流式解析 `~/.codex/sessions/**/rollout-*.jsonl`，把每个会话（cwd→项目匹配 + 首次指令 + 最近回复）汇成一条 `log` 笔记，复用既有 `KnowledgeImporter`/`upsertDoc` 管线；抽出共享件 `internal/importers/memsrc`（`MatchProject`/`ReadCapped`/`LastPathSegment`），claude importer 改为委托。**隐私门**：`RegisterSourceManual` + `sourceEntry.auto`，启动 `ImportAll` 只跑 auto 源，Codex 需在设置的知识源列表里显式一键触发（ADR-0011 决策 4）
 
 ### 变更
 

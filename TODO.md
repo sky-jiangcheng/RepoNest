@@ -235,7 +235,9 @@
 
 ### M2: 多 agent 记忆源导入 → [ADR-0011](docs/adr/0011-multi-agent-memory-importers.md)
 
-- [ ] Cursor / Codex / OpenCode 记忆格式导入器（复用 plugin.ImportDoc upsert 管线）—— 框架与推进顺序（Codex 先、OpenCode 次、Cursor 缓行：`state.vscdb` 未公开易碎）见 ADR-0011；各源实现前先做真机样本格式验证门
+- [x] **Codex 源已落地**：`internal/importers/codex`（流式解析 `~/.codex/sessions/**/rollout-*.jsonl`，取 cwd→项目匹配 + 首次指令 + 最近回复成一条 `log` 笔记），复用 `plugin.KnowledgeImporter`/`upsertDoc`；抽公共件 `internal/importers/memsrc`（`MatchProject`/`ReadCapped`/`LastPathSegment`），claude 改为委托（测试不破）。**隐私门**：新增 `RegisterSourceManual` + `sourceEntry.auto`，`ImportAll`（启动自动导入）只跑 auto 源、Codex 经设置里 sources 列表显式一键触发（ADR-0011 决策 4）。golden-style 测试 + runtime 门控测试
+- [ ] OpenCode 源（有公开形状可循，待真机样本验证）
+- [ ] Cursor 源缓行：`state.vscdb` 未公开、易碎（ADR-0011 决策 3）
 
 ### M3: 语义检索 → [ADR-0012](docs/adr/0012-semantic-search.md)
 

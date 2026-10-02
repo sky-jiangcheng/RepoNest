@@ -1,6 +1,6 @@
 # ADR-0011: 多 agent 记忆源导入——可复用的 importer 框架与各源可行性（M2）
 
-- 状态：Proposed（框架与 Claude 源已存在；新增源逐个待格式验证后立项）
+- 状态：Proposed（框架已存在；**Codex 源已落地**为 opt-in 手动源，OpenCode 待验证、Cursor 缓行）
 - 日期：2026-10-02
 - 关联：[ADR-0002](0002-c-end-repositioning.md)（进程内插件运行时）、[ADR-0007](0007-session-memory-protocol.md)、[ADR-0010](0010-session-auto-capture.md)、TODO 会话记忆路线 M2
 

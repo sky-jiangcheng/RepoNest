@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"repo-nest/internal/core/plugin"
 )
 
 // setupDB creates an in-memory database for tests.
@@ -387,5 +389,56 @@ func Init(ctx *plugin.Context) error {
 	}
 	if byName["uses-exec"] {
 		t.Errorf("plugin importing os/exec must NOT load: %+v", rt.PluginStatuses())
+	}
+}
+
+// countingImporter records how many times Import ran, for gating assertions.
+type countingImporter struct {
+	name   string
+	called *int
+}
+
+func (c countingImporter) Source() string { return c.name }
+func (c countingImporter) Import() ([]plugin.ImportDoc, error) {
+	*c.called++
+	return nil, nil
+}
+
+// TestImportAllSkipsManualSource locks the ADR-0011 决策 4 privacy gate:
+// RegisterSource (auto) sources run in the startup ImportAll pass, while
+// RegisterSourceManual (e.g. codex transcripts) sources are excluded there but
+// still run when triggered explicitly by name.
+func TestImportAllSkipsManualSource(t *testing.T) {
+	rt := New(setupDB(t))
+	autoRuns, manualRuns := 0, 0
+	rt.RegisterSource("auto", countingImporter{name: "auto", called: &autoRuns})
+	rt.RegisterSourceManual("manual", countingImporter{name: "manual", called: &manualRuns})
+
+	// Manual source must still be discoverable in the list.
+	if len(rt.SourceStatuses()) != 2 {
+		t.Fatalf("expected 2 registered sources, got %+v", rt.SourceStatuses())
+	}
+
+	// ImportAll runs only the auto source.
+	ran := map[string]bool{}
+	for _, r := range rt.ImportAll() {
+		ran[r.Name] = true
+	}
+	if !ran["auto"] {
+		t.Error("ImportAll must run the auto source")
+	}
+	if ran["manual"] {
+		t.Error("ImportAll must NOT run a manual (opt-in) source")
+	}
+	if manualRuns != 0 {
+		t.Errorf("manual importer ran %d times in ImportAll, want 0", manualRuns)
+	}
+
+	// Explicit trigger DOES run the manual source.
+	if _, err := rt.TriggerImport("manual"); err != nil {
+		t.Fatalf("explicit trigger of manual source: %v", err)
+	}
+	if manualRuns != 1 {
+		t.Errorf("manual importer runs = %d, want 1 after explicit trigger", manualRuns)
 	}
 }

@@ -54,6 +54,11 @@ type sourceEntry struct {
 	importFn func() ([]plugin.ImportDoc, error)
 	imported int
 	lastErr  error
+	// auto marks sources eligible for the startup "import everything" pass
+	// (ImportAll). Curated sources (claude memory, script-plugin importers) are
+	// auto; privacy-sensitive transcript sources (codex sessions) are opt-in
+	// and only run when triggered explicitly by name. See ADR-0011 决策 4.
+	auto bool
 }
 
 // Runtime loads and supervises plugins. It is safe for concurrent use.
@@ -185,7 +190,7 @@ func (r *Runtime) loadPlugin(dir string) {
 		}
 		importFn := func() ([]plugin.ImportDoc, error) { return imp(ctx) }
 		r.mu.Lock()
-		r.sources[source] = &sourceEntry{name: source, plugin: status.Name, importFn: importFn}
+		r.sources[source] = &sourceEntry{name: source, plugin: status.Name, importFn: importFn, auto: true}
 		r.mu.Unlock()
 		log.Printf("plugin runtime: plugin %s registered knowledge source %q", status.Name, source)
 	}
@@ -255,7 +260,13 @@ type SourceRun struct {
 func (r *Runtime) ImportAll() []SourceRun {
 	r.mu.Lock()
 	names := make([]string, 0, len(r.sources))
-	for name := range r.sources {
+	for name, src := range r.sources {
+		// Skip opt-in sources (e.g. codex transcripts): the startup auto-import
+		// pass runs curated sources only. Opt-in sources still run when
+		// triggered explicitly by name via TriggerImport. ADR-0011 决策 4.
+		if !src.auto {
+			continue
+		}
 		names = append(names, name)
 	}
 	r.mu.Unlock()
@@ -413,15 +424,26 @@ func (c *Context) RegisterKnowledgeSource(name string, importer plugin.Knowledge
 	c.rt.RegisterSource(name, importer)
 }
 
-// RegisterSource registers a Go-native knowledge importer, allowing built-in
-// importers (e.g. the Claude memory importer) to participate in the runtime
-// without being loaded as scripts.
+// RegisterSource registers a Go-native knowledge importer as an AUTO source,
+// eligible for the startup "import all" pass. Built-in curated importers (the
+// Claude memory importer) and script-plugin sources use this.
 func (r *Runtime) RegisterSource(name string, importer plugin.KnowledgeImporter) {
+	r.registerSource(name, importer, true)
+}
+
+// RegisterSourceManual registers a Go-native importer that is excluded from the
+// startup auto-import and only runs when triggered explicitly by name. Used for
+// privacy-sensitive sources (codex session transcripts). ADR-0011 决策 4.
+func (r *Runtime) RegisterSourceManual(name string, importer plugin.KnowledgeImporter) {
+	r.registerSource(name, importer, false)
+}
+
+func (r *Runtime) registerSource(name string, importer plugin.KnowledgeImporter, auto bool) {
 	if importer == nil {
 		return
 	}
 	r.mu.Lock()
-	r.sources[name] = &sourceEntry{name: name, plugin: "builtin", importFn: importer.Import}
+	r.sources[name] = &sourceEntry{name: name, plugin: "builtin", importFn: importer.Import, auto: auto}
 	r.mu.Unlock()
 }
 

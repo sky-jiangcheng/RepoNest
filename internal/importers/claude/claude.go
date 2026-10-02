@@ -9,7 +9,6 @@ package claude
 import (
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 
 	"repo-nest/internal/core/plugin"
 	"repo-nest/internal/db"
+	"repo-nest/internal/importers/memsrc"
 )
 
 // SourceName is the stable knowledge-source identifier registered by this
@@ -86,7 +86,7 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 			if base == "MEMORY" {
 				continue
 			}
-			raw, err := readCapped(filepath.Join(memDir, m.Name()), maxImportReadBytes)
+			raw, err := memsrc.ReadCapped(filepath.Join(memDir, m.Name()), maxImportReadBytes)
 			if err != nil {
 				continue
 			}
@@ -107,18 +107,6 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 		}
 	}
 	return docs, nil
-}
-
-// readCapped reads at most limit bytes from path. A file larger than the limit
-// returns exactly limit bytes with no error, so the caller can distinguish
-// "oversized" from "unreadable" and skip the file with a clear message.
-func readCapped(path string, limit int) ([]byte, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	return io.ReadAll(io.LimitReader(f, int64(limit)))
 }
 
 // DisplayName extracts the final path segment from a Claude project dir name
@@ -148,33 +136,12 @@ func NoteTitle(filename string) string {
 	}
 }
 
-// MatchProject finds the RepoNest project id for a Claude memory dir,
-// preferring exact name, then repo path suffix, then name containment.
-// Returns 0 when no project matches.
+// MatchProject finds the RepoNest project id for a Claude memory dir name. It
+// is a thin wrapper over the shared memsrc matcher, kept exported so the Claude
+// importer's own tests and callers remain stable while the matching rules stay
+// common across all built-in importers.
 func MatchProject(displayName string, projects []db.Project, repos []db.Repository) int64 {
-	lower := strings.ToLower(displayName)
-	// 1. exact name
-	for _, p := range projects {
-		if p.Name == displayName {
-			return p.ID
-		}
-	}
-	// 2. repository path ending with /displayName
-	for _, r := range repos {
-		rp := strings.ToLower(r.Path)
-		if strings.HasSuffix(rp, "/"+lower) || strings.HasSuffix(rp, "/"+lower+".git") {
-			if r.ProjectID != nil {
-				return *r.ProjectID
-			}
-		}
-	}
-	// 3. project name containment
-	for _, p := range projects {
-		if strings.Contains(strings.ToLower(p.Name), lower) {
-			return p.ID
-		}
-	}
-	return 0
+	return memsrc.MatchProject(displayName, projects, repos)
 }
 
 // StripFrontmatter removes a leading YAML frontmatter block (between --- markers
