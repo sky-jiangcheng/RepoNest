@@ -1,6 +1,6 @@
 # ADR-0012: 语义检索评估——向量召回补 FTS5 字面盲区，守住零 CGO（M3）
 
-- 状态：Accepted-in-principle（向量侧零 CGO 已实测、hybrid RRF 核心已落地；**C（FTS5 查询松弛）已默认落地**；A 远程 embedding 为 B端可选、待 Provider 选型与 A/B 门；放弃 B）
+- 状态：Accepted-in-principle（向量侧零 CGO 已实测、hybrid RRF 核心已落地；**C 已默认落地**；A 定为 OpenAI 兼容协议（云/本地 Ollama 皆可、零 CGO），`RemoteEmbedder` 基座已落地未接热路径，待 A/B 门与显式开启；放弃 B）
 - 日期：2026-10-02
 - 关联：[ADR-0003](0003-fts5-search.md)（FTS5 trigram 全文检索）、[ADR-0006](0006-scope-freeze.md)、[ADR-0007](0007-session-memory-protocol.md)、TODO 会话记忆路线 M3
 
@@ -48,3 +48,12 @@
 ## C 落地进度（2026-10-03）
 
 **C 的第一版已实现、默认生效、零依赖**：`internal/db/search.go` 的笔记检索在严格 FTS5 AND **命中为零**时，做一次**停用词感知的 OR 查询松弛**（丢小写英文停用词、把剩余词 OR 合并）；仍**在 FTS 内**完成，不新增 LIKE 兜底，因此「索引坏/空→返回空」的既有语义与 `migrate_fts_repair_test` 不破。AND 有结果时**不触发松弛**（不会误加只含部分词的文档）——纯召回增量，不改变当前好结果集。单测 `TestEscapeFTSOR` / `TestSearchNotes_ORRelaxationWhenANDEmpty` / `TestSearchNotes_NoRelaxationWhenANDMatches`。这是「纯 query 改写、零外部词库」的最小可用形态；更进一步的同义/近义（需词库或 embedding）留待 A 路线过 A/B 门后再评估。
+
+## A 落地进度（2026-10-03）—— provider 选型 + 嵌入器基座
+
+**选型结论：不锁单一厂商，标准化到 OpenAI 兼容 `/v1/embeddings` 协议**（OpenAI / Voyage / Jina / 自托管 Ollama·llama.cpp·LM Studio 都实现它），配置化 `base_url + model + api_key + dim`：
+- **质量默认推荐**：OpenAI `text-embedding-3-small`（便宜、多语、CJK 尚可）；更高档 `text-embedding-3-large`；代码/中英混排更强可看 Voyage-3 / Jina-embeddings-v3。
+- **关键洞察（解掉「本地 + 零 CGO」两难）**：既然 A 本就是「B端自愿走网络端点」，把 `base_url` 指向**本机自托管的 Ollama**（`nomic-embed-text`/`bge-m3`）即可：模型在**独立进程**跑，RepoNest 二进制**仍是零 CGO**、且**数据不出机**——对隐私敏感的 B端比云 API 更契合本地优先。即：一个 `RemoteEmbedder`（OpenAI 兼容）同时覆盖云端与本地 Ollama 两条路。
+- **风险 posture 不变**：A 默认关、显式开；开启即在文档/设置显著披露「笔记文本会送往所配置的端点（云→出机；本地 Ollama→不出机）」，由用户自选端点自负其责。
+
+**已落地基座（未接搜索热路径，待门）**：`internal/search/hybrid.RemoteEmbedder` 实现 `Embedder`（OpenAI 兼容 POST、按 `index` 乱序回填、HTTP/维度错误宽松失败、bearer 可选），带 httptest 单测。`FuseRRF` 融合、`vec0` 零 CGO（`vecprobe`）亦就绪。**仍缺**（A 正式接线时补，且需先过 A/B 门）：`note_embeddings` vec0 表迁移 + 全库重算、`db/search.go` 的 FTS+vec RRF 接入、`semantic_search`/端点配置的默认关开关与前端、以及 API key 的安全存储（当前 config 表会把值回传前端，接线时须单独走不外泄路径）。
