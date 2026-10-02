@@ -144,37 +144,9 @@ func MatchProject(displayName string, projects []db.Project, repos []db.Reposito
 	return memsrc.MatchProject(displayName, projects, repos)
 }
 
-// StripFrontmatter removes a leading YAML frontmatter block (between --- markers
-// on their own lines) from a markdown string. If no frontmatter is present, the
-// input is returned as-is. Only considers the very first two lines for each marker
-// to avoid being fooled by horizontal rules later in the text.
+// StripFrontmatter removes a leading YAML frontmatter block from a markdown
+// string. Thin wrapper over memsrc.StripFrontmatter, kept exported for this
+// package's tests and callers while the logic stays shared across importers.
 func StripFrontmatter(s string) string {
-	s = strings.TrimSpace(s)
-	if !strings.HasPrefix(s, "---") {
-		return s
-	}
-	// Find the end of the first line containing the opening "---"
-	idx := strings.Index(s, "\n")
-	if idx < 0 {
-		return s // no newline after "---", not valid frontmatter
-	}
-	// Check if the first line is exactly "---" (optional trailing whitespace)
-	firstLine := strings.TrimSpace(s[:idx])
-	if firstLine != "---" {
-		return s
-	}
-	// Look for closing "---" on a line by itself
-	remainder := s[idx+1:]
-	lines := strings.Split(remainder, "\n")
-	for i, line := range lines {
-		if strings.TrimSpace(line) == "---" {
-			// Return everything after this closing marker line
-			if i+1 < len(lines) {
-				return strings.TrimLeft(strings.Join(lines[i+1:], "\n"), "\r\n")
-			}
-			return ""
-		}
-	}
-	// No closing marker found; return the remainder as-is.
-	return strings.TrimLeft(remainder, "\r\n")
+	return memsrc.StripFrontmatter(s)
 }

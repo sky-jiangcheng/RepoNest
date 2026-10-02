@@ -239,8 +239,9 @@
 - [x] **Codex 源已落地**：`internal/importers/codex`（流式解析 `~/.codex/sessions/**/rollout-*.jsonl`，取 cwd→项目匹配 + 首次指令 + 最近回复成一条 `log` 笔记），复用 `plugin.KnowledgeImporter`/`upsertDoc`；抽公共件 `internal/importers/memsrc`（`MatchProject`/`ReadCapped`/`LastPathSegment`），claude 改为委托（测试不破）。**隐私门**：新增 `RegisterSourceManual` + `sourceEntry.auto`，`ImportAll`（启动自动导入）只跑 auto 源、Codex 经设置里 sources 列表显式一键触发（ADR-0011 决策 4）。golden-style 测试 + runtime 门控测试
 - [x] **OpenCode 源已落地**（`internal/importers/opencode`，opt-in MANUAL）：真机核验 `~/.local/share/opencode/storage/session/<hash>/ses_*.json`（自带 title/summary/directory，已是摘要级），`directory` 末段→项目匹配；golden-style 测试 + 接口断言
 - [ ] Cursor 源（范围内、未实现）：`state.vscdb` 未公开 SQLite blob，先只读核验 chat 表编码再写；默认关、标非官方契约——风险最高一源
-- [ ] OpenClaw 源（范围内，格式已核验、未实现）：记忆=`~/.openclaw-autoclaw/workspace/*.md`（agent 全局、非按项目分）；**必须 allowlist 到这些 md**（同目录含私钥/vault，绝不整目录遍历、绝不把 key 落进笔记）；无 1.0/2.0 判别位（日期式 version），「只做 2.0」＝按当前布局实现。**待决**：全局记忆挂到哪个项目（`workspace/.git` 推断 / 用户指定 / 专用项目）——定前不硬塞
-- [ ] Hermes 源（范围内，未实现）：**Nous Research 独立产品，与 OpenClaw 两家**（早先误判为 OpenClaw 运行时，已更正）。本机无可检视的 Hermes 数据目录 → **需真实数据样例/路径核验格式**再写，不臆测
+- [x] **OpenClaw 源已落地**（`internal/importers/openclaw`，opt-in MANUAL）：allowlist 到 `~/.openclaw-autoclaw/workspace/*.md` 单层非递归（parent 含私钥/vault，绝不触碰；有 allowlist 单测），全局记忆经 `openclaw_project` 配置定向（未设→skip）；「只做 2.0」＝按当前布局
+- [x] **Hermes(curated) 源已落地**（`internal/importers/hermes`，opt-in MANUAL）：**Nous Research 独立产品，与 OpenClaw 两家**（早先误判已更正）。官网文档核验 root `~/.hermes/`（`$HERMES_HOME` 覆盖），allowlist 到 `memories/{MEMORY,USER}.md`（`.env`/`mcp-tokens`/`state.db` 绝不读），`hermes_project` 配置定向
+- [ ] Hermes sessions（`~/.hermes/sessions/` + `state.db`）未导入：schema 无文档、本机不可核验 → 待真实样例/官方 schema 再实现（不猜活格式）
 
 ### M3: 语义检索 → [ADR-0012](docs/adr/0012-semantic-search.md)
 

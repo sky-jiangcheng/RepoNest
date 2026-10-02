@@ -19,6 +19,19 @@ var allowedConfigKeys = map[string]bool{
 	"scan_depth":          true,
 	"git_author":          true,
 	"auto_import":         true,
+	// Target project for the agent-GLOBAL memory importers (openclaw / hermes).
+	// Value is a project name or numeric id; unset -> those sources skip. See
+	// memsrc.TargetProject and ADR-0011.
+	"openclaw_project": true,
+	"hermes_project":   true,
+}
+
+// stringConfigKeys are exempt from the numeric-value check: they carry
+// free-text (author name, project name/id).
+var stringConfigKeys = map[string]bool{
+	"git_author":       true,
+	"openclaw_project": true,
+	"hermes_project":   true,
 }
 
 // GetConfig returns all configuration settings and scan roots.
@@ -45,7 +58,7 @@ func (s *Service) UpdateConfig(key, value string) error {
 	if !allowedConfigKeys[key] {
 		return fmt.Errorf("unknown config key: %s", key)
 	}
-	if key != "git_author" {
+	if !stringConfigKeys[key] {
 		if _, err := strconv.Atoi(value); err != nil {
 			return fmt.Errorf("config value must be a number")
 		}

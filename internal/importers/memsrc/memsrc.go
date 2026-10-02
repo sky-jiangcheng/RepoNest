@@ -6,9 +6,11 @@
 package memsrc
 
 import (
+	"database/sql"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"repo-nest/internal/db"
@@ -69,4 +71,69 @@ func LastPathSegment(p string) string {
 		return ""
 	}
 	return filepath.Base(p)
+}
+
+// TargetProject resolves the RepoNest project a source whose memory is
+// agent-global (not per-project) should attach its notes to, from a config
+// value naming a project by name or numeric id. Empty/unreadable/unknown -> 0,
+// which the runtime counts as skipped: a misconfigured source therefore lands
+// nowhere rather than scattering notes across the wrong projects. Used by the
+// openclaw and hermes importers.
+func TargetProject(database *sql.DB, cfgKey string) int64 {
+	val, err := db.GetConfig(database, cfgKey)
+	if err != nil {
+		return 0
+	}
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return 0
+	}
+	if isNumeric(val) {
+		if id, err := strconv.ParseInt(val, 10, 64); err == nil {
+			return id
+		}
+		return 0
+	}
+	projects, _ := db.GetAllProjects(database)
+	return MatchProject(val, projects, nil)
+}
+
+func isNumeric(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// StripFrontmatter removes a leading YAML frontmatter block (between --- lines)
+// from a Markdown string; input without frontmatter is returned trimmed. Shared
+// by the markdown-backed importers (claude, openclaw, hermes).
+func StripFrontmatter(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "---") {
+		return s
+	}
+	idx := strings.Index(s, "\n")
+	if idx < 0 {
+		return s
+	}
+	if strings.TrimSpace(s[:idx]) != "---" {
+		return s
+	}
+	remainder := s[idx+1:]
+	lines := strings.Split(remainder, "\n")
+	for i, line := range lines {
+		if strings.TrimSpace(line) == "---" {
+			if i+1 < len(lines) {
+				return strings.TrimLeft(strings.Join(lines[i+1:], "\n"), "\r\n")
+			}
+			return ""
+		}
+	}
+	return strings.TrimLeft(remainder, "\r\n")
 }

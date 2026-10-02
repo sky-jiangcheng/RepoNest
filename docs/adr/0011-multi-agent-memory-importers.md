@@ -1,6 +1,6 @@
 # ADR-0011: 多 agent 记忆源导入——可复用的 importer 框架与各源可行性（M2）
 
-- 状态：Proposed（框架已存在；**Codex、OpenCode 已落地**为 opt-in 手动源；Cursor、OpenClaw、Hermes 已纳入范围，各有待决/待验证门）
+- 状态：Proposed（框架已存在；**Codex、OpenCode、OpenClaw、Hermes(curated) 已落地**为 opt-in 手动源；Cursor、Hermes sessions 待格式核验门）
 - 日期：2026-10-02
 - 关联：[ADR-0002](0002-c-end-repositioning.md)（进程内插件运行时）、[ADR-0007](0007-session-memory-protocol.md)、[ADR-0010](0010-session-auto-capture.md)、TODO 会话记忆路线 M2
 
@@ -47,5 +47,5 @@ M2 要把同一管线扩展到 Cursor / Codex / OpenCode 等。但 2026-10 现�
 - **codex**（已落地，opt-in MANUAL）：`~/.codex/sessions/**/rollout-*.jsonl` 流式解析，每会话→一条 log 笔记。真机核验：session_meta.payload.cwd + response_item message content 块。
 - **opencode**（已落地，opt-in MANUAL）：`~/.local/share/opencode/storage/session/<hash>/ses_*.json`，字段已自带 `{id,projectID,directory,title,summary,time}`（已是摘要级，无需解析逐条消息），`directory` 末段驱动项目匹配。真机核验通过（v1.1.36 样本）。
 - **cursor**（范围内，未实现）：聊天/Agent 历史在未公开的 `state.vscdb`（本机 7.4MB SQLite，序列化了 workspace 键控的 blob），逆向、易碎。实现前须先只读核验 `itemTable`/`cursorDiskKV` 之类表里 chat 记录的真实编码，且**默认关**、明确标注非官方契约。风险最高的一源。
-- **openclaw**（范围内，格式已核验，未实现）：记忆 = `~/.openclaw-autoclaw/workspace/{IDENTITY,SOUL,USER,AGENTS,HEARTBEAT,TOOLS}.md`（与 RepoNest 自身 awareness 文件同名同形）。版本是日期式 `lastTouchedVersion: 2026.6.8`，**没有 1.0/2.0 判别位**——产品决定「只做 2.0」= 直接按当前布局实现、不写 1.0 兼容，无需额外识别。**安全红线**：`~/.openclaw-autoclaw` 含**私钥**（`office-plugin-tls/*.pem`）、`vault-roots.json`、`identity/`、`client-sign.json` 等——importer 必须**严格 allowlist 到 `workspace/*.md`**，绝不遍历整目录、绝不把任何 key/token/vault 落进笔记。**待决**：这些是 **agent 全局记忆、非按项目分**（不同于 codex/opencode 每会话带 cwd），落到 (project, source, title) 键上需先定「全局记忆挂到哪个项目」——按 `workspace/.git` 仓库推断单一项目？还是让用户指定？或建一个专用「OpenClaw 记忆」项目？未定前不硬塞（ProjectID 0 会被管线当 skipped 丢掉）。
-- **hermes**（范围内，未实现）：**Hermes 是 Nous Research 的独立产品**（bundle `com.nousresearch.hermes`），与 OpenClaw 是**两家**、各自成源——先前把 `.hermes-runtime-receipts`（OpenClaw 目录里的一个子项）误判成「Hermes 是 OpenClaw 运行时」，已更正。**本机无 Hermes 可检视数据目录**（仅一个 WebKit 安装偏好桩），按「先核验真机落盘格式再写 importer」的纪律，**需产品/用户给一份真实数据目录或样例路径**方可实现，不臆测其 schema。
+- **openclaw**（**已落地，opt-in MANUAL**）：记忆 = `~/.openclaw-autoclaw/workspace/{IDENTITY,SOUL,USER,AGENTS,HEARTBEAT,TOOLS}.md`（真机核验 + 与 RepoNest 自身 awareness 同名同形）。**安全红线**：parent `~/.openclaw-autoclaw/` 含私钥（`office-plugin-tls/*.pem`）/`vault-roots.json`/`identity/`/`client-sign.json`——importer **硬 scoping 到 `workspace/*.md` 单层非递归**，绝不读 parent/子目录/非 md（有 allowlist 单测：parent `.md`、子目录 `.md`、非 md 一律不导入）。版本日期式 `lastTouchedVersion: 2026.x`，**无 1.0/2.0 判别位**→「只做 2.0」＝按当前布局实现。**全局记忆的项目归属**：走 `openclaw_project` 配置（项目名或 id），未设/未知 → ProjectID 0（被管线 skip），不硬塞、不乱撒。
+- **hermes**（**已落地 curated-memory 层，opt-in MANUAL**）：**Nous Research 独立产品**（`com.nousresearch.hermes`），与 OpenClaw 两家——早先误判为 OpenClaw 运行时，已更正。经官网文档核验：root `~/.hermes/`（`$HERMES_HOME` 可覆盖），**curated 记忆 = `~/.hermes/memories/{MEMORY.md,USER.md}`**（Markdown）。同目录含 `.env`（密钥）/`mcp-tokens/`/`state.db`→**硬 scoping 到 `memories/*.md` 单层非递归**。项目归属同 openclaw（`hermes_project` 配置）。**Sessions 未导入**：`~/.hermes/sessions/` + `state.db` 记录 schema 无文档且本机不可核验，按「不猜活格式」纪律**暂缓**（见待决）。

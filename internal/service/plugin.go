@@ -7,6 +7,8 @@ import (
 	pluginruntime "repo-nest/internal/core/plugin/runtime"
 	"repo-nest/internal/importers/claude"
 	"repo-nest/internal/importers/codex"
+	"repo-nest/internal/importers/hermes"
+	"repo-nest/internal/importers/openclaw"
 	"repo-nest/internal/importers/opencode"
 	"repo-nest/internal/platform"
 )
@@ -101,6 +103,11 @@ func (s *Service) ReloadPlugins() []pluginruntime.PluginStatus {
 //   - codex:    MANUAL — raw ~/.codex session transcripts, excluded from the
 //     startup auto-import; only runs when triggered explicitly by name.
 //   - opencode: MANUAL — ~/.local/share/opencode session summaries, same gate.
+//   - openclaw: MANUAL — agent-GLOBAL ~/.openclaw-autoclaw/workspace/*.md,
+//     allowlisted to that dir (parent holds keys/vault); attaches to the
+//     `openclaw_project` config-named project (unset -> skipped).
+//   - hermes:   MANUAL — agent-GLOBAL ~/.hermes/memories/*.md (Nous Research,
+//     a product separate from OpenClaw), allowlisted to memories/; `hermes_project`.
 //
 // Manual sources still appear in GetKnowledgeSources, so each stays one-click
 // triggerable. ADR-0011 决策 4.
@@ -108,6 +115,8 @@ func (s *Service) registerBuiltinImporters() {
 	s.rt.RegisterSource(claude.SourceName, claude.New(s.db))
 	s.rt.RegisterSourceManual(codex.SourceName, codex.New(s.db))
 	s.rt.RegisterSourceManual(opencode.SourceName, opencode.New(s.db))
+	s.rt.RegisterSourceManual(openclaw.SourceName, openclaw.New(s.db))
+	s.rt.RegisterSourceManual(hermes.SourceName, hermes.New(s.db))
 }
 
 // ImportResult summarizes a Claude memory import run.
