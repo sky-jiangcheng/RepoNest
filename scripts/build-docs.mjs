@@ -121,7 +121,7 @@ try {
     theme: 'neutral',
     securityLevel: 'strict',
     htmlLabels: false,
-    flowchart: { htmlLabels: false },
+    flowchart: { htmlLabels: false, wrappingWidth: 360 },
   })
   let seq = 0
   mermaidRender = async (source) => {

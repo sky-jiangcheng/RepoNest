@@ -68,42 +68,35 @@ RepoNest 的产物同时服务两类用户：**坐在 IDE 里的你**（需要�
 
 ```mermaid
 flowchart TB
-    subgraph HUMAN[👤 个人用户 —— 在 IDE 里看见]
+    subgraph HUMAN["👤 个人用户 —— 在 IDE 里看见"]
         direction TB
-        DESKTOP[桌面 App<br/>仪表盘 / 知识库 / 项目详情]
-        VSCODE[VS Code 扩展<br/>命令面板 / 侧边栏检索<br/>VS Code · Cursor · Windsurf]
-        BLOG[博客 / 决策文章<br/>blog/ · ADR]
+        DESKTOP["桌面 App<br/>仪表盘 · 知识库 · 项目详情"]
+        VSCODE["VS Code 扩展<br/>Cursor · Windsurf 通用"]
+        BLOG["博客 / 决策文章<br/>blog/ · ADR"]
+        DESKTOP ~~~ VSCODE ~~~ BLOG
     end
 
-    subgraph AGENT[🤖 AI Agent 用户 —— 工具面调用]
+    subgraph AGENT["🤖 AI Agent —— 工具面调用"]
         direction TB
-        MCP[reponest-mcp<br/>13 个 MCP 工具<br/>stdio · 唯一 AI 执行接口]
-        DSH[dsh Harness 插件<br/>3 个模型可见工具]
-        LLMSTXT[llms.txt 导出<br/>整库 AI 可读上下文]
+        MCP["reponest-mcp<br/>13 个工具 · stdio"]
+        DSH["dsh Harness 插件<br/>3 个模型可见工具"]
+        LLMSTXT["llms.txt 导出<br/>整库 AI 可读"]
+        MCP ~~~ DSH ~~~ LLMSTXT
     end
 
-    subgraph CORE[🧠 本地知识库 —— 单一事实源]
+    subgraph CORE["🧠 本地知识库 —— 单一事实源"]
         direction TB
-        SERVICE[internal/service<br/>同一份业务逻辑]
-        DB[(SQLite + FTS5<br/>笔记 · 待办 · 项目 · 活跃度)]
-        SERVICE --> DB
+        SERVICE["internal/service<br/>同一份业务逻辑"] --- DB[("SQLite + FTS5<br/>笔记 · 待办 · 项目")]
     end
-
-    subgraph INIT[⚡ 接入层 —— 一条命令见面]
-        INITCMD[reponest-init<br/>探测二进制 → 写注册 → 装 SessionEnd hook]
-    end
-
-    INITCMD -->|写 .mcp.json / .cursor / .vscode| MCP
-    INITCMD -->|Claude Code hook| HOOK[SessionEnd 自动交接]
-    HOOK --> MCP
 
     DESKTOP --> SERVICE
-    VSCODE -->|MCP stdio + headless HTTP| SERVICE
+    VSCODE -->|"MCP stdio + HTTP"| SERVICE
     MCP --> SERVICE
-    DSH -->|headless HTTP| SERVICE
+    DSH -->|"headless HTTP"| SERVICE
     LLMSTXT --> SERVICE
-    SERVICE --> OUT[Markdown 导出 · 版本历史 · LCS diff]
-    OUT --> HUMAN
+
+    INIT["⚡ reponest-init · 一条命令<br/>注册 MCP · 装 SessionEnd hook"]
+    INIT -.->|"写 agent 侧配置"| MCP
 
     style HUMAN fill:#f0f7ff,stroke:#4a90d9
     style AGENT fill:#f0fff4,stroke:#4caf50
@@ -111,9 +104,9 @@ flowchart TB
     style INIT fill:#fdf2f8,stroke:#d946a0
 ```
 
-读法：**上面两排是「货架」**——桌面 App 和 VS Code 扩展跟人见面，MCP 工具面、dsh 插件、llms.txt 跟 agent 见面；**中间是「仓库」**——所有入口都只调同一份 service 层，零逻辑复制；**底部是「接线员」**——`reponest-init` 一条命令把 agent 侧接好，SessionEnd hook 让交接在会话结束时必然发生。箭头全部向内指向 `internal/service`：没有任何一个入口绕过它直连数据库（例外见[架构说明](architecture.md#分层后端)），所以三端行为永远一致。
+读法：**上面两排是「货架」**——桌面 App 和 VS Code 扩展跟人见面，MCP 工具面、dsh 插件、llms.txt 跟 agent 见面；**中间是「仓库」**——所有入口都只调同一份 service 层，零逻辑复制；**侧面的「接线员」**——`reponest-init` 一条命令把 agent 侧接好（写 `.mcp.json` / `.cursor` / `.vscode`，装 SessionEnd hook，让交接在会话结束时必然发生）。实线箭头全部向内指向 `internal/service`：没有任何一个入口绕过它直连数据库（例外见[架构说明](architecture.md#分层后端)），所以三端行为永远一致。
 
-两个虚线来源值得单独看：`INIT` 那一排只写向 agent 侧（`.mcp.json` / `.cursor` / `.vscode` / SessionEnd hook），因为它是**装机时跑一次**的接线动作；`OUT`（Markdown 导出 / 版本历史 / LCS diff）指向 `HUMAN`，因为知识沉淀的可读产物最终是给人看的。分发策略的完整论证见 [ADR-0009](adr/0009-ide-presence.md)。
+唯一的虚线是 `reponest-init`：它只写向 agent 侧，因为它是**装机时跑一次**的接线动作。另一条不可见的流向值得知道——`internal/service` 的 Markdown 导出与版本历史最终是给人看的可读产物（分发策略的完整论证见 [ADR-0009](adr/0009-ide-presence.md)）。
 
 ## 文档说明
 

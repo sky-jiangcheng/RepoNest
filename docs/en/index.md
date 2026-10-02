@@ -69,42 +69,35 @@ RepoNest's artifacts serve two audiences at once: **you, sitting in the IDE** (w
 
 ```mermaid
 flowchart TB
-    subgraph HUMAN[👤 Human user — visible in the IDE]
+    subgraph HUMAN["👤 Human user — visible in the IDE"]
         direction TB
-        DESKTOP[Desktop App<br/>dashboard / knowledge base / project detail]
-        VSCODE[VS Code extension<br/>command palette / sidebar search<br/>VS Code · Cursor · Windsurf]
-        BLOG[Blog / decision essays<br/>blog/ · ADRs]
+        DESKTOP["Desktop App<br/>dashboard · knowledge base · detail"]
+        VSCODE["VS Code extension<br/>Cursor · Windsurf compatible"]
+        BLOG["Blog / decision essays<br/>blog/ · ADRs"]
+        DESKTOP ~~~ VSCODE ~~~ BLOG
     end
 
-    subgraph AGENT[🤖 AI agent user — tool surface]
+    subgraph AGENT["🤖 AI agent — tool surface"]
         direction TB
-        MCP[reponest-mcp<br/>13 MCP tools<br/>stdio · the single AI interface]
-        DSH[dsh Harness plugin<br/>3 model-visible tools]
-        LLMSTXT[llms.txt export<br/>whole-DB AI-readable context]
+        MCP["reponest-mcp<br/>13 tools · stdio"]
+        DSH["dsh Harness plugin<br/>3 model-visible tools"]
+        LLMSTXT["llms.txt export<br/>whole-DB AI-readable"]
+        MCP ~~~ DSH ~~~ LLMSTXT
     end
 
-    subgraph CORE[🧠 Local knowledge base — single source of truth]
+    subgraph CORE["🧠 Local knowledge base — single source of truth"]
         direction TB
-        SERVICE[internal/service<br/>one business logic]
-        DB[(SQLite + FTS5<br/>notes · todos · projects · activity)]
-        SERVICE --> DB
+        SERVICE["internal/service<br/>one business logic"] --- DB[("SQLite + FTS5<br/>notes · todos · projects")]
     end
-
-    subgraph INIT[⚡ Onboarding — one command to meet]
-        INITCMD[reponest-init<br/>detect binary → write configs → install hook]
-    end
-
-    INITCMD -->|writes .mcp.json / .cursor / .vscode| MCP
-    INITCMD -->|Claude Code hook| HOOK[SessionEnd auto handoff]
-    HOOK --> MCP
 
     DESKTOP --> SERVICE
-    VSCODE -->|MCP stdio + headless HTTP| SERVICE
+    VSCODE -->|"MCP stdio + HTTP"| SERVICE
     MCP --> SERVICE
-    DSH -->|headless HTTP| SERVICE
+    DSH -->|"headless HTTP"| SERVICE
     LLMSTXT --> SERVICE
-    SERVICE --> OUT[Markdown export · version history · LCS diff]
-    OUT --> HUMAN
+
+    INIT["⚡ reponest-init · one command<br/>register MCP · install hook"]
+    INIT -.->|"writes agent-side configs"| MCP
 
     style HUMAN fill:#f0f7ff,stroke:#4a90d9
     style AGENT fill:#f0fff4,stroke:#4caf50
@@ -112,7 +105,7 @@ flowchart TB
     style INIT fill:#fdf2f8,stroke:#d946a0
 ```
 
-How to read it: **the top two rows are the shelf** — the desktop App and the VS Code extension meet humans, the MCP toolset, dsh plugin and llms.txt meet agents; **the middle is the vault** — every entry point calls the same service layer with zero logic duplication; **the bottom is the wiring** — `reponest-init` connects the agent side in one command, and the SessionEnd hook makes the handoff happen automatically at session end. Every arrow points inward at `internal/service`: no entry point bypasses it to talk to the database (exceptions noted in [Architecture](architecture.md#layering-backend)), which is why all three surfaces behave identically. Two edges deserve a second look: the `INIT` row only writes toward the agent side (`.mcp.json` / `.cursor` / `.vscode` / the SessionEnd hook) because it is a **one-time wiring action at install time**, and `OUT` (Markdown export / version history / LCS diff) points back at `HUMAN` because the readable artifact of captured knowledge is ultimately for people. The full distribution argument lives in [ADR-0009](adr/0009-ide-presence.md).
+How to read it: **the top two rows are the shelf** — the desktop App and the VS Code extension meet humans, the MCP toolset, dsh plugin and llms.txt meet agents; **the middle is the vault** — every entry point calls the same service layer with zero logic duplication; **the wiring operator stands to the side** — `reponest-init` connects the agent side in one command (writes `.mcp.json` / `.cursor` / `.vscode`, installs the SessionEnd hook so the handoff always fires at session end). Solid arrows all point inward at `internal/service`: no entry point bypasses it to talk to the database (exceptions noted in [Architecture](architecture.md#layering-backend)), which is why all three surfaces behave identically. The only dashed line is `reponest-init`: it writes only toward the agent side because it is a **run-once-at-install** wiring action. One invisible flow is worth knowing — the Markdown export and version history of `internal/service` are readable artifacts that ultimately serve the person (the full distribution argument lives in [ADR-0009](adr/0009-ide-presence.md)).
 
 ## About These Docs
 
