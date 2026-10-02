@@ -1,21 +1,33 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  getKnowledgeSources, triggerKnowledgeImport,
+  getKnowledgeSources, triggerKnowledgeImport, captureClaudeHandoff,
   updateConfig, type SourceStatus,
 } from '../../api/client'
 
+// B-end / global-memory sources that need an explicit target project (their
+// memory is agent-global, not per-project). Value = project name or numeric id.
+const TARGET_PROJECT_KEYS = ['openclaw_project', 'hermes_project'] as const
+
 interface Props {
   initialAutoImport: boolean
+  initialClaudeCapture: boolean
+  initialTargets: Record<string, string>
   showMessage: (msg: string) => void
 }
 
-export default function PluginsTab({ initialAutoImport, showMessage }: Props) {
+export default function PluginsTab({ initialAutoImport, initialClaudeCapture, initialTargets, showMessage }: Props) {
   const { t } = useTranslation()
   const [sources, setSources] = useState<SourceStatus[]>([])
   const [importingSource, setImportingSource] = useState('')
   const [autoImport, setAutoImport] = useState(initialAutoImport)
+  const [claudeCapture, setClaudeCapture] = useState(initialClaudeCapture)
+  const [targets, setTargets] = useState<Record<string, string>>(
+    Object.fromEntries(TARGET_PROJECT_KEYS.map((k) => [k, initialTargets[k] ?? ''])),
+  )
+  const [captureProjectId, setCaptureProjectId] = useState('')
   const [saving, setSaving] = useState(false)
+  const [capturing, setCapturing] = useState(false)
 
   useEffect(() => {
     getKnowledgeSources().then(setSources).catch(() => {})
@@ -33,16 +45,46 @@ export default function PluginsTab({ initialAutoImport, showMessage }: Props) {
     }
   }
 
-  const handleAutoImportToggle = async (on: boolean) => {
+  const persist = async (key: string, value: string, ok: string) => {
     setSaving(true)
     try {
-      await updateConfig('auto_import', on ? '1' : '0')
-      setAutoImport(on)
-      showMessage(on ? t('settings.autoImportOn') : t('settings.autoImportOff'))
+      await updateConfig(key, value)
+      showMessage(ok)
     } catch (e: unknown) {
       showMessage(t('settings.saveFailedMsg', { msg: e instanceof Error ? e.message : t('common.unknownError') }))
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleAutoImportToggle = (on: boolean) => {
+    setAutoImport(on)
+    void persist('auto_import', on ? '1' : '0', on ? t('settings.autoImportOn') : t('settings.autoImportOff'))
+  }
+
+  const handleClaudeCaptureToggle = (on: boolean) => {
+    setClaudeCapture(on)
+    void persist('claude_session_capture', on ? '1' : '0', on ? t('settings.claudeCapOn') : t('settings.claudeCapOff'))
+  }
+
+  const handleTargetSave = (key: string) => {
+    void persist(key, (targets[key] ?? '').trim(), t('settings.targetSaved', { source: key.replace('_project', '') }))
+  }
+
+  const handleCapture = async () => {
+    const pid = Number(captureProjectId)
+    if (!Number.isInteger(pid) || pid <= 0) {
+      showMessage(t('settings.captureNeedProject'))
+      return
+    }
+    setCapturing(true)
+    try {
+      const r = await captureClaudeHandoff(pid)
+      showMessage(t('settings.captureDone', { title: r.title }))
+    } catch (e: unknown) {
+      showMessage(t('settings.captureFailed', { msg: e instanceof Error ? e.message : t('common.unknownError') }))
+    } finally {
+      setCapturing(false)
     }
   }
 
@@ -67,6 +109,61 @@ export default function PluginsTab({ initialAutoImport, showMessage }: Props) {
           </span>
         </div>
       </div>
+
+      <div className="form-group">
+        <label id="settings-claude-capture-label">{t('settings.claudeCapLabel')}</label>
+        <div className="toggle-row">
+          <button
+            className={`toggle ${claudeCapture ? 'toggle-on' : ''}`}
+            onClick={() => handleClaudeCaptureToggle(!claudeCapture)}
+            disabled={saving}
+            aria-pressed={claudeCapture}
+            aria-labelledby="settings-claude-capture-label"
+          >
+            <span className="toggle-knob" />
+          </button>
+          <span className="form-hint" style={{ marginTop: 0 }}>
+            {claudeCapture ? t('settings.claudeCapOnHint') : t('settings.claudeCapOffHint')}
+          </span>
+        </div>
+        <div className="toggle-row" style={{ marginTop: 8 }}>
+          <input
+            className="input"
+            type="number"
+            min={1}
+            inputMode="numeric"
+            placeholder={t('settings.captureProjectPlaceholder')}
+            value={captureProjectId}
+            onChange={(e) => setCaptureProjectId(e.target.value)}
+            disabled={!claudeCapture || capturing}
+            aria-label={t('settings.captureProjectPlaceholder')}
+          />
+          <button className="btn btn-secondary btn-sm" onClick={handleCapture} disabled={!claudeCapture || capturing}>
+            {capturing ? t('settings.capturing') : t('settings.captureBtn')}
+          </button>
+        </div>
+      </div>
+
+      {TARGET_PROJECT_KEYS.map((key) => (
+        <div className="form-group" key={key}>
+          <label htmlFor={`target-${key}`}>{t('settings.targetProjectLabel', { source: key.replace('_project', '') })}</label>
+          <div className="toggle-row">
+            <input
+              id={`target-${key}`}
+              className="input"
+              type="text"
+              placeholder={t('settings.targetProjectPlaceholder')}
+              value={targets[key] ?? ''}
+              onChange={(e) => setTargets((prev) => ({ ...prev, [key]: e.target.value }))}
+              disabled={saving}
+            />
+            <button className="btn btn-secondary btn-sm" onClick={() => handleTargetSave(key)} disabled={saving}>
+              {t('settings.save')}
+            </button>
+          </div>
+          <span className="form-hint" style={{ marginTop: 0 }}>{t('settings.targetProjectHint')}</span>
+        </div>
+      ))}
 
       <h2 style={{ marginTop: 24 }}>{t('settings.tabs.plugins')}</h2>
       {sources.length === 0 ? (

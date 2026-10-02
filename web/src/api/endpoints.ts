@@ -9,6 +9,7 @@ import type {
   HeatmapResponse,
   ImportResult,
   ImportRun,
+  HandoffResult,
   Note,
   NoteCount,
   NoteVersion,
@@ -386,6 +387,19 @@ export function importClaudeMemory(): Promise<ImportResult> {
     path: '/knowledge/import',
     init: { method: 'POST' },
   }).then(d => d ?? { synced: 0, updated: 0, skipped: 0 })
+}
+
+// captureClaudeHandoff runs an on-demand M1 capture for one project: it reads
+// that project's latest Claude Code session transcript and persists a handoff
+// note. Backend-gated by the `claude_session_capture` config (default off), so
+// it rejects unless the user has explicitly enabled capture.
+export function captureClaudeHandoff(projectId: number): Promise<HandoffResult> {
+  return call<HandoffResult>({
+    method: 'CaptureClaudeHandoff',
+    args: [projectId],
+    path: `/project/${projectId}/capture-claude-handoff`,
+    init: { method: 'POST' },
+  })
 }
 
 // --- AI-facing exports ------------------------------------------------------------------

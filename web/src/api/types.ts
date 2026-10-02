@@ -229,6 +229,12 @@ export interface ImportRun {
   skipped: number
 }
 
+// HandoffResult is what a session capture persists (matches Go service.HandoffResult).
+export interface HandoffResult {
+  note_id: number
+  title: string
+  tags: string
+}
 export interface ImportCompletedEvent {
   source: string
   created: number

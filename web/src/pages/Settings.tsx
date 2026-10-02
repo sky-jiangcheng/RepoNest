@@ -108,7 +108,7 @@ function Settings() {
         <AppearanceTab themeMode={themeMode} onThemeChange={setThemeMode} showMessage={showMessage} />
       )}
       {tab === 'plugins' && data && (
-        <PluginsTab key="plugins" initialAutoImport={data.config.auto_import !== '0'} showMessage={showMessage} />
+        <PluginsTab key="plugins" initialAutoImport={data.config.auto_import !== '0'} initialClaudeCapture={data.config.claude_session_capture === '1'} initialTargets={{ openclaw_project: data.config.openclaw_project || '', hermes_project: data.config.hermes_project || '' }} showMessage={showMessage} />
       )}
       {tab === 'actions' && <ActionsTab showMessage={showMessage} />}
     </div>

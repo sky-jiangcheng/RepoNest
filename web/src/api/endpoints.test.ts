@@ -4,7 +4,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 const callMock = vi.fn()
 vi.mock('./transport', () => ({ call: (...args: unknown[]) => callMock(...args) }))
 
-import { searchAll, searchNotes, getProjects, toggleStar, getProjectDetail } from './endpoints'
+import { searchAll, searchNotes, getProjects, toggleStar, getProjectDetail, captureClaudeHandoff } from './endpoints'
 
 beforeEach(() => {
   callMock.mockReset()
@@ -59,5 +59,18 @@ describe('endpoint routing contract', () => {
       args: [3],
       path: '/projects/3',
     })
+  })
+
+  it('captureClaudeHandoff POSTs per-project and returns the handoff result', async () => {
+    const result = { note_id: 12, title: 'Session Handoff', tags: 'handoff, auto-captured' }
+    callMock.mockResolvedValueOnce(result)
+    const got = await captureClaudeHandoff(4)
+    expect(callMock).toHaveBeenCalledWith({
+      method: 'CaptureClaudeHandoff',
+      args: [4],
+      path: '/project/4/capture-claude-handoff',
+      init: { method: 'POST' },
+    })
+    expect(got).toBe(result)
   })
 })
