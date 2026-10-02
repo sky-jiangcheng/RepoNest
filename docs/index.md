@@ -36,17 +36,17 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    participant Agent as AI Agent<br>(Claude Code / Cursor / VS Code 扩展)
-    participant RN as RepoNest<br>(MCP / headless / 桌面)
+    participant Agent as AI Agent<br>(Claude Code / Cursor /<br>VS Code 扩展)
+    participant RN as RepoNest<br>(MCP / headless /<br>桌面)
     participant KB as 本地知识库<br>(SQLite + FTS5)
     Agent->>RN: reponest_scan（首次，无需桌面应用）
-    RN->>KB: 播种扫描根，发现 Git 仓库并挖掘知识
+    RN->>KB: 播种扫描根，发现<br>Git 仓库并挖掘知识
     Agent->>RN: reponest_context（会话开始）
-    RN->>KB: 技术栈/README/待办/笔记，交接置顶
+    RN->>KB: 技术栈/README/待办/笔记，<br>交接置顶
     KB-->>Agent: 一次调用，全项目上下文
     Note over Agent,KB: ……干活……
     Agent->>RN: reponest_handoff（会话结束）
-    RN->>KB: 结构化交接落库，带 handoff 标签
+    RN->>KB: 结构化交接落库，<br>带 handoff 标签
     Note over KB,Agent: 下一个会话（任何 agent）自动读到
 ```
 
@@ -69,26 +69,26 @@ RepoNest 的产物同时服务两类用户：**坐在 IDE 里的你**（需要�
 ```mermaid
 flowchart TB
     subgraph HUMAN["👤 个人用户 —— 在 IDE 里看见"]
-        direction TB
-        DESKTOP["桌面 App<br/>仪表盘 · 知识库 · 项目详情"]
-        VSCODE["VS Code 扩展<br/>Cursor · Windsurf 通用"]
-        BLOG["博客 / 决策文章<br/>blog/ · ADR"]
+        direction LR
+        DESKTOP["桌面 App<br/>仪表盘 · 知识库"]
+        VSCODE["VS Code 扩展<br/>Cursor · Windsurf"]
+        BLOG["博客 / ADR"]
         DESKTOP ~~~ VSCODE ~~~ BLOG
     end
 
     subgraph AGENT["🤖 AI Agent —— 工具面调用"]
-        direction TB
-        MCP["reponest-mcp<br/>13 个工具 · stdio"]
-        DSH["dsh Harness 插件<br/>3 个模型可见工具"]
-        LLMSTXT["llms.txt 导出<br/>整库 AI 可读"]
+        direction LR
+        MCP["reponest-mcp<br/>13 个工具"]
+        DSH["dsh 插件<br/>3 个工具"]
+        LLMSTXT["llms.txt 导出"]
         MCP ~~~ DSH ~~~ LLMSTXT
     end
 
     subgraph CORE["🧠 本地知识库 —— 单一事实源"]
-        direction TB
         SERVICE["internal/service<br/>同一份业务逻辑"] --- DB[("SQLite + FTS5<br/>笔记 · 待办 · 项目")]
     end
 
+    HUMAN ~~~ AGENT ~~~ CORE
     DESKTOP --> SERVICE
     VSCODE -->|"MCP stdio + HTTP"| SERVICE
     MCP --> SERVICE
@@ -96,7 +96,7 @@ flowchart TB
     LLMSTXT --> SERVICE
 
     INIT["⚡ reponest-init · 一条命令<br/>注册 MCP · 装 SessionEnd hook"]
-    INIT -.->|"写 agent 侧配置"| MCP
+    INIT -.->|"写配置"| MCP
 
     style HUMAN fill:#f0f7ff,stroke:#4a90d9
     style AGENT fill:#f0fff4,stroke:#4caf50

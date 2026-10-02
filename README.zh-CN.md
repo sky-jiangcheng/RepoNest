@@ -39,16 +39,20 @@ flowchart TB
 ```mermaid
 flowchart TB
     subgraph HUMAN[👤 个人用户 —— 在 IDE 里看见]
-        DESKTOP[桌面 App] 
+        direction LR
+        DESKTOP[桌面 App]
         VSCODE[VS Code 扩展<br/>VS Code · Cursor · Windsurf]
     end
     subgraph AGENT[🤖 AI Agent 用户 —— 工具面调用]
+        direction LR
         MCP[reponest-mcp · 13 个 MCP 工具]
         DSH[dsh Harness 插件 · llms.txt]
     end
     subgraph CORE[🧠 本地知识库 —— 单一事实源]
+        direction LR
         SVC[internal/service] --- DB[(SQLite + FTS5)]
     end
+    HUMAN ~~~ AGENT ~~~ CORE
     INIT[⚡ reponest-init · 一键注册]
     INIT --> MCP
     DESKTOP --> SVC

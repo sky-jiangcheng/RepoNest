@@ -37,17 +37,17 @@ The session memory loop (both ends of the protocol):
 
 ```mermaid
 sequenceDiagram
-    participant Agent as AI Agent<br/>(Claude Code / Cursor / VS Code extension)
-    participant RN as RepoNest<br/>(MCP / headless / desktop)
+    participant Agent as AI Agent<br/>(Claude Code / Cursor /<br/>VS Code extension)
+    participant RN as RepoNest<br/>(MCP / headless /<br/>desktop)
     participant KB as Local knowledge base<br/>(SQLite + FTS5)
     Agent->>RN: reponest_scan (first run, no desktop app needed)
-    RN->>KB: seed scan roots, discover Git repos, mine knowledge
+    RN->>KB: seed scan roots, discover<br/>Git repos, mine knowledge
     Agent->>RN: reponest_context (session start)
-    RN->>KB: tech stack / README / todos / notes, handoffs first
+    RN->>KB: tech stack / README / todos /<br/>notes, handoffs first
     KB-->>Agent: one call, full project context
     Note over Agent,KB: …work happens…
     Agent->>RN: reponest_handoff (session end)
-    RN->>KB: structured handoff persisted, tagged 'handoff'
+    RN->>KB: structured handoff persisted,<br/>tagged 'handoff'
     Note over KB,Agent: the next session (any agent) reads it automatically
 ```
 
@@ -70,26 +70,26 @@ RepoNest's artifacts serve two audiences at once: **you, sitting in the IDE** (w
 ```mermaid
 flowchart TB
     subgraph HUMAN["👤 Human user — visible in the IDE"]
-        direction TB
-        DESKTOP["Desktop App<br/>dashboard · knowledge base · detail"]
-        VSCODE["VS Code extension<br/>Cursor · Windsurf compatible"]
-        BLOG["Blog / decision essays<br/>blog/ · ADRs"]
+        direction LR
+        DESKTOP["Desktop App<br/>dashboard · knowledge base"]
+        VSCODE["VS Code extension<br/>Cursor · Windsurf"]
+        BLOG["Blog / ADRs"]
         DESKTOP ~~~ VSCODE ~~~ BLOG
     end
 
     subgraph AGENT["🤖 AI agent — tool surface"]
-        direction TB
-        MCP["reponest-mcp<br/>13 tools · stdio"]
-        DSH["dsh Harness plugin<br/>3 model-visible tools"]
-        LLMSTXT["llms.txt export<br/>whole-DB AI-readable"]
+        direction LR
+        MCP["reponest-mcp<br/>13 tools"]
+        DSH["dsh plugin<br/>3 tools"]
+        LLMSTXT["llms.txt export"]
         MCP ~~~ DSH ~~~ LLMSTXT
     end
 
     subgraph CORE["🧠 Local knowledge base — single source of truth"]
-        direction TB
         SERVICE["internal/service<br/>one business logic"] --- DB[("SQLite + FTS5<br/>notes · todos · projects")]
     end
 
+    HUMAN ~~~ AGENT ~~~ CORE
     DESKTOP --> SERVICE
     VSCODE -->|"MCP stdio + HTTP"| SERVICE
     MCP --> SERVICE
@@ -97,7 +97,7 @@ flowchart TB
     LLMSTXT --> SERVICE
 
     INIT["⚡ reponest-init · one command<br/>register MCP · install hook"]
-    INIT -.->|"writes agent-side configs"| MCP
+    INIT -.->|"writes configs"| MCP
 
     style HUMAN fill:#f0f7ff,stroke:#4a90d9
     style AGENT fill:#f0fff4,stroke:#4caf50

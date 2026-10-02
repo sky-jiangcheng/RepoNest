@@ -45,16 +45,20 @@ Both paths meet at one local knowledge base — the human side (desktop app, VS 
 ```mermaid
 flowchart TB
     subgraph HUMAN[👤 Human user — visible in the IDE]
-        DESKTOP[Desktop App] 
+        direction LR
+        DESKTOP[Desktop App]
         VSCODE[VS Code extension<br/>VS Code · Cursor · Windsurf]
     end
     subgraph AGENT[🤖 AI agent user — tool surface]
+        direction LR
         MCP[reponest-mcp · 13 MCP tools]
         DSH[dsh Harness plugin · llms.txt]
     end
     subgraph CORE[🧠 Local knowledge base — single source of truth]
+        direction LR
         SVC[internal/service] --- DB[(SQLite + FTS5)]
     end
+    HUMAN ~~~ AGENT ~~~ CORE
     INIT[⚡ reponest-init · one-command registration]
     INIT --> MCP
     DESKTOP --> SVC

@@ -160,9 +160,10 @@ try {
   mermaid.initialize({
     startOnLoad: false,
     theme: 'neutral',
+    themeVariables: { fontSize: '17px' },
     securityLevel: 'strict',
     htmlLabels: false,
-    flowchart: { htmlLabels: false, wrappingWidth: 360, nodeSpacing: 55, rankSpacing: 55 },
+    flowchart: { htmlLabels: false, wrappingWidth: 320, nodeSpacing: 64, rankSpacing: 72 },
   })
   let seq = 0
   // mermaid 12 samples the root svg's bbox mid-render (before dagre has

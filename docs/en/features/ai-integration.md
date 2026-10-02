@@ -39,11 +39,11 @@ sequenceDiagram
     participant R as reponest-mcp
     participant K as Knowledge base (SQLite)
     A->>R: reponest_context (session start)
-    R->>K: resolve project + assemble context (handoffs first)
+    R->>K: resolve project + assemble context<br/>(handoffs first)
     K-->>A: full project context Markdown
-    Note over A,K: work: notes_search / ask / read / create / update
+    Note over A,K: work: notes_search / ask /<br/>read / create / update
     A->>R: reponest_handoff (session end, summary required)
-    R->>K: render to the fixed template, tag 'handoff', protected from overwrites
+    R->>K: render to the fixed template,<br/>tag 'handoff', protected from overwrites
     K-->>A: returns note_id
     Note over K,A: the next session (any agent) reads it first via context
 ```

@@ -39,11 +39,11 @@ sequenceDiagram
     participant R as reponest-mcp
     participant K as 知识库 SQLite
     A->>R: reponest_context（会话开始）
-    R->>K: 项目解析 + 上下文组装（交接置顶）
+    R->>K: 项目解析 + 上下文组装<br>（交接置顶）
     K-->>A: 全项目上下文 Markdown
-    Note over A,K: 干活：notes_search / ask / read / create / update
+    Note over A,K: 干活：notes_search / ask /<br>read / create / update
     A->>R: reponest_handoff（会话结束，summary 必填）
-    R->>K: 渲染统一模板落库，handoff 标签，拒绝后续覆盖
+    R->>K: 渲染统一模板落库，handoff 标签，<br>拒绝后续覆盖
     K-->>A: 返回 note_id
     Note over K,A: 下一个会话（任何 agent）经 context 置顶读到
 ```

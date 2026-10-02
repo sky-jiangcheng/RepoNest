@@ -19,7 +19,7 @@ flowchart TB
     MAIN["main.go · Wails entry<br/>DB init · scan seeds<br/>security headers"]
     APP["internal/app · bindings<br/>1-3 lines per method"]
     SVC["internal/service · core<br/>notes / search / context"]
-    DB[(internal/db · SQLite)]
+    DB["internal/db<br/>SQLite"]
     GIT["internal/core/git<br/>Git Provider · CLI"]
     ENTRY --> MAIN --> APP --> SVC
     SVC --> DB
@@ -102,12 +102,12 @@ flowchart TB
     B2 --> REL
     MD["docs/**/*.md<br/>zh + en mirrors"] --> B3["build-docs.mjs<br/>mermaid → inline SVG"]
     B3 --> PAGES[("GitHub Pages")]
-    REL ~~~ PAGES
+    REL ~~~ MD
     classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
     class REL,PAGES store
 ```
 
-How to read it: two artifact lines — the desktop app inlines `web/dist` into the binary via `go:embed` (the user downloads a single file), while the MCP server is a separate stdio binary; on the right is the docs site, where **diagrams are rendered into inline SVG at build time**, so pages carry zero runtime dependencies, work offline, and read the same on GitHub as they do on the site.
+How to read it: two artifact lines — the desktop app inlines `web/dist` into the binary via `go:embed` (the user downloads a single file), while the MCP server is a separate stdio binary; below it is the docs site, where **diagrams are rendered into inline SVG at build time**, so pages carry zero runtime dependencies, work offline, and read the same on GitHub as they do on the site.
 
 | Artifact | Source | Description |
 |------|------|------|

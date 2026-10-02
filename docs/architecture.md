@@ -19,7 +19,7 @@ flowchart TB
     MAIN["main.go · Wails 入口<br/>建库 · 播种扫描根<br/>窗口与安全头"]
     APP["internal/app · 绑定层<br/>每方法 1-3 行委托"]
     SVC["internal/service · 业务核心<br/>笔记 / 搜索 / 上下文 / 交接"]
-    DB[(internal/db · SQLite)]
+    DB["internal/db<br/>SQLite"]
     GIT["internal/core/git<br/>Git Provider · CLI 实现"]
     ENTRY --> MAIN --> APP --> SVC
     SVC --> DB
@@ -102,12 +102,12 @@ flowchart TB
     B2 --> REL
     MD["docs/**/*.md<br/>zh + en 镜像"] --> B3["build-docs.mjs<br/>mermaid → SVG"]
     B3 --> PAGES[("GitHub Pages")]
-    REL ~~~ PAGES
+    REL ~~~ MD
     classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
     class REL,PAGES store
 ```
 
-读图：两条产物线——桌面应用把 `web/dist` 用 `go:embed` 打进二进制（用户只拿到一个文件），MCP server 是独立 stdio 二进制；右侧是文档站，**图在构建期就渲染成内联 SVG**，因此页面零运行时依赖、可离线，GitHub 原生渲染与文档站同源可读。
+读图：两条产物线——桌面应用把 `web/dist` 用 `go:embed` 打进二进制（用户只拿到一个文件），MCP server 是独立 stdio 二进制；下方是文档站，**图在构建期就渲染成内联 SVG**，因此页面零运行时依赖、可离线，GitHub 原生渲染与文档站同源可读。
 
 | 产物 | 来源 | 说明 |
 |------|------|------|
