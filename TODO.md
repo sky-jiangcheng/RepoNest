@@ -65,6 +65,7 @@
 | P33 | `TrendChart` 评估 → 实为 chart.js 封装（非纯 SVG），保留 | S14 |
 | P34 | `project_overview.go` 评估 → 不拆，`mineAndCache` recover 已生效 | S14 |
 | P36 | `knowledge.go` 进一步拆分评估 → 内聚度高暂不拆 | S14 |
+| P29 | `parseTimestamp` 多格式鲁棒解析（unix/RFC3339/ISO8601/git %ai/%ad 默认）+ 测试 | S14 |
 
 </details>
 
@@ -197,9 +198,9 @@
 - [x] 为每个工具补充使用场景 + 参数约束 + 示例值
 - [x] 推荐 AI 工作流：ask → read → create → update
 
-### P29: `stats.go` 时间戳解析鲁棒性 🔻低
+### P29: `stats` 时间戳解析鲁棒性 🔻低
 
-- [ ] `parseTimestamp` 支持 ISO 8601 和 git 默认格式
+- [x] `parseTimestamp`（`internal/stats/validation.go`，P26 拆分后）从「只认 `2006-01-02 15:04:05`、忽略错误」升级为多格式：裸 unix 秒（git `%at`）、RFC 3339 / ISO 8601（git `%aI`/`%cI`，带/不带时区）、git `%ai`（`… -0700`）、date-only（`%ad --date=short`）、git 默认作者日期（`Mon Jan _2 … -0700`，含空格补零日）；不可解析仍返回 0（保持 latest-commit 比较的宽松契约）。新增 `TestParseTimestamp` / `TestParseTimestamp_Unparseable`（10 + 4 例）
 
 ### P30: 前端路由级懒加载 ✅
 
@@ -258,7 +259,7 @@
 - [x] README 对比表 + ASCII 架构图（v1.9.4 收敛：文档润色，低优先，缓做）
 - [x] `mineAndCacheAsync` 后台 goroutine 加 recover（`project_overview.go:138`）
 - [x] `.zcode/` 已移出跟踪，不需要 history rewrite
-- [ ] P29 `parseTimestamp` 鲁棒性（低优先级，git log 格式稳定）
+- [x] P29 `parseTimestamp` 鲁棒性（多格式 + 测试，见 P29 结论）
 - [x] P31 `Domain/types.go` 评估（核心实体已收拢，DTO 按分层归各层）
 - [x] P32 Wails 绑定层审计（无死绑定，`bindings.go` 顶部审计块）
 - [x] P33 `TrendChart` 评估（实为 chart.js 封装非纯 SVG，保留）
@@ -279,6 +280,6 @@
 | ~~**Sprint 11**~~ | ~~P38 ProjectDetail hook 提取~~ | ✅ |
 | ~~**Sprint 12**~~ | ~~P37 SKILL.md 工作流指引~~ | ✅ |
 | ~~**Sprint 13**~~ | ~~D24 PWA 移出桌面主构建（ADR-0008 落地）~~ | ✅ |
-| **Sprint 14** | P31/P32/P33/P34/P36 评估类小项收口（验证 + 落结论，含 P32 绑定审计块） | ✅ 共 5 项 |
+| **Sprint 14** | P29/P31/P32/P33/P34/P36 评估类小项收口（验证 + 落结论，含 P32 绑定审计块、P29 多格式解析 + 测试） | ✅ 共 6 项 |
 | **2.0 规划** | D25 仪表盘生产力门面收缩 + C11 插件系统评估 + P35 全量 CSS Modules | 按版本 |
 | **按需** | P29, P31, P32, P33, P36 | 随重构穿插 |

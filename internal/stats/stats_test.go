@@ -2,6 +2,7 @@ package stats
 
 import (
 	"testing"
+	"time"
 )
 
 func TestValidateDate_Valid(t *testing.T) {
@@ -132,5 +133,44 @@ func TestIsWorkday(t *testing.T) {
 	// Sunday 2024-01-07
 	if IsWorkday("2024-01-07") {
 		t.Error("Sunday should not be a workday")
+	}
+}
+
+func TestParseTimestamp(t *testing.T) {
+	utc := func(y, mo, d, h, mi, s int) int64 {
+		return time.Date(y, time.Month(mo), d, h, mi, s, 0, time.UTC).Unix()
+	}
+	cst := time.FixedZone("CST", 8*3600)
+	tests := []struct {
+		name string
+		in   string
+		want int64
+	}{
+		{"bare unix seconds (git %at)", "1700000000", 1700000000},
+		{"internal space format", "2024-01-02 03:04:05", utc(2024, 1, 2, 3, 4, 5)},
+		{"iso8601 Z", "2024-06-15T08:30:00Z", utc(2024, 6, 15, 8, 30, 0)},
+		{"iso8601 offset", "2024-06-15T08:30:00+08:00", time.Date(2024, 6, 15, 8, 30, 0, 0, cst).Unix()},
+		{"iso8601 no zone", "2024-06-15T08:30:00", utc(2024, 6, 15, 8, 30, 0)},
+		{"git %ai with zone", "2024-06-15 08:30:00 +0800", time.Date(2024, 6, 15, 8, 30, 0, 0, cst).Unix()},
+		{"date-only (git %ad --date=short)", "2024-06-15", utc(2024, 6, 15, 0, 0, 0)},
+		{"git default author date + zone", "Sat Jun 15 08:30:00 2024 +0800", time.Date(2024, 6, 15, 8, 30, 0, 0, cst).Unix()},
+		{"git default space-padded day", "Fri Jan  3 12:34:56 2025 +0000", utc(2025, 1, 3, 12, 34, 56)},
+		{"surrounding whitespace/newline", "  2024-06-15T08:30:00Z\n", utc(2024, 6, 15, 8, 30, 0)},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := parseTimestamp(tc.in); got != tc.want {
+				t.Errorf("parseTimestamp(%q) = %d, want %d", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestParseTimestamp_Unparseable(t *testing.T) {
+	// Must not panic and must return 0 so latest-commit comparisons stay sane.
+	for _, in := range []string{"", "   ", "not-a-date", "2024-13-45 99:99:99"} {
+		if got := parseTimestamp(in); got != 0 {
+			t.Errorf("parseTimestamp(%q) = %d, want 0", in, got)
+		}
 	}
 }
