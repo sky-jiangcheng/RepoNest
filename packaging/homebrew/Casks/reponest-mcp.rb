@@ -14,12 +14,12 @@ cask "reponest-mcp" do
 
   on_arm do
     url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-mcp-darwin-arm64.tar.gz"
-    sha256 "c849f07d870b1e99895c7eac533715e548fbf95d48d2371bd0cc37529abe055e"
+    sha256 "2b53631b5ae4e77ca5ef21a13998f18ae48d1e803defae41aa35f501ee61a306"
   end
 
   on_intel do
     url "https://github.com/sky-jiangcheng/repo-nest/releases/download/v#{version}/reponest-mcp-darwin-amd64.tar.gz"
-    sha256 "19bc379852a8db607d1e61d3ca808e3d62bc7bfb4a8d59421681f54be1bd0491"
+    sha256 "f186bce0c3f66710a6ca0bddc0945e4241b88635f4446d54423b8b26d9d45034"
   end
 
   # The tarball stages a single bare `reponest-mcp` at its root; `binary` links
