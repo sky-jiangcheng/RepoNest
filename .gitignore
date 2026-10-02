@@ -49,6 +49,7 @@ docs/**/*.html
 # AI tooling artifacts / AI 工具产物
 .agents/
 .claude/
+.easyclaw/
 .trae-html-share-packages/
 .workbuddy/
 .zcode/

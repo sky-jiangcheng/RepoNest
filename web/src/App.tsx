@@ -8,6 +8,7 @@ import { applyTheme, getStoredTheme, listenSystemTheme } from './utils/theme'
 import ErrorBoundary from './components/ErrorBoundary'
 import { setLanguage, getCurrentLanguage } from './i18n'
 import { getConnectionKind, subscribeConnection, startHealthPoll } from './api/transport'
+import Icon from './components/Icon'
 
 // Lazy-loaded pages. The initial route (Knowledge) is still eagerly loaded by
 // the browser, but subsequent navigations only fetch the chunks that are needed.
@@ -18,9 +19,9 @@ const Knowledge = lazy(() => import('./pages/Knowledge'))
 
 type LanguageOption = 'zh-CN' | 'en'
 
-const LANG_OPTIONS: { code: LanguageOption; label: string; flag: string }[] = [
-  { code: 'zh-CN', label: '中文', flag: '🇨🇳' },
-  { code: 'en', label: 'English', flag: '🇺🇸' },
+const LANG_OPTIONS: { code: LanguageOption; label: string }[] = [
+  { code: 'zh-CN', label: '中文' },
+  { code: 'en', label: 'English' },
 ]
 
 // Minimal page loader shown while a lazy chunk is being fetched.
@@ -84,7 +85,7 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
               aria-expanded={langOpen}
               title={t('nav.searchLabel', { defaultValue: 'Switch language' })}
             >
-              {LANG_OPTIONS.find(o => o.code === currentLang)?.flag ?? '🌐'}
+              <Icon name="globe" size={14} />
               <span className="lang-label">{currentLang === 'zh-CN' ? '中文' : 'EN'}</span>
             </button>
             {langOpen && (
@@ -95,7 +96,6 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
                     className={`lang-option ${opt.code === currentLang ? 'active' : ''}`}
                     onClick={() => { setLanguage(opt.code); setLangOpen(false) }}
                   >
-                    <span className="lang-flag">{opt.flag}</span>
                     <span>{opt.label}</span>
                   </button>
                 ))}
@@ -110,10 +110,7 @@ function NavBar({ onOpenPalette }: { onOpenPalette: () => void }) {
               title={t('nav.searchLabel', { defaultValue: 'Open search (⌘K)' })}
               aria-haspopup="dialog"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
+              <Icon name="search" size={14} />
               <span>{t('nav.search')}</span>
               <kbd className="nav-kbd">⌘K</kbd>
             </button>

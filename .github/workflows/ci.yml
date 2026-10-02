@@ -84,6 +84,32 @@ jobs:
       - name: Run Go tests
         run: go test -race -timeout 10m ./...
 
+  # ------------------------------------------------------------- Icons ----
+  # The brand mark lives once (build/icon.svg); every shipped icon — the
+  # Wails appicon, the Windows .ico, the VS Code extension icon and the docs
+  # favicons — is generated from it. This job fails when somebody edits the
+  # mark (or any derivative) without running scripts/generate-icons.mjs, so
+  # a rebrand can never land half-applied. Pixel comparison with a small
+  # allowance keeps it stable across sharp patch releases.
+  icon-check:
+    name: Icon derivatives in sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '20'
+
+      - name: Install sharp
+        run: npm install --no-save sharp
+
+      - name: Verify icon derivatives match build/icon.svg
+        run: node scripts/generate-icons.mjs --check
+
   # --------------------------------------------------------------- Web ----
   web-test:
     name: Web typecheck, test & build

@@ -4,6 +4,17 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [Unreleased]
+
+### 新增
+
+- **图标单一事实源 + `icon-check` CI 门**：品牌标记只保留 `build/icon.svg` 一份，桌面 appicon、Windows `.ico`、VS Code 扩展图标与文档站 favicon 全部由重写后的 `scripts/generate-icons.mjs` 生成；CI 新增 `icon-check` job，用带容差的像素比对校验各派生图标与母图一致，只改母图或只改派生（半落地重做）会被拦下
+- **统一 UI 图标组件 `<Icon>`**：新增 `web/src/components/Icon.tsx` 作为描边几何 UI 图标的唯一出口（17 个图标，并提供 `iconMarkup()` 给 Markdown callout 等非 React HTML 复用）。`App`、`BlockEditor`、`ErrorBoundary`、`NoteSection`、`ProjectCard`、`TodoSection`、`Dashboard`、`Knowledge`、`ProjectDetail`、`KnowledgeCard`、`ProjectSearchDropdown` 中的内联 `<svg>`、`★ ▲▼ ✕ ?` 字形与 emoji（语言旗标、callout、达成提示）统一替换为该组件，并补齐 `aria-label`
+
+### 变更
+
+- **品牌重做**：`build/icon.svg`、`docs/favicon.*`、`web/public/favicon.*`、`ide/vscode/media/*` 依据新品牌标记重生成；配套调整图标按钮 / 空状态 / callout 的 CSS 与移除 UI 文案中的 emoji
+
 ## [1.12.0] - 2026-10-02
 
 ### 新增

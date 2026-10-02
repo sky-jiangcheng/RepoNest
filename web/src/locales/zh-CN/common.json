@@ -12,7 +12,7 @@
     "notWorkday": "非工作日",
     "workday": "工作日",
     "weekend": "周末愉快，无达标要求",
-    "goalReached": "今日目标已达成 🎉",
+    "goalReached": "今日目标已达成",
     "goalMissing": "还差 {{needed}} 行达标",
     "personalAdded": "个人新增",
     "files": "文件",

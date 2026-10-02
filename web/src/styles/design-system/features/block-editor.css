@@ -81,6 +81,9 @@
   cursor: pointer;
   padding: 2px 3px;
   border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .block-btn:hover {
@@ -115,6 +118,10 @@
   padding: 8px;
   cursor: pointer;
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .block-add:hover {

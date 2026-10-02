@@ -4,6 +4,7 @@ import { stripMarkdown } from '../utils/markdown'
 import DOMPurify from 'dompurify'
 import KnowledgeCard from './knowledge/KnowledgeCard'
 import ErrorBanner from '../components/ErrorBanner'
+import Icon from '../components/Icon'
 import { useKnowledgePage } from '../hooks/useKnowledgePage'
 
 function KnowledgePage() {
@@ -155,7 +156,7 @@ function KnowledgePage() {
               onClick={() => setPinnedOnly(v => !v)}
               title={t('knowledge.pinnedOnly')}
             >
-              ★ {t('knowledge.pinnedOnly')} {pinnedCount}
+              <Icon name="pin" size={14} /> {t('knowledge.pinnedOnly')} {pinnedCount}
             </button>
           </div>
 
@@ -196,7 +197,7 @@ function KnowledgePage() {
             {filtered.length === 0 ? (
               notes.length === 0 ? (
                 <div className="empty-state large">
-                  <div className="empty-icon">📝</div>
+                  <div className="empty-icon"><Icon name="file-text" size={40} /></div>
                   <h3>{t('knowledge.startBrain')}</h3>
                   <p>{t('knowledge.startBrainMsg')}</p>
                   <div className="empty-actions">
@@ -210,7 +211,7 @@ function KnowledgePage() {
                 </div>
               ) : (
                 <div className="empty-state small">
-                  <div className="empty-icon">🔍</div>
+                  <div className="empty-icon"><Icon name="search" size={40} /></div>
                   <h3>{t('knowledge.noMatch')}</h3>
                   <p>{t('knowledge.adjustMsg')}</p>
                 </div>

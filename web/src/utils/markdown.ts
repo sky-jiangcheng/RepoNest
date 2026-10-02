@@ -9,6 +9,7 @@ import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import 'highlight.js/styles/github.css'
 import 'highlight.js/styles/github-dark.css'
+import { iconMarkup, type IconName } from '../components/Icon'
 
 // Mermaid is by far the heaviest dependency (its diagram engines are several
 // MB on their own), so it is loaded on demand: notes without a ```mermaid
@@ -97,15 +98,15 @@ function renderCallout(c: CalloutBlock): string {
 }
 
 function getCalloutIcon(type: CalloutType): string {
-  const icons: Record<CalloutType, string> = {
-    NOTE: '💡',
-    TIP: '✨',
-    IMPORTANT: '⚡',
-    WARNING: '⚠️',
-    CAUTION: '🚨',
-    QUESTION: '❓',
+  const icons: Record<CalloutType, IconName> = {
+    NOTE: 'file-text',
+    TIP: 'lightbulb',
+    IMPORTANT: 'zap',
+    WARNING: 'warning',
+    CAUTION: 'warning',
+    QUESTION: 'help',
   }
-  return icons[type] ?? '•'
+  return iconMarkup(icons[type])
 }
 
 // highlightCodeBlocks applies hljs to <pre><code> blocks. An unknown language

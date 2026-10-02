@@ -8,6 +8,7 @@ import ProjectPanel from '../components/ProjectPanel'
 import ScopeToggle from '../components/ScopeToggle'
 import ProjectOverviewSection from './project/ProjectOverviewSection'
 import ErrorBanner from '../components/ErrorBanner'
+import Icon from '../components/Icon'
 import { useProjectDetail } from '../hooks/useProjectDetail'
 import { copyText } from '../utils/clipboard'
 
@@ -140,9 +141,9 @@ function ProjectDetailPage() {
             <span className="meta-pill">{project.is_auto_grouped ? t('project.autoGroup') : t('project.manualGroup')}</span>
             {dateParam && <span className="meta-pill">{t('project.datePill')}: {dateParam}</span>}
             <span className="level-control" title={t('project.groupLevelHint')}>
-              <button className="btn btn-sm btn-icon" onClick={() => handleLevelChange('down')} aria-label={t('project.levelDown')}>−</button>
+              <button className="btn btn-sm btn-icon" onClick={() => handleLevelChange('down')} aria-label={t('project.levelDown')}><Icon name="minus" size={14} /></button>
               <span className="level-value">{t('project.groupLevel', { n: project.level_override || 0 })}</span>
-              <button className="btn btn-sm btn-icon" onClick={() => handleLevelChange('up')} aria-label={t('project.levelUp')}>＋</button>
+              <button className="btn btn-sm btn-icon" onClick={() => handleLevelChange('up')} aria-label={t('project.levelUp')}><Icon name="plus" size={14} /></button>
             </span>
           </div>
         </div>

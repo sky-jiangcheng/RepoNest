@@ -63,6 +63,7 @@
   overflow-x: auto;
 }
 .markdown-body .mermaid-render svg { max-width: 100%; height: auto; }
+.callout-header .app-icon { flex-shrink: 0; opacity: .75; }
 
 /* Math (KaTeX) */
 .markdown-body .katex { font-size: 1em; }

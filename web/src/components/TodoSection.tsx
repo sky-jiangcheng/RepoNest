@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useState, useEffect, useCallback } from 'react'
 import { listTodos, createTodo, toggleTodo, deleteTodo, reorderTodos, type Todo } from '../api/client'
 import { useConfirmClick } from '../hooks/useConfirmClick'
+import Icon from './Icon'
 
 interface Props {
   projectId: number
@@ -107,11 +108,11 @@ function TodoSection({ projectId }: Props) {
               />
               <span className="todo-title">{todo.title}</span>
               <div className="todo-actions">
-                <button className="btn-icon" onClick={() => move(i, -1)} disabled={i === 0} title={t('todo.moveUp')}>
-                  &#x25B2;
+                <button className="btn-icon" onClick={() => move(i, -1)} disabled={i === 0} title={t('todo.moveUp')} aria-label={t('todo.moveUp')}>
+                  <Icon name="arrow-up" size={14} />
                 </button>
-                <button className="btn-icon" onClick={() => move(i, 1)} disabled={i === todos.length - 1} title={t('todo.moveDown')}>
-                  &#x25BC;
+                <button className="btn-icon" onClick={() => move(i, 1)} disabled={i === todos.length - 1} title={t('todo.moveDown')} aria-label={t('todo.moveDown')}>
+                  <Icon name="arrow-down" size={14} />
                 </button>
                 <TodoDeleteButton todoId={todo.id} />
               </div>
@@ -140,7 +141,7 @@ function TodoDeleteButton({ todoId }: { todoId: number }) {
       onClick={click}
       title={armed ? t('common.confirmDelete') : t('common.delete')}
     >
-      {armed ? '?' : '\u2715'}
+      {armed ? <Icon name="warning" size={14} /> : <Icon name="close" size={14} />}
     </button>
   )
 }

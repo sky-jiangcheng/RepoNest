@@ -150,13 +150,14 @@
 }
 
 .empty-icon {
-  font-size: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 16px;
   opacity: 0.3;
 }
 
 .empty-state.small .empty-icon {
-  font-size: 32px;
   margin-bottom: 10px;
 }
 

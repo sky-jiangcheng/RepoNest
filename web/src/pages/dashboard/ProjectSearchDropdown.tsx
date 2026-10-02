@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { searchAll, searchProjects, type Project, type SearchHit } from '../../api/client'
 import { useDebouncedCallback } from '../../hooks/useDebouncedCallback'
 import DOMPurify from 'dompurify'
+import Icon from '../../components/Icon'
 
 interface Props {
   /** Toggles the star server-side and resolves to the new starred state. */
@@ -95,9 +96,7 @@ export default function ProjectSearchDropdown({ onToggleStar }: Props) {
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleToggleStar(p.id) }}
                         title={p.is_starred ? t('project.unstar') : t('project.star')}
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill={p.is_starred ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                        </svg>
+                        <Icon name="star" size={14} filled={p.is_starred} />
                       </button>
                       <Link to={`/project/${p.id}`} className="search-project-name">
                         {p.name}

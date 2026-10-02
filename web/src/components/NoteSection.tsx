@@ -17,6 +17,7 @@ import NoteEditor, { type NoteDraft } from './notes/NoteEditor'
 import NoteFilterBar from './notes/NoteFilterBar'
 import VersionHistoryPanel from './notes/VersionHistoryPanel'
 import ErrorBanner from './ErrorBanner'
+import Icon from './Icon'
 import s from './NoteSection.module.css'
 
 interface Props {
@@ -262,7 +263,7 @@ function NoteCard({
             className={`pin-btn ${note.pinned ? 'pinned' : ''}`}
             onClick={() => onPin(note)}
             title={note.pinned ? t('project.unpinned') : t('project.pinned')}
-          >★</button>
+          ><Icon name="pin" size={15} /></button>
         </div>
       </div>
       <div className={`${s.body} markdown-body`} dangerouslySetInnerHTML={{ __html: renderMarkdown(note.content) }} />

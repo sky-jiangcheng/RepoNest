@@ -85,6 +85,13 @@
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon svg {
+  display: block;
 }
 
 .btn-icon:hover:not(:disabled) {

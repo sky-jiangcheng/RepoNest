@@ -8,6 +8,7 @@ import DatePicker from '../components/DatePicker'
 import ProjectCard from '../components/ProjectCard'
 import ProjectSearchDropdown from './dashboard/ProjectSearchDropdown'
 import ErrorBanner from '../components/ErrorBanner'
+import Icon from '../components/Icon'
 import { useDashboardData, type SortKey } from '../hooks/useDashboardData'
 
 function Dashboard() {
@@ -41,7 +42,7 @@ function Dashboard() {
               <div className="hero-eyebrow">{date} · {isWorkday ? t('dashboard.workday', { defaultValue: 'Workday' }) : t('dashboard.weekendShort')}</div>
               <div className="hero-title">
                 {isWorkday
-                  ? (myAdded >= dailyGoal ? t('dashboard.goalReached', { defaultValue: "Today's goal reached 🎉" }) : t('dashboard.goalRemaining', { count: Math.max(dailyGoal - myAdded, 0) }))
+                  ? (myAdded >= dailyGoal ? t('dashboard.goalReached', { defaultValue: "Today's goal reached" }) : t('dashboard.goalRemaining', { count: Math.max(dailyGoal - myAdded, 0) }))
                   : t('dashboard.weekend', { defaultValue: 'Happy weekend' })}
               </div>
               <div className="hero-sub">
@@ -111,7 +112,9 @@ function Dashboard() {
           </div>
         ) : sorted.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">{showStarredOnly ? '⭐' : '🔍'}</div>
+            <div className="empty-icon">
+              <Icon name={showStarredOnly ? 'star' : 'search'} size={40} filled={showStarredOnly} />
+            </div>
             <h3>{showStarredOnly ? t('dashboard.starredOnly', { defaultValue: 'No starred projects' }) : t('dashboard.noProjects', { defaultValue: 'No project data' })}</h3>
             <p>
               {showStarredOnly

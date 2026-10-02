@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import Icon from './Icon'
 import type { Project } from '../api/client'
 
 interface Props {
@@ -56,9 +57,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
           title={t('project.star')}
           aria-label={t('project.star')}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-          </svg>
+          <Icon name="star" size={16} />
         </button>
         {/* Unstarred repos only show name + star button (no detail page) — clicking
             would lead to an empty detail page with no stats, so it is non-interactive. */}
@@ -77,9 +76,7 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
         title={t('project.unstar')}
         aria-label={t('project.unstar')}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-        </svg>
+        <Icon name="star" size={16} filled />
       </button>
       <button
         className="card-refresh-btn"
@@ -89,14 +86,9 @@ function ProjectCard({ project, date, todoCount, noteCount, dailyGoal = 0, isWor
         aria-label={refreshing ? t('project.refreshingHistory', { defaultValue: 'Refreshing…' }) : t('project.refreshHistory', { defaultValue: 'Refresh history' })}
       >
         {refreshing ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spin">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-          </svg>
+          <Icon name="refresh-partial" size={14} className="spin" />
         ) : (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-            <polyline points="21 3 21 9 15 9" />
-          </svg>
+          <Icon name="refresh" size={14} />
         )}
       </button>
       <Link to={to} className={`project-card ${reachedGoal ? 'card-goal-reached' : ''}`}>

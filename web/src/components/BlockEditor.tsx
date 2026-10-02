@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Icon from './Icon'
 
 // EDITOR-FROZEN: do not add new block types per ADR-0006 (scope freeze).
 // Current block types: paragraph, heading, code, blockquote, callout, list, table, math, hr, other.
@@ -315,14 +316,14 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
               onDrop={() => handleDrop(index)}
               onDragEnd={() => setDraggingIndex(null)}
             >
-              ⠿
+              <Icon name="grip" size={14} />
             </span>
             <span className="block-type">{typeLabel(t, block.type)}</span>
             <div className="block-actions">
-              <button type="button" className="block-btn" title="上移" onClick={() => moveBlock(index, -1)} disabled={index === 0}>↑</button>
-              <button type="button" className="block-btn" title="下移" onClick={() => moveBlock(index, 1)} disabled={index === blocks.length - 1}>↓</button>
-              <button type="button" className="block-btn" title="下方插入块" onClick={() => addBlockAfter(index)}>＋</button>
-              <button type="button" className="block-btn block-btn-danger" title="删除块" onClick={() => deleteBlock(index)}>×</button>
+              <button type="button" className="block-btn" title="上移" aria-label="上移" onClick={() => moveBlock(index, -1)} disabled={index === 0}><Icon name="arrow-up" size={14} /></button>
+              <button type="button" className="block-btn" title="下移" aria-label="下移" onClick={() => moveBlock(index, 1)} disabled={index === blocks.length - 1}><Icon name="arrow-down" size={14} /></button>
+              <button type="button" className="block-btn" title="下方插入块" aria-label="下方插入块" onClick={() => addBlockAfter(index)}><Icon name="plus" size={14} /></button>
+              <button type="button" className="block-btn block-btn-danger" title="删除块" aria-label="删除块" onClick={() => deleteBlock(index)}><Icon name="close" size={14} /></button>
             </div>
           </div>
           <textarea
@@ -355,7 +356,7 @@ export default function BlockEditor({ value, onChange, placeholder }: BlockEdito
           )}
         </div>
       ))}
-      <button type="button" className="block-add" onClick={() => addBlockAfter(blocks.length - 1)}>＋ 添加块</button>
+      <button type="button" className="block-add" onClick={() => addBlockAfter(blocks.length - 1)}><Icon name="plus" size={14} /> 添加块</button>
     </div>
   )
 }

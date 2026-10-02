@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import type { NoteWithProject } from '../../api/client'
 import { renderMarkdown, stripMarkdown, parseTags } from '../../utils/markdown'
+import Icon from '../../components/Icon'
 
 interface Props {
   note: NoteWithProject
@@ -32,7 +33,7 @@ export default function KnowledgeCard({ note, exporting, onPin, onExport, onSele
           onClick={() => onPin(note.id, note.pinned)}
           title={note.pinned ? t('project.unpinned') : t('project.pinned')}
         >
-          ★
+          <Icon name="pin" size={15} />
         </button>
       </div>
       <Link to={`/project/${note.project_id}`} className="knowledge-card-body">

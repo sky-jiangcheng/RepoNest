@@ -12,7 +12,7 @@
     "notWorkday": "Not a workday",
     "workday": "Workday",
     "weekend": "Happy weekend — no daily target",
-    "goalReached": "Today's goal reached 🎉",
+    "goalReached": "Today's goal reached",
     "goalMissing": "{{needed}} lines remaining",
     "personalAdded": "Personal added",
     "files": "files",
