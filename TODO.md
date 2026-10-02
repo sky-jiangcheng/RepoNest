@@ -249,8 +249,8 @@
 
 - [x] 评估 + **实测验证**：`CGO_ENABLED=0` 下 `modernc.org/sqlite/vec`（bundled sqlite-vec v0.1.9）跑通 vec0 建表 + KNN + `vec_distance_l2`（回归测试 `internal/vecprobe`，副作用用无生产码的 test-only 包隔离）；混合检索中间件 `internal/search/hybrid`（`Embedder` 接口 + `FuseRRF` k=60 + 单测）已落地，尚未接入生产
 - [x] **决策已定 + C 第一版已落地、默认生效**（`internal/db/search.go`）：放弃 B；默认走 C＝严格 FTS5 AND **命中为零**时做**停用词感知的 OR 查询松弛**（零外部词库/零 CGO，纯 FTS 内不新增 LIKE，坏索引语义不破、AND 有结果不误触发）；单测齐。A（远程 embedding）留作 B端可选、默认关
-- [x] **A 选型定 + 嵌入器基座落地**：标准化到 OpenAI 兼容 `/v1/embeddings`（不锁厂商；云＝OpenAI `text-embedding-3-small`/Voyage/Jina，本地＝自托管 Ollama → 零 CGO 且数据不出机）。`internal/search/hybrid.RemoteEmbedder` 实现 `Embedder`（乱序回填/错误宽松/可选 bearer）+ httptest 单测；**未接搜索热路径**
-- [ ] A 正式接线（需先过 A/B 门 + 用户显式开启）：`note_embeddings` vec0 表迁移 + 全库重算、`db/search.go` FTS+vec RRF 接入、`semantic_search`/端点配置默认关 + 前端、**API key 安全存储**（config 表会把值回传前端，接线时须单独走不外泄路径）
+- [x] **A 选型定 + 基座落地（嵌入器 + 向量存储 + 配置/密钥安全）**：OpenAI 兼容 `/v1/embeddings`（云/本地 Ollama 皆可、零 CGO）；`hybrid.RemoteEmbedder`（httptest）；`db/vecindex.go` vec0 存储（`EnsureVectorIndex`/`Put`/`KnnNoteIDs`/…，dim 自管 meta、不依赖 vec 内部 schema）；`semantic_search`/`embedding_*` 配置键，**`embedding_api_key` 在 GetConfig 掩码**（不回传前端）。全部**未接搜索热路径**、默认关
+- [ ] A 正式接线（需先过 A/B 门 + 显式开启）：全库重算索引（notes→Embed→PutNoteEmbedding 触发式重建）、`db/search.go` FTS+`KnnNoteIDs` 经 `FuseRRF` 融合接入、embedding 配置的前端 UI、A/B 评测 harness（recall@k）
 
 ### M4: Agent 集成即插即用
 

@@ -28,15 +28,36 @@ var allowedConfigKeys = map[string]bool{
 	// memsrc.TargetProject and ADR-0011.
 	"openclaw_project": true,
 	"hermes_project":   true,
+	// M3-A semantic search (ADR-0012). All default-OFF: semantic search runs
+	// only when semantic_search=="1" AND a base_url+model are configured.
+	// embedding_api_key is a SECRET and is redacted in GetConfig.
+	"semantic_search":    true,
+	"embedding_base_url": true,
+	"embedding_model":    true,
+	"embedding_api_key":  true,
+	"embedding_dim":      true,
 }
 
 // stringConfigKeys are exempt from the numeric-value check: they carry
-// free-text (author name, project name/id).
+// free-text (author name, project name/id, embedding endpoint/model/key).
 var stringConfigKeys = map[string]bool{
-	"git_author":       true,
-	"openclaw_project": true,
-	"hermes_project":   true,
+	"git_author":         true,
+	"openclaw_project":   true,
+	"hermes_project":     true,
+	"embedding_base_url": true,
+	"embedding_model":    true,
+	"embedding_api_key":  true,
 }
+
+// secretConfigKeys are never returned in plaintext by GetConfig — a set value
+// is masked so the frontend learns "configured" without seeing the credential.
+// The backend still reads the real value via db.GetConfig directly.
+var secretConfigKeys = map[string]bool{
+	"embedding_api_key": true,
+}
+
+// secretMask replaces a configured secret in responses sent to the frontend.
+const secretMask = "********"
 
 // GetConfig returns all configuration settings and scan roots.
 func (s *Service) GetConfig() (*ConfigData, error) {
@@ -52,6 +73,15 @@ func (s *Service) GetConfig() (*ConfigData, error) {
 	// directly and would throw. Always emit an empty array instead.
 	if roots == nil {
 		roots = []string{}
+	}
+	// Never return secret values in plaintext: a configured secret is masked to
+	// a sentinel so the UI can show "set" without exposing the credential. The
+	// backend reads the real value via db.GetConfig directly (e.g. the M3-A
+	// embedder), never through this response.
+	for key := range secretConfigKeys {
+		if configs[key] != "" {
+			configs[key] = secretMask
+		}
 	}
 	return &ConfigData{Config: configs, ScanRoots: roots}, nil
 }

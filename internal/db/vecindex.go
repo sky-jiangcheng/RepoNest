@@ -1,0 +1,173 @@
+package db
+
+// The pure-Go sqlite-vec extension is imported for its side effect, making the
+// `vec0` virtual table and `vec_*` functions available on every connection
+// (verified zero-CGO in internal/vecprobe). Its only global side effect is that
+// sqlite3_auto_extension initialises SQLite, which rules out
+// sqlite.RegisterPageCache — RepoNest never uses a custom page cache, so this is
+// safe (ADR-0012 决策 1).
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+
+	_ "modernc.org/sqlite/vec"
+)
+
+// Vector embeddings are stored in a `vec0` virtual table keyed by note rowid.
+// The table is a DERIVED cache (ADR-0012 决策 5): SQLite `project_notes` remains
+// the single source of truth, and note_embeddings can always be dropped and
+// rebuilt from it. It exists only when semantic search is enabled.
+
+const maxEmbeddingDim = 8192
+
+// vecTableName is the derived vector index. Kept unquoted so vec0's auxiliary
+// `<table>_info`/`<table>_chunks` shadow tables follow the same name.
+const vecTableName = "note_embeddings"
+
+// vecMetaTable records the dimension of the current vec index. We track it
+// ourselves rather than introspecting sqlite-vec's shadow tables (whose column
+// names are not a stable public contract across versions), so a model/dim swap
+// reliably triggers a rebuild.
+const vecMetaTable = "note_embeddings_meta"
+
+// VectorIndexReady reports whether the note_embeddings vec0 table exists.
+func VectorIndexReady(db *sql.DB) bool {
+	var n int
+	err := db.QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", vecTableName).Scan(&n)
+	return err == nil && n > 0
+}
+
+// EnsureVectorIndex creates the vec0 table sized to dim, dropping it first if a
+// table with a DIFFERENT dim already exists (a model swap changes dim; the cache
+// is then rebuilt from scratch). dim must be 1..maxEmbeddingDim.
+func EnsureVectorIndex(db *sql.DB, dim int) error {
+	if dim < 1 || dim > maxEmbeddingDim {
+		return fmt.Errorf("db: invalid embedding dim %d (want 1..%d)", dim, maxEmbeddingDim)
+	}
+	if VectorIndexReady(db) {
+		if cur, ok := storedVectorDim(db); ok && cur == dim {
+			return nil // already the right shape
+		}
+		if err := DropVectorIndex(db); err != nil {
+			return err
+		}
+	}
+	// dim is a validated int, so Sprintf injection is not a concern here.
+	ddl := fmt.Sprintf("CREATE VIRTUAL TABLE IF NOT EXISTS %s USING vec0(embedding float[%d])", vecTableName, dim)
+	if _, err := db.Exec(ddl); err != nil {
+		return fmt.Errorf("db: create vec index: %w", err)
+	}
+	if _, err := db.Exec(
+		"CREATE TABLE IF NOT EXISTS " + vecMetaTable + " (dim INTEGER NOT NULL)"); err != nil {
+		return fmt.Errorf("db: create vec meta: %w", err)
+	}
+	if _, err := db.Exec("DELETE FROM " + vecMetaTable); err != nil {
+		return err
+	}
+	_, err := db.Exec("INSERT INTO "+vecMetaTable+"(dim) VALUES(?)", dim)
+	return err
+}
+
+// storedVectorDim reads the tracked dimension from the meta table.
+func storedVectorDim(db *sql.DB) (dim int, ok bool) {
+	err := db.QueryRow("SELECT dim FROM " + vecMetaTable + " LIMIT 1").Scan(&dim)
+	if err != nil {
+		return 0, false
+	}
+	return dim, true
+}
+
+// DropVectorIndex removes the derived vector table + its meta row.
+func DropVectorIndex(db *sql.DB) error {
+	if _, err := db.Exec("DROP TABLE IF EXISTS " + vecTableName); err != nil {
+		return fmt.Errorf("db: drop vec index: %w", err)
+	}
+	if _, err := db.Exec("DROP TABLE IF EXISTS " + vecMetaTable); err != nil {
+		return fmt.Errorf("db: drop vec meta: %w", err)
+	}
+	return nil
+}
+
+// ClearVectorIndex empties the vector table without dropping it (used before a
+// full re-embed).
+func ClearVectorIndex(db *sql.DB) error {
+	if _, err := db.Exec("DELETE FROM " + vecTableName); err != nil {
+		return fmt.Errorf("db: clear vec index: %w", err)
+	}
+	return nil
+}
+
+// PutNoteEmbedding upserts a note's vector, keyed by note id (the vec0 rowid).
+func PutNoteEmbedding(db *sql.DB, noteID int64, vec []float32) error {
+	blob, err := encodeVector(vec)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(
+		fmt.Sprintf("INSERT OR REPLACE INTO %s(rowid, embedding) VALUES(?, ?)", vecTableName),
+		noteID, blob)
+	if err != nil {
+		return fmt.Errorf("db: put embedding note %d: %w", noteID, err)
+	}
+	return nil
+}
+
+// DeleteNoteEmbedding removes a note's vector (note deleted).
+func DeleteNoteEmbedding(db *sql.DB, noteID int64) error {
+	_, err := db.Exec("DELETE FROM "+vecTableName+" WHERE rowid = ?", noteID)
+	return err
+}
+
+// KnnNoteIDs returns the note ids of the k vectors nearest to `query`, ordered
+// by ascending distance (most similar first).
+func KnnNoteIDs(db *sql.DB, query []float32, k int) ([]int64, error) {
+	if k <= 0 {
+		return nil, nil
+	}
+	blob, err := encodeVector(query)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.Query(
+		fmt.Sprintf("SELECT rowid FROM %s WHERE embedding MATCH ? AND k = ? ORDER BY distance", vecTableName),
+		blob, k)
+	if err != nil {
+		return nil, fmt.Errorf("db: knn: %w", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// encodeVector serialises a float32 vector to the JSON-array text form sqlite-vec
+// accepts for both insertion and MATCH queries (e.g. "[0.1,0.2]").
+func encodeVector(vec []float32) (string, error) {
+	if len(vec) == 0 {
+		return "", fmt.Errorf("db: empty embedding vector")
+	}
+	var b strings.Builder
+	b.WriteByte('[')
+	for i, f := range vec {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(strconv.FormatFloat(float64(f), 'g', -1, 32))
+	}
+	b.WriteByte(']')
+	// Sanity: ensure it is valid JSON (catches NaN/Inf, which sqlite-vec rejects).
+	if !json.Valid([]byte(b.String())) {
+		return "", fmt.Errorf("db: embedding vector is not finite")
+	}
+	return b.String(), nil
+}
