@@ -234,9 +234,42 @@ jobs:
           path: ${{ env.RELEASE_DIR }}/
           if-no-files-found: error
 
+  vscode-extension:
+    name: Package VS Code extension
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ide/vscode/package-lock.json
+
+      - name: Package VSIX
+        run: |
+          set -euo pipefail
+          VER="${GITHUB_REF#refs/tags/v}"
+          cd ide/vscode
+          npm ci
+          npm run compile
+          npx @vscode/vsce package --no-dependencies -o "../../reponest-vscode-${VER}.vsix"
+
+      - name: Upload vsix artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: vsix-extension
+          path: reponest-vscode-*.vsix
+          if-no-files-found: error
+
   create-release:
     name: Create GitHub Release
-    needs: build
+    needs: [build, vscode-extension]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
@@ -244,7 +277,7 @@ jobs:
       - name: Download all bundles
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: bundle-*
+          pattern: '{bundle-*,vsix-extension}'
           merge-multiple: true
 
       - name: List release files
@@ -271,10 +304,50 @@ jobs:
             *.AppImage
             *.deb
             *.msi
+            *.vsix
             *.zip
             *.tar.gz
             SHA256SUMS
           generate_release_notes: true
+
+  # Publish the extension to the VS Code Marketplace with the same version
+  # number as the product release. Requires the VSCE_PAT secret (a Personal
+  # Access Token with Marketplace > Manage scope from the sky-jiangcheng
+  # publisher's Azure DevOps account). Without the secret this job skips
+  # with a warning and the release still ships — the vsix is on the release
+  # either way, so users can install manually.
+  publish-marketplace:
+    name: Publish to VS Code Marketplace
+    needs: create-release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: ide/vscode/package-lock.json
+
+      - name: Publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -euo pipefail
+          VER="${GITHUB_REF#refs/tags/v}"
+          if [ -z "$VSCE_PAT" ]; then
+            echo "::warning::VSCE_PAT secret is not set — skipping Marketplace publish. The vsix is still attached to this release for manual install."
+            exit 0
+          fi
+          cd ide/vscode
+          npm ci
+          npm run compile
+          npx @vscode/vsce publish "$VER" --no-dependencies
+          echo "Published reponest-vscode@$VER to the VS Code Marketplace."
 
   # After the release is published, the sha256 of every shipped asset is a
   # known fact. Homebrew and Scoop hard-fail on a missing/wrong digest, so the

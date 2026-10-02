@@ -3,14 +3,14 @@
   "displayName": "RepoNest",
   "publisher": "sky-jiangcheng",
   "version": "0.1.0",
-  "description": "RepoNest inside your IDE: session context, handoff and knowledge search from the command palette, status bar and sidebar. Thin client over the RepoNest headless service (ADR-0009 step two / TODO M5).",
+  "description": "RepoNest inside your IDE: load session context, write session handoffs and search your local knowledge base from the command palette, status bar and sidebar. One VSIX covers VS Code, Cursor and Windsurf.",
   "license": "MIT",
-  "private": true,
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Education"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -76,5 +76,26 @@
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.90.0",
     "typescript": "^5.5.0"
-  }
+  },
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sky-jiangcheng/repo-nest.git"
+  },
+  "homepage": "https://github.com/sky-jiangcheng/repo-nest/tree/master/ide/vscode",
+  "bugs": {
+    "url": "https://github.com/sky-jiangcheng/repo-nest/issues"
+  },
+  "keywords": [
+    "reponest",
+    "knowledge base",
+    "session context",
+    "handoff",
+    "notes",
+    "search",
+    "claude",
+    "cursor",
+    "windsurf",
+    "mcp"
+  ]
 }

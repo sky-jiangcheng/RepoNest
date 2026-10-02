@@ -230,7 +230,7 @@ Log paths: see [Troubleshooting](docs/en/troubleshooting.md).
 
 ## VS Code Extension (preview)
 
-The extension (VS Code / Cursor / Windsurf — one VSIX covers all three) is a **preview** and is **not published to the Marketplace yet** — the listing needs publisher onboarding and icon assets, tracked as step two of [ADR-0009](docs/en/adr/0009-ide-presence.md). Until then, install it from source:
+The extension (VS Code / Cursor / Windsurf — one VSIX covers all three) is a **preview**. Every product release automatically publishes it to the [Marketplace](https://marketplace.visualstudio.com/items?itemName=sky-jiangcheng.reponest-vscode) (active once the `VSCE_PAT` secret is configured); the `.vsix` is also attached to each [Release](https://github.com/sky-jiangcheng/repo-nest/releases) for manual install, and you can always package from source:
 
 ```bash
 git clone https://github.com/sky-jiangcheng/repo-nest.git

@@ -224,7 +224,7 @@ Agent 会调用 `reponest_projects_list` → `reponest_notes_search` → `repone
 
 ## VS Code 扩展（预览）
 
-扩展（VS Code / Cursor / Windsurf —— 一个 VSIX 三端通用）目前是**预览版**，**尚未上架应用商店**——上架需要 publisher 入驻与图标资产，是 [ADR-0009](docs/adr/0009-ide-presence.md) 的第二步，落地前请从源码手动安装：
+扩展（VS Code / Cursor / Windsurf —— 一个 VSIX 三端通用）目前为**预览版**。每个产品版本发布时会自动同步上架 [Marketplace](https://marketplace.visualstudio.com/items?itemName=sky-jiangcheng.reponest-vscode)（配置 `VSCE_PAT` secret 后生效）；`.vsix` 同时挂在每个 [Release](https://github.com/sky-jiangcheng/repo-nest/releases) 下可手动安装，也可以从源码打包：
 
 ```bash
 git clone https://github.com/sky-jiangcheng/repo-nest.git
