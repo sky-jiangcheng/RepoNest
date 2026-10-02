@@ -93,7 +93,48 @@ try {
         if (b.x + ox + b.width > x1) x1 = b.x + ox + b.width
         if (b.y + oy + b.height > y1) y1 = b.y + oy + b.height
       }
-      if (any) return { x: x0, y: y0, width: Math.max(x1 - x0, 1), height: Math.max(y1 - y0, 1) }
+      if (any) {
+        const bb = { x: x0, y: y0, width: Math.max(x1 - x0, 1), height: Math.max(y1 - y0, 1) }
+        return bb
+      }
+    }
+    // Shapes with explicit geometry (rect/foreignObject/…) report their own
+    // box — ignoring x/y/width/height shrank every node to 40×20, which
+    // clipped the root viewBox at the bottom.
+    const wAttr = parseFloat(this.getAttribute && this.getAttribute('width'))
+    const hAttr = parseFloat(this.getAttribute && this.getAttribute('height'))
+    if (!isNaN(wAttr) && !isNaN(hAttr)) {
+      return {
+        x: parseFloat(this.getAttribute('x')) || 0,
+        y: parseFloat(this.getAttribute('y')) || 0,
+        width: wAttr,
+        height: hAttr,
+      }
+    }
+    // Cylinder / shape paths: reconstruct a generous box from the first arc
+    // (a rx,ry) plus the body segment — over-measuring just pads the viewBox.
+    if (this.tagName === 'path') {
+      const d = this.getAttribute('d') || ''
+      const arc = /a\s*([\d.]+)\s*,\s*([\d.]+)/.exec(d)
+      const body = /l\s*0\s*,\s*([\d.]+)/.exec(d)
+      if (arc) {
+        const rx = parseFloat(arc[1])
+        const ry = parseFloat(arc[2])
+        const half = ry + (body ? parseFloat(body[1]) : 0)
+        return { x: -rx, y: -half, width: 2 * rx, height: 2 * half }
+      }
+    }
+    // <text> with row tspans: width = widest row, height = rows × line-height.
+    // Concatenating textContent measured a 2-line label as one long line,
+    // which pushed cylinder labels half a label-width outside the shape.
+    if (this.tagName === 'text' && kids.length) {
+      let w = 0
+      let rows = 0
+      for (const row of kids) {
+        w = Math.max(w, textWidthOf(row.textContent))
+        rows++
+      }
+      return { x: 0, y: 0, width: w, height: Math.max(rows * 17.6, 17.6) }
     }
     return { x: 0, y: 0, width: textWidthOf(this.textContent), height: 20 }
   }
@@ -121,12 +162,65 @@ try {
     theme: 'neutral',
     securityLevel: 'strict',
     htmlLabels: false,
-    flowchart: { htmlLabels: false, wrappingWidth: 360 },
+    flowchart: { htmlLabels: false, wrappingWidth: 360, nodeSpacing: 55, rankSpacing: 55 },
   })
   let seq = 0
+  // mermaid 12 samples the root svg's bbox mid-render (before dagre has
+  // placed everything) and ships that as the final viewBox, which pads some
+  // diagrams with hundreds of pixels of dead space. Recompute the box from
+  // the finished SVG instead: walk every shape with its accumulated
+  // translate() and rebuild the viewBox from real geometry.
+  const fixViewBox = (svgStr) => {
+    const doc = new JSDOM(svgStr).window.document
+    const svgEl = doc.querySelector('svg')
+    if (!svgEl) return svgStr
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+    const grow = (ax, ay, bx, by) => {
+      x0 = Math.min(x0, ax); y0 = Math.min(y0, ay)
+      x1 = Math.max(x1, bx); y1 = Math.max(y1, by)
+    }
+    const walk = (el, tx, ty) => {
+      const t = /translate\(\s*([-\d.]+)[ ,]+([-\d.]+)/.exec(el.getAttribute && el.getAttribute('transform') || '')
+      let nx = tx, ny = ty
+      if (t) { nx += parseFloat(t[1]); ny += parseFloat(t[2]) }
+      const tag = el.tagName
+      if (tag === 'defs' || tag === 'marker') return
+      if (tag === 'rect' || tag === 'foreignObject') {
+        const w = parseFloat(el.getAttribute('width') || '0')
+        const h = parseFloat(el.getAttribute('height') || '0')
+        if (w > 0 && h > 0) {
+          const x = parseFloat(el.getAttribute('x') || '0')
+          const y = parseFloat(el.getAttribute('y') || '0')
+          grow(x + nx, y + ny, x + nx + w, y + ny + h)
+        }
+      } else if (tag === 'text') {
+        const rows = el.children && el.children.length ? Array.from(el.children) : [el]
+        let w = 0
+        for (const r of rows) w = Math.max(w, textWidthOf(r.textContent))
+        const yy = parseFloat(el.getAttribute('y') || '0')
+        const h = Math.max(rows.length * 17.6, 17.6)
+        grow(nx, ny + yy, nx + w, ny + yy + h)
+      } else if (tag === 'path') {
+        const d = el.getAttribute('d') || ''
+        if (/^[\sMLQCAZ\d.,\s-]+$/.test(d)) {
+          const nums = d.match(/-?\d+\.?\d*/g) || []
+          for (let i = 0; i + 1 < nums.length; i += 2) {
+            grow(parseFloat(nums[i]) + nx, parseFloat(nums[i + 1]) + ny, parseFloat(nums[i]) + nx, parseFloat(nums[i + 1]) + ny)
+          }
+        }
+      }
+      for (const c of (el.children ? Array.from(el.children) : [])) walk(c, nx, ny)
+    }
+    walk(svgEl, 0, 0)
+    if (isFinite(x0)) {
+      const pad = 8
+      svgEl.setAttribute('viewBox', `${x0 - pad} ${y0 - pad} ${x1 - x0 + 2 * pad} ${y1 - y0 + 2 * pad}`)
+    }
+    return svgEl.outerHTML
+  }
   mermaidRender = async (source) => {
     const { svg } = await mermaid.render(`mmd-${Date.now()}-${seq++}`, source)
-    return svg
+    return fixViewBox(svg)
   }
   // smoke-test the pipeline once; on failure fall back to source-text output
   await mermaidRender('flowchart LR\n  A --> B')
