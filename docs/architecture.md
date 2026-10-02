@@ -102,7 +102,8 @@ flowchart TB
     B2 --> REL
     MD["docs/**/*.md<br/>zh + en 镜像"] --> B3["build-docs.mjs<br/>mermaid → SVG"]
     B3 --> PAGES[("GitHub Pages")]
-        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+    REL ~~~ PAGES
+    classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
     class REL,PAGES store
 ```
 

@@ -23,10 +23,10 @@ RepoNest 的核心价值是：**让本地 Git 项目从‘散落在终端和记�
 
 ```mermaid
 flowchart LR
-    D[发现 Discover] --> U[理解 Understand]
-    U --> R[沉淀 Record]
-    R --> S[检索 Retrieve]
-    S --> A[交给 AI AI-ready]
+    D["发现"] --> U["理解"]
+    U --> R["沉淀"]
+    R --> S["检索"]
+    S --> A["交给 AI"]
     A -. 会话边界自动注入/收回 .-> D
 ```
 

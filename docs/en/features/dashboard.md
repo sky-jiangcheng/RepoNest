@@ -11,11 +11,10 @@ The dashboard shows daily commit statistics, goal progress, and a year-long comm
 
 ```mermaid
 flowchart TB
-    RING["① Goal progress<br/>progress ring · summary bar"]
-    HEAT["② Commit heatmap<br/>last 52 weeks · click to jump to a day"]
-    CTRL["③ Controls<br/>date switch · combined search<br/>filters · sorting · rescan"]
-    GRID["④ Project grid"]
-    GRID --> STAR["Starred: full stat card<br/>added today · goal bar · team total"]
+    RING["① Goal progress<br/>progress ring · summary bar"] --> HEAT["② Commit heatmap<br/>last 52 weeks · click to jump to a day"]
+    HEAT --> CTRL["③ Controls<br/>date switch · combined search<br/>filters · sorting · rescan"]
+    CTRL --> GRID["④ Project grid"]
+    GRID --> STAR["Starred: full stat card<br/>goal bar · team total"]
     GRID --> PLAIN["Unstarred: minimal card<br/>name + star button"]
 ```
 
