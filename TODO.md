@@ -230,7 +230,8 @@
 
 ### M1: 会话自动捕捉（零人工参与）→ [ADR-0010](docs/adr/0010-session-auto-capture.md)
 
-- [ ] 解析 `~/.claude/projects/*/*.jsonl` 会话记录，提取最后一条 assistant 消息 + 工具调用摘要生成 handoff —— 设计见 ADR-0010，**实现待隐私默认/触发方式拍板**
+- [x] **解析核心已落地**（`internal/importers/claude/session.go`）：`ParseSession` 流式解析 `~/.claude/projects/<slug>/<id>.jsonl`，宽松跳过未知/超长行、忽略 sidechain，抽取稳定信封字段（sessionId/cwd/gitBranch/timestamp）+ 最后一条 assistant 文本 + 首次 user 指令 + 去重工具名；实测对齐真机 v2.1.278（`session_test.go`）
+- [ ] 端到端落地**阻塞于隐私决策**：`Session`→`service.HandoffInput` 映射 + 写 `CreateHandoffNote` + 触发方式（SessionEnd hook vs 按需）+ 默认开/关 —— ADR-0010 决策 1/4 待拍板；解析器不自动运行、不读盘，未拍板前零隐私暴露
 - [x] 体积与隐私评估：ADR-0010 已定「默认关 + 只读路径白名单 + 尾部 N 有界提取 + 宽松失败 + golden-file」，边界与既有 claude *memory* importer（读 `memory/*.md`，非 jsonl 逐字稿）划清
 
 ### M2: 多 agent 记忆源导入 → [ADR-0011](docs/adr/0011-multi-agent-memory-importers.md)

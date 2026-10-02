@@ -1,6 +1,6 @@
 # ADR-0010: 会话自动捕捉——零人工参与的 Claude Code 会话交接（M1）
 
-- 状态：Proposed（设计待决，未实现；隐私默认与触发方式需产品拍板）
+- 状态：Proposed（**解析核心已落地** `internal/importers/claude/session.go`，实测对齐真机格式；端到端自动捕捉的默认开关/触发方式仍需产品拍板）
 - 日期：2026-10-02
 - 关联：[ADR-0007](0007-session-memory-protocol.md)（context/handoff 协议与 `handoff` 标签）、[ADR-0009](0009-ide-presence.md)（SessionEnd hook 一键接入）、[ADR-0006](0006-scope-freeze.md)（范围冻结）、TODO 会话记忆路线 M1
 
