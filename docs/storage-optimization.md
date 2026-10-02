@@ -32,11 +32,19 @@ RepoNest 对 git 仓库做的不是「压缩 / 去重」类存储优化，而是
 
 ```mermaid
 flowchart TB
-    Q["一次查询<br/>统计 / 检索 / 跨仓聚合"]
-    G1["AI 直接读 git"] -. 每次重跑 .-> GL["git log --shortstat<br/>逐文件读取<br/>整库倾倒"]
-    G2["RepoNest 物化后读"] --> MAT[("SQLite<br/>daily_stats 预聚合<br/>repo_meta 缓存<br/>FTS5 索引")]
-    GL --> R1["慢 · 烧 token<br/>超上下文被截断<br/>可能幻觉漏读"]
-    MAT --> R2["毫秒级 · 确定性 SQL<br/>只取命中片段"]
+    Q["一次查询<br/>统计 / 检索 / 聚合"]
+    Q --> G1["AI 直接读 git"]
+    Q --> G2["RepoNest 物化后读"]
+    G1 -.->|"每次重跑"| GL["git log 逐文件<br/>整库倾倒"]
+    GL --> R1["慢 · 烧 token<br/>可能被截断"]
+    G2 --> MAT[("SQLite<br/>预聚合 · 缓存 · FTS5")]
+    MAT --> R2["毫秒级 · 确定性 SQL"]
+    classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+    classDef good fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    classDef bad fill:#fef2f2,stroke:#ef4444,color:#7f1d1d
+    class MAT store
+    class G2,R2 good
+    class G1,GL,R1 bad
 ```
 
 读图：两条路径的**分岔点在“每次查询”**。AI 直接读 git 时，每一次查询都要重新执行一遍 `git log` / 逐文件扫描（左），代价随查询次数线性叠加，且大仓会撞上上下文窗口上限。RepoNest 在**扫描时一次性**把 git 原始数据物化进 SQLite（右），之后查询只落在这张表上——物化层不是缓存，是**唯一事实源**。下表逐维度对照。

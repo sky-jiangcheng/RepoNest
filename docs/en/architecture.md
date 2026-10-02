@@ -15,12 +15,12 @@ A single-binary **Wails v2** desktop app: Go backend + React SPA (`web/dist` emb
 
 ```mermaid
 flowchart TB
-    ENTRY[/"Three entry points: Wails · MCP · headless HTTP"/]
-    MAIN[main.go · Wails entry<br/>DB init / scan-root seeding / window & security headers]
-    APP[internal/app · binding layer<br/>1-3 lines per method, delegating to the service]
-    SVC[internal/service · business core<br/>notes / search / context / handoff]
+    ENTRY[/"Three entry points<br/>Wails · MCP · headless HTTP"/]
+    MAIN["main.go · Wails entry<br/>DB init · scan seeds<br/>security headers"]
+    APP["internal/app · bindings<br/>1-3 lines per method"]
+    SVC["internal/service · core<br/>notes / search / context"]
     DB[(internal/db · SQLite)]
-    GIT[internal/core/git · Git Provider abstraction<br/>local CLI implementation]
+    GIT["internal/core/git<br/>Git Provider · CLI"]
     ENTRY --> MAIN --> APP --> SVC
     SVC --> DB
     SVC --> GIT
@@ -37,17 +37,18 @@ Supporting packages: `internal/domain` (cross-layer row types), `internal/versio
 ### Scan pipeline (service/scan.go, the single pipeline)
 
 ```mermaid
-flowchart LR
-    ROOTS[(scan_roots<br/>seeded roots)] --> SCAN[scanner.ScanRepositories<br/>recursive Git repo discovery]
-    SCAN --> GROUP[grouper.GroupRepositories<br/>Monorepo / single-repo grouping]
-    GROUP --> TX[["one db transaction<br/>SyncProjectTx · UpsertRepositoryTx<br/>CleanupStaleDataTx"]]
-    TX --> STATS[refreshCollectedStats<br/>365-day window · all + personal author rows]
+flowchart TB
+    ROOTS[("scan_roots<br/>seeded roots")] --> SCAN["scanner.ScanRepositories<br/>recursive repo discovery"]
+    SCAN --> GROUP["grouper.GroupRepositories<br/>monorepo / single-repo grouping"]
+    GROUP --> TX[["one db transaction<br/>Sync · Upsert · Cleanup"]]
+    TX --> STATS["refreshCollectedStats<br/>365-day dual-row upsert"]
     STATS --> EVT[["event project.scanned"]]
-    EVT -. drives .-> REFRESH
-    REFRESH[refreshRepoStatsRange<br/>service/refresh.go · the single loop]
+    EVT -.->|"drives"| REFRESH["refreshRepoStatsRange<br/>service/refresh.go"]
+        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+    class ROOTS store
 ```
 
-How to read it: a **one-way pipeline that closes inside a transaction**. Discovery and grouping happen outside the transaction (they can be slow and should not hold the write lock), while the three writes `SyncProjectTx` / `UpsertRepositoryTx` / `CleanupStaleDataTx` land in **the same transaction** — that is exactly why re-scanning never produces dirty data. It ends by emitting `project.scanned`, which drives the stats refresh loop on the right (next section).
+How to read it: a **one-way pipeline that closes inside a transaction**. Discovery and grouping happen outside the transaction (they can be slow and should not hold the write lock), while the three writes `SyncProjectTx` / `UpsertRepositoryTx` / `CleanupStaleDataTx` land in **the same transaction** — that is exactly why re-scanning never produces dirty data. It ends by emitting `project.scanned`, which drives the stats refresh loop that follows (next section).
 
 ### Stats refresh (service/refresh.go, the single loop)
 
@@ -56,12 +57,16 @@ How to read it: a **one-way pipeline that closes inside a transaction**. Discove
 ### Knowledge base
 
 ```mermaid
-flowchart LR
-    W["Write: note upsert"] --> FTS[("project_notes_fts<br/>trigram virtual table · bm25")]
-    W --> VER[("note_versions<br/>snapshots · latest 50 kept")]
-    FTS --> R["Read: reponest_notes_search / ask<br/>short queries fall back to LIKE"]
-    VER --> DIFF["internal/diff<br/>line-level LCS diff"]
-    DIFF --> RESTORE["Restore any historical version"]
+flowchart TB
+    W["Write: note upsert"] --> FTS[("project_notes_fts<br/>trigram · bm25")]
+    W --> VER[("note_versions<br/>snapshots · latest 50")]
+    FTS --> R["Read: notes_search / ask<br/>short queries fall back to LIKE"]
+    VER --> DIFF["internal/diff<br/>line-level LCS"]
+    DIFF --> RESTORE["Restore any version"]
+        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+        classDef read fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    class FTS,VER store
+    class R read
 ```
 
 How to read it: **one write, two read paths**. When a note is persisted, triggers maintain the FTS index (the retrieval side) and the version snapshot (the history side) at the same time — the application layer has zero maintenance code, so the index cannot drift out of sync with the content unless the triggers are broken (which is exactly what `reponest_integrity` checks, see [AI integration](features/ai-integration.md#readiness-vs-data-trust)). The retrieval side reads the trigram index for relevance and snippets; the history side reads snapshots to compute the LCS diff. Details in [ADR-0003](adr/0003-fts5-search.md).
@@ -90,17 +95,18 @@ Single-file SQLite (WAL + foreign keys), 12 versioned migrations applied automat
 ## Build and artifacts
 
 ```mermaid
-flowchart LR
-    SRC["Go source"] --> B1["go build → reponest<br/>root package · scripts/build.sh"]
+flowchart TB
+    SRC["Go source"] --> B1["go build → reponest<br/>inlines web/dist"]
     SRC --> B2["go build → reponest-mcp<br/>cmd/mcp"]
-    WEB["web/dist<br/>inlined via go:embed"] --> B1
-    MD["docs/**/*.md<br/>zh + en mirrors"] --> B3["build-docs.mjs<br/>mermaid → inline SVG at build time"]
-    B3 --> PAGES[("GitHub Pages")]
-    B1 --> REL[("GitHub Releases<br/>multi-platform · macOS signing + notarization")]
+    B1 --> REL[("GitHub Releases<br/>macOS signing + notarization")]
     B2 --> REL
+    MD["docs/**/*.md<br/>zh + en mirrors"] --> B3["build-docs.mjs<br/>mermaid → inline SVG"]
+    B3 --> PAGES[("GitHub Pages")]
+        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+    class REL,PAGES store
 ```
 
-How to read it: two artifact lines on the left — the desktop app inlines `web/dist` into the binary via `go:embed` (the user downloads a single file), while the MCP server is a separate stdio binary; on the right is the docs site, where **diagrams are rendered into inline SVG at build time**, so pages carry zero runtime dependencies, work offline, and read the same on GitHub as they do on the site.
+How to read it: two artifact lines — the desktop app inlines `web/dist` into the binary via `go:embed` (the user downloads a single file), while the MCP server is a separate stdio binary; on the right is the docs site, where **diagrams are rendered into inline SVG at build time**, so pages carry zero runtime dependencies, work offline, and read the same on GitHub as they do on the site.
 
 | Artifact | Source | Description |
 |------|------|------|

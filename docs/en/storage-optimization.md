@@ -30,11 +30,19 @@ This page targets two audiences:
 
 ```mermaid
 flowchart TB
-    Q["One query<br/>stats / search / cross-repo aggregation"]
-    G1["AI reads git directly"] -. re-runs every time .-> GL["git log --shortstat<br/>per-file reads<br/>whole-repo dumping"]
-    G2["RepoNest reads materialized data"] --> MAT[("SQLite<br/>daily_stats pre-aggregated<br/>repo_meta cached<br/>FTS5 index")]
-    GL --> R1["slow · burns tokens<br/>overflows the context window<br/>may hallucinate or miss files"]
-    MAT --> R2["millisecond · deterministic SQL<br/>returns only matching slices"]
+    Q["One query<br/>stats / search / aggregation"]
+    Q --> G1["AI reads git directly"]
+    Q --> G2["RepoNest reads materialized data"]
+    G1 -.->|"re-runs every time"| GL["git log per-file reads,<br/>whole-repo dumping"]
+    GL --> R1["slow · burns tokens,<br/>may overflow the context"]
+    G2 --> MAT[("SQLite<br/>pre-aggregated · cached · FTS5")]
+    MAT --> R2["millisecond · deterministic SQL"]
+    classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+    classDef good fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    classDef bad fill:#fef2f2,stroke:#ef4444,color:#7f1d1d
+    class MAT store
+    class G2,R2 good
+    class G1,GL,R1 bad
 ```
 
 How to read it: the two paths **diverge at "one query"**. When AI reads git directly, every query re-executes `git log` / per-file scanning (left), so the cost scales linearly with the number of queries and large repos hit the context window ceiling. RepoNest materializes raw git data into SQLite **once at scan time** (right), after which queries only land on that table — the materialized layer is not a cache, it is the **single source of truth**. The table below compares dimension by dimension.

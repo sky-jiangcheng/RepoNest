@@ -15,12 +15,12 @@ order: 20
 
 ```mermaid
 flowchart TB
-    ENTRY[/"三端入口：Wails · MCP · headless HTTP"/]
-    MAIN[main.go · Wails 入口<br/>DB 初始化 / 扫描根播种 / 窗口与安全头]
-    APP[internal/app · 绑定层<br/>每方法 1-3 行委托 service]
-    SVC[internal/service · 业务核心<br/>笔记 / 搜索 / 上下文 / 交接]
+    ENTRY[/"三端入口<br/>Wails · MCP · headless HTTP"/]
+    MAIN["main.go · Wails 入口<br/>建库 · 播种扫描根<br/>窗口与安全头"]
+    APP["internal/app · 绑定层<br/>每方法 1-3 行委托"]
+    SVC["internal/service · 业务核心<br/>笔记 / 搜索 / 上下文 / 交接"]
     DB[(internal/db · SQLite)]
-    GIT[internal/core/git · Git Provider 抽象<br/>本地 CLI 实现]
+    GIT["internal/core/git<br/>Git Provider · CLI 实现"]
     ENTRY --> MAIN --> APP --> SVC
     SVC --> DB
     SVC --> GIT
@@ -37,17 +37,18 @@ flowchart TB
 ### 扫描管线（service/scan.go，唯一管线）
 
 ```mermaid
-flowchart LR
-    ROOTS[(scan_roots<br/>播种的扫描根)] --> SCAN[scanner.ScanRepositories<br/>递归发现 Git 仓库]
-    SCAN --> GROUP[grouper.GroupRepositories<br/>Monorepo / 单仓库分组]
-    GROUP --> TX[["db 事务<br/>SyncProjectTx · UpsertRepositoryTx<br/>CleanupStaleDataTx"]]
-    TX --> STATS[refreshCollectedStats<br/>365 天窗口 · all + 个人作者双行 upsert]
+flowchart TB
+    ROOTS[("scan_roots<br/>播种的扫描根")] --> SCAN["scanner.ScanRepositories<br/>递归发现 Git 仓库"]
+    SCAN --> GROUP["grouper.GroupRepositories<br/>Monorepo / 单仓库分组"]
+    GROUP --> TX[["db 事务收口<br/>Sync · Upsert · Cleanup"]]
+    TX --> STATS["refreshCollectedStats<br/>365 天双行 upsert"]
     STATS --> EVT[["事件 project.scanned"]]
-    EVT -. 驱动 .-> REFRESH
-    REFRESH[refreshRepoStatsRange<br/>service/refresh.go · 唯一循环]
+    EVT -.->|"驱动"| REFRESH["refreshRepoStatsRange<br/>service/refresh.go"]
+        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+    class ROOTS store
 ```
 
-读图：一条**单向、事务收口**的管线。发现与分组在事务外（可能很慢，不该占着写锁），三个写操作 `SyncProjectTx` / `UpsertRepositoryTx` / `CleanupStaleDataTx` 在**同一个事务**内完成——这是「重复扫描不产生脏数据」的根本原因。末尾抛 `project.scanned` 事件，触发右侧的统计刷新循环（下一节）。
+读图：一条**单向、事务收口**的管线。发现与分组在事务外（可能很慢，不该占着写锁），三个写操作 `SyncProjectTx` / `UpsertRepositoryTx` / `CleanupStaleDataTx` 在**同一个事务**内完成——这是「重复扫描不产生脏数据」的根本原因。末尾抛 `project.scanned` 事件，触发其后的统计刷新循环（下一节）。
 
 ### 统计刷新（service/refresh.go，唯一循环）
 
@@ -56,12 +57,16 @@ flowchart LR
 ### 知识库
 
 ```mermaid
-flowchart LR
-    W["写：笔记 upsert"] --> FTS[("project_notes_fts<br/>trigram 虚拟表 · bm25")]
+flowchart TB
+    W["写：笔记 upsert"] --> FTS[("project_notes_fts<br/>trigram · bm25")]
     W --> VER[("note_versions<br/>快照 · 保留 50")]
-    FTS --> R["读：reponest_notes_search / ask<br/>短查询降级 LIKE"]
-    VER --> DIFF["internal/diff<br/>LCS 行级 diff"]
+    FTS --> R["读：notes_search / ask<br/>短查询降级 LIKE"]
+    VER --> DIFF["internal/diff<br/>LCS 行级"]
     DIFF --> RESTORE["恢复任意历史版本"]
+        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+        classDef read fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    class FTS,VER store
+    class R read
 ```
 
 读图：**写一次，读两路**。笔记落库时由触发器同时维护 FTS 索引（检索侧）与版本快照（历史侧），应用层零维护代码——索引不可能与正文失配，除非触发器被破坏（这正是 `reponest_integrity` 的检查项，见[AI 集成](features/ai-integration.md#就绪度-vs-数据可信度)）。检索侧读 trigram 索引拿相关性与 snippet，历史侧读快照算 LCS diff。细节见 [ADR-0003](adr/0003-fts5-search.md)。
@@ -90,17 +95,18 @@ styles/     设计系统：tokens / reset / components / layouts / features
 ## 构建与产物
 
 ```mermaid
-flowchart LR
-    SRC["Go 源码"] --> B1["go build → reponest<br/>根包 · scripts/build.sh"]
+flowchart TB
+    SRC["Go 源码"] --> B1["go build → reponest<br/>内联 web/dist"]
     SRC --> B2["go build → reponest-mcp<br/>cmd/mcp"]
-    WEB["web/dist<br/>go:embed 内联"] --> B1
-    MD["docs/**/*.md<br/>zh + en 镜像"] --> B3["build-docs.mjs<br/>构建时 mermaid → 内联 SVG"]
-    B3 --> PAGES[("GitHub Pages")]
-    B1 --> REL[("GitHub Releases<br/>多平台 · macOS 签名公证")]
+    B1 --> REL[("GitHub Releases<br/>macOS 签名公证")]
     B2 --> REL
+    MD["docs/**/*.md<br/>zh + en 镜像"] --> B3["build-docs.mjs<br/>mermaid → SVG"]
+    B3 --> PAGES[("GitHub Pages")]
+        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+    class REL,PAGES store
 ```
 
-读图：左侧两条产物线——桌面应用把 `web/dist` 用 `go:embed` 打进二进制（用户只拿到一个文件），MCP server 是独立 stdio 二进制；右侧是文档站，**图在构建期就渲染成内联 SVG**，因此页面零运行时依赖、可离线，GitHub 原生渲染与文档站同源可读。
+读图：两条产物线——桌面应用把 `web/dist` 用 `go:embed` 打进二进制（用户只拿到一个文件），MCP server 是独立 stdio 二进制；右侧是文档站，**图在构建期就渲染成内联 SVG**，因此页面零运行时依赖、可离线，GitHub 原生渲染与文档站同源可读。
 
 | 产物 | 来源 | 说明 |
 |------|------|------|

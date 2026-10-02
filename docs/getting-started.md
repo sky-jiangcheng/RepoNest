@@ -34,12 +34,16 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scri
 五分钟上手路径如下——前两步必做，后两步只影响仪表盘统计；纯 MCP 用户（不装桌面应用）可以让 agent 直接调一次 `reponest_scan`：
 
 ```mermaid
-flowchart LR
-    A["① 配置扫描目录"] --> B["② 执行扫描<br/>发现仓库并挖掘知识"]
-    B -->|到这一步| DONE["知识库已可用<br/>写笔记 · 搜索 · 交给 AI<br/>reponest_context / handoff"]
-    B -. 仅仪表盘统计需要 .-> C["③ 收藏仓库（可选）"]
+flowchart TB
+    A["① 配置扫描目录<br/>首次启动已播种"] --> B["② 执行扫描<br/>发现仓库 · 挖掘知识"]
+    E["纯 MCP 用户<br/>agent 调 reponest_scan"] -.-> B
+    B --> DONE["✅ 知识库已可用<br/>写笔记 · 搜索 · AI 注入"]
+    B -.-> C["③ 收藏仓库（可选）"]
     C -.-> D["④ 回填 365 天历史（可选）"]
-    B -. 纯 MCP 用户 .-> E["agent 调 reponest_scan<br/>无需桌面应用"]
+    classDef done fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    classDef opt fill:#f8fafc,stroke:#94a3b8,color:#475569
+    class DONE done
+    class C,D,E opt
 ```
 
 读图：实线路径是必做的；**实线与虚线的分界就是“知识库可用”的边界**——② 走完，笔记 / 搜索 / AI 注入就全部可用（见下方提示框），而 ③ ④ 只把仪表盘统计填满，不做任何事它们也照样能用。纯 MCP 用户走另一条虚线，让 agent 自己完成 ①②。

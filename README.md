@@ -19,14 +19,17 @@ English | [简体中文](README.zh-CN.md)
 The whole product is one loop — three tool calls at session boundaries, and every agent that comes after you reuses what the last one left behind:
 
 ```mermaid
-flowchart LR
-    S[First install<br/>reponest_scan<br/>discover local repos in one call<br/>pure MCP works — no desktop app] --> C[Session start<br/>reponest_context<br/>full context in one call<br/>tech stack · README · todos · notes · last handoff]
-    C --> W((…work…))
-    W --> H[Session end<br/>reponest_handoff<br/>structured record: what · why · gotchas · next]
-    H -. any agent's next session starts exactly here .-> C
-    style S fill:#f0f7ff,stroke:#4a90d9
-    style C fill:#f0fff4,stroke:#4caf50
-    style H fill:#fdf2f8,stroke:#d946a0
+flowchart TB
+    SCAN["① reponest_scan<br/>first run · discover repos"] --> CTX["② reponest_context<br/>session start · full context"]
+    CTX --> WORK(["…work…"])
+    WORK --> HAND["③ reponest_handoff<br/>session end · handoff note"]
+    HAND -.->|"next session starts here"| CTX
+    classDef entry fill:#eff6ff,stroke:#3b82f6,color:#1e3a5f
+    classDef ctx fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    classDef rec fill:#fdf2f8,stroke:#ec4899,color:#831843
+    class SCAN entry
+    class CTX ctx
+    class HAND rec
 ```
 
 The dashed edge is the point: handoffs are stored in local SQLite, not in any agent's private memory, so the loop closes across agents — Claude Code writes the handoff, Cursor reads it. The rest of this README is the same loop seen from the inside: how discovery and grouping work, where your data lives, and how the pieces are layered.

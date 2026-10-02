@@ -34,12 +34,16 @@ Launching opens the desktop window directly (a Wails app — no browser needed).
 The five-minute path — the first two steps are required, the last two only affect dashboard statistics; MCP-only users (no desktop app) can simply have their agent call `reponest_scan` once:
 
 ```mermaid
-flowchart LR
-    A["① Configure scan dirs"] --> B["② Run scan<br/>discover repos & mine knowledge"]
-    B -->|at this point| DONE["Knowledge base is usable<br/>write notes · search · hand to AI<br/>reponest_context / handoff"]
-    B -. dashboard statistics only .-> C["③ Star repos (optional)"]
-    C -.-> D["④ Backfill 365-day history (optional)"]
-    B -. MCP-only users .-> E["agent calls reponest_scan<br/>no desktop app needed"]
+flowchart TB
+    A["① Configure scan roots<br/>seeded on first launch"] --> B["② Run scan<br/>discover repos · mine knowledge"]
+    E["MCP-only users<br/>agent calls reponest_scan"] -.-> B
+    B --> DONE["✅ Knowledge base ready<br/>notes · search · AI"]
+    B -.-> C["③ Star repos (optional)"]
+    C -.-> D["④ Backfill history (optional)"]
+    classDef done fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    classDef opt fill:#f8fafc,stroke:#94a3b8,color:#475569
+    class DONE done
+    class C,D,E opt
 ```
 
 How to read it: the solid path is required; **the boundary between solid and dashed is exactly the "knowledge base is usable" line** — once ② is done, notes / search / AI injection all work (see the callout below), while ③ and ④ only fill in the dashboard and change nothing if you never do them. MCP-only users take the other dashed edge and let the agent complete ① and ② itself.

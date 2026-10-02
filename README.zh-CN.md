@@ -17,14 +17,17 @@
 - [许可](#许可)
 
 ```mermaid
-flowchart LR
-    S[首次安装<br/>reponest_scan<br/>一次调用发现本地仓库<br/>纯 MCP 可用，无需桌面应用] --> C[会话开始<br/>reponest_context<br/>一次调用加载全部上下文<br/>技术栈 · README · 待办 · 笔记 · 上次交接]
-    C --> W((…干活…))
-    W --> H[会话结束<br/>reponest_handoff<br/>结构化记录：做了什么 · 为什么 · 踩坑 · 下一步]
-    H -. 任何 agent 的下一次会话，都从上一次结束的地方开始 .-> C
-    style S fill:#f0f7ff,stroke:#4a90d9
-    style C fill:#f0fff4,stroke:#4caf50
-    style H fill:#fdf2f8,stroke:#d946a0
+flowchart TB
+    SCAN["① reponest_scan<br/>首次安装<br/>发现本地仓库"] --> CTX["② reponest_context<br/>会话开始<br/>注入全上下文"]
+    CTX --> WORK(["…干活…"])
+    WORK --> HAND["③ reponest_handoff<br/>会话结束<br/>结构化交接落库"]
+    HAND -.->|"下一个会话从这里继续"| CTX
+    classDef entry fill:#eff6ff,stroke:#3b82f6,color:#1e3a5f
+    classDef ctx fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    classDef rec fill:#fdf2f8,stroke:#ec4899,color:#831843
+    class SCAN entry
+    class CTX ctx
+    class HAND rec
 ```
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev)

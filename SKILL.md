@@ -7,10 +7,14 @@ RepoNest is a local-first, cross-agent project memory layer. It discovers local 
 The tools form a session loop. Use it in every working session on a RepoNest-tracked project:
 
 ```mermaid
-flowchart LR
-    A[Session start<br/>reponest_context] --> W[Work<br/>notes_search / ask / read / create]
-    W --> E[Session end<br/>reponest_handoff]
-    E -.next session reads it first.-> A
+flowchart TB
+    A["reponest_context<br/>session start"] --> W(["…work…"])
+    W --> B["reponest_handoff<br/>session end"]
+    B -.->|"next session reads it first"| A
+    classDef ctx fill:#f0fdf4,stroke:#22c55e,color:#14532d
+    classDef rec fill:#fdf2f8,stroke:#ec4899,color:#831843
+    class A ctx
+    class B rec
 ```
 
 0. **First run**: on a fresh install call `reponest_scan` once — it seeds the default scan roots and scans them synchronously, so the knowledge base is populated without ever opening the desktop app. Call it again any time `reponest_context` reports no projects. (Humans: `node scripts/reponest-init/index.mjs --with-hook` registers the MCP server and the SessionEnd handoff hook in one command — see ADR-0009.)

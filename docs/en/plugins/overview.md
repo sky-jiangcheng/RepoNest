@@ -10,14 +10,16 @@ order: 8
 RepoNest supports idempotently importing documents into the knowledge base through Go scripts interpreted by yaegi.
 
 ```mermaid
-flowchart LR
-    SRC["Knowledge sources<br/>built-in claude memory<br/>or plugin-registered importers"] --> RUN["Interpreted by yaegi<br/>or the in-service claude importer"]
+flowchart TB
+    SRC["Knowledge sources<br/>claude memory / plugin importers"] --> RUN["yaegi interpretation<br/>or the built-in claude importer"]
     RUN --> KEY["Idempotency key<br/>(project_id, source, title)"]
     KEY --> HIT{"Existing note found?"}
-    HIT -->|yes| UPD["Update the existing note<br/>content + metadata"]
-    HIT -->|no| INS["Insert a new note<br/>tagged with source"]
-    UPD --> DB[("project_notes<br/>+ FTS5 index")]
+    HIT -->|"yes"| UPD["Update the existing note<br/>content + metadata"]
+    HIT -->|"no"| INS["Insert a new note<br/>tagged with source"]
+    UPD --> DB[("project_notes + FTS5")]
     INS --> DB
+        classDef store fill:#fffbeb,stroke:#f59e0b,color:#78350f
+    class DB store
 ```
 
 How to read it: the two entries (built-in `claude` memory, plugin scripts) **converge on one upsert path**, and idempotency is guaranteed by the triple `(project_id, source, title)`. Re-importing therefore **updates** rather than creating duplicates — running the import again never makes the knowledge base dirtier. Writes go through a trigger that syncs the FTS5 index, so imported documents are immediately searchable via `reponest_notes_search`.
