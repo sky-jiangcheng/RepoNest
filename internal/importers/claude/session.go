@@ -174,6 +174,39 @@ func LatestSessionFile(projectDir string) (string, error) {
 	return cands[0].path, nil
 }
 
+// LatestSessionForRootPath finds the newest Claude Code transcript for a
+// project root path and parses it. Claude encodes a project dir as the path
+// with "/" replaced by "-" (e.g. /Users/me/Proj -> -Users-me-Proj) under
+// ~/.claude/projects. ok=false (no error) when the project has no session yet.
+func LatestSessionForRootPath(rootPath string) (Session, bool, error) {
+	if strings.TrimSpace(rootPath) == "" {
+		return Session{}, false, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return Session{}, false, nil
+	}
+	slug := strings.ReplaceAll(rootPath, "/", "-")
+	dir := filepath.Join(home, ".claude", "projects", slug)
+	latest, err := LatestSessionFile(dir)
+	if err != nil || latest == "" {
+		return Session{}, false, nil // no session dir/file: nothing to capture
+	}
+	f, err := os.Open(latest)
+	if err != nil {
+		return Session{}, false, err
+	}
+	defer f.Close()
+	s, err := ParseSession(f)
+	if err != nil {
+		return Session{}, false, err
+	}
+	if !s.HasContent() {
+		return Session{}, false, nil
+	}
+	return s, true, nil
+}
+
 func firstOf(vals ...string) string {
 	for _, v := range vals {
 		if v != "" {

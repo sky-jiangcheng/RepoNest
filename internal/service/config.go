@@ -19,6 +19,10 @@ var allowedConfigKeys = map[string]bool{
 	"scan_depth":          true,
 	"git_author":          true,
 	"auto_import":         true,
+	// M1 Claude session auto-capture: "1" enables on-demand capture, anything
+	// else (incl. unset) keeps it OFF. Reading session transcripts is
+	// privacy-sensitive, so it is never implicitly enabled (ADR-0010).
+	"claude_session_capture": true,
 	// Target project for the agent-GLOBAL memory importers (openclaw / hermes).
 	// Value is a project name or numeric id; unset -> those sources skip. See
 	// memsrc.TargetProject and ADR-0011.

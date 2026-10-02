@@ -32,7 +32,7 @@ import (
 //   Exports: GenerateLLMsTxt, ExportNoteAsMarkdown
 //   Plugins/knowledge sources: GetPluginStatuses, GetKnowledgeSources,
 //                              TriggerKnowledgeImport, TriggerAllKnowledgeImports,
-//                              ReloadPlugins, ImportClaudeMemory
+//                              ReloadPlugins, ImportClaudeMemory, CaptureClaudeHandoff
 //
 // Conversely these MCP tools have no binding (agent-only flows, served straight
 // off the service layer): reponest_ask, reponest_handoff, reponest_agent_score,
@@ -245,4 +245,11 @@ func (a *App) ReloadPlugins() []pluginruntime.PluginStatus { return a.svc.Reload
 // ImportClaudeMemory imports notes from Claude's memory directories.
 func (a *App) ImportClaudeMemory() (*service.ImportResult, error) {
 	return a.svc.ImportClaudeMemory()
+}
+
+// CaptureClaudeHandoff runs an on-demand M1 session capture for one project
+// (gated by the `claude_session_capture` config, default off). Desktop-only:
+// agents push handoffs via reponest_handoff instead.
+func (a *App) CaptureClaudeHandoff(projectID int64) (*service.HandoffResult, error) {
+	return a.svc.CaptureClaudeHandoff(projectID)
 }

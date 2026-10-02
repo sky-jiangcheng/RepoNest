@@ -118,3 +118,35 @@ func TestLatestSessionFileEmpty(t *testing.T) {
 		t.Errorf("expected empty string, got %q", got)
 	}
 }
+
+func TestLatestSessionForRootPath(t *testing.T) {
+	home := fakeHome(t)
+	rootPath := "/Users/u/Workspace/Proj"
+	slug := strings.ReplaceAll(rootPath, "/", "-")
+	dir := filepath.Join(home, ".claude", "projects", slug)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sess1.jsonl"), []byte(sessionFixture), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	sess, ok, err := LatestSessionForRootPath(rootPath)
+	if err != nil {
+		t.Fatalf("capture: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected ok=true for a capturable session")
+	}
+	if sess.LastAssistantText != "Parser refactored; tests green." {
+		t.Errorf("lastAssistantText = %q", sess.LastAssistantText)
+	}
+	// Unknown project (no dir) -> ok=false, no error.
+	if _, ok, err := LatestSessionForRootPath("/nope/nothing"); err != nil || ok {
+		t.Errorf("expected ok=false,err=nil for missing project, got ok=%v err=%v", ok, err)
+	}
+	// Empty root path -> ok=false.
+	if _, ok, _ := LatestSessionForRootPath(""); ok {
+		t.Error("empty root path should be ok=false")
+	}
+}

@@ -231,7 +231,8 @@
 ### M1: 会话自动捕捉（零人工参与）→ [ADR-0010](docs/adr/0010-session-auto-capture.md)
 
 - [x] **解析核心已落地**（`internal/importers/claude/session.go`）：`ParseSession` 流式解析 `~/.claude/projects/<slug>/<id>.jsonl`，宽松跳过未知/超长行、忽略 sidechain，抽取稳定信封字段（sessionId/cwd/gitBranch/timestamp）+ 最后一条 assistant 文本 + 首次 user 指令 + 去重工具名；实测对齐真机 v2.1.278（`session_test.go`）
-- [ ] 端到端接线（**决策已定**：默认关；C端按需 / B端可选 SessionEnd hook；风险项写进设置+文档由 B端自担，ADR-0010 决策落地节）：`Session`→`service.HandoffInput` 映射 + `CreateHandoffNote` + 按需捕获方法 + `claude_session_capture` 配置默认关 + hook 接入；解析器目前不自动运行、不读盘
+- [x] **按需捕获已接线**（决策：默认关 + C端按需 / B端可选 hook）：`claude.LatestSessionForRootPath` + `Service.CaptureClaudeHandoff(projectID)` 走共享 `CreateHandoffNote`，受 `claude_session_capture`（默认关，仅 =="1" 才读盘）门控；`Session→HandoffInput`（最后 assistant 文本→Summary、工具+git 分支→Changes、打 `auto-captured` 标签）；desktop binding `App.CaptureClaudeHandoff`；单测覆盖。
+- [ ] 余：B端 SessionEnd-hook 自动化触发（复用 ADR-0009）+ 前端按钮/i18n（wailsjs 构建期生成，未手改）
 - [x] 体积与隐私评估：ADR-0010 已定「默认关 + 只读路径白名单 + 尾部 N 有界提取 + 宽松失败 + golden-file」，边界与既有 claude *memory* importer（读 `memory/*.md`，非 jsonl 逐字稿）划清
 
 ### M2: 多 agent 记忆源导入 → [ADR-0011](docs/adr/0011-multi-agent-memory-importers.md)
