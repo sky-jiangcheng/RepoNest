@@ -97,7 +97,15 @@ func (r *Runtime) Load(dir string) {
 	for _, p := range pending {
 		r.loadPlugin(p)
 	}
-	log.Printf("plugin runtime: loaded %d plugin(s)", len(r.plugins))
+	// Loaded plugins run interpreted Go inside this process with full host
+	// authority (direct database access via plugin.Context). The loaded paths
+	// are logged so it is always traceable what code was admitted, from where.
+	log.Printf("plugin runtime: loaded %d plugin(s) from %s — plugins run with full host privileges (DB access); only install plugins you trust", len(r.plugins), dir)
+	for _, p := range r.plugins {
+		if p.Loaded {
+			log.Printf("plugin runtime:   + %s (%s)", p.Name, p.Path)
+		}
+	}
 }
 
 // loadPlugin loads a single plugin directory. Any panic during eval or init

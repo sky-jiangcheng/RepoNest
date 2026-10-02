@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"os"
 
 	_ "modernc.org/sqlite"
 )
@@ -41,6 +42,18 @@ func InitDB(dbPath string) (*sql.DB, error) {
 	if err := createTables(db); err != nil {
 		db.Close() //nolint:errcheck
 		return nil, fmt.Errorf("failed to create tables: %w", err)
+	}
+
+	// The database (and its WAL sidecars) holds the user's whole knowledge
+	// base. The data directory is created 0750, but the files themselves get
+	// the process umask default — 0644 on macOS — which other local users can
+	// read. Pin down what exists at init (createTables has already written, so
+	// the -wal/-shm sidecars are here). platform.SetPrivateUmask covers files
+	// created in later sessions; this also protects embedders that bypass it.
+	if dbPath != ":memory:" {
+		for _, p := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
+			_ = os.Chmod(p, 0600)
+		}
 	}
 
 	if err := upgradeSchema(db); err != nil {

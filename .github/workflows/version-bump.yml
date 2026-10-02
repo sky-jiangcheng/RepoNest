@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # 用可推送的 token: 优先 REPO_PUSH_TOKEN (PAT, 能触发 release.yml),
           # 回退到 GITHUB_TOKEN。fetch-depth=0 保证 git tag 能正确指向历史。
@@ -47,17 +47,23 @@ jobs:
 
       - name: Compute target version
         id: ver
+        # workflow inputs reach the shell via env, never inline expansion —
+        # an input containing backticks/$() would otherwise execute here.
+        env:
+          IN_VERSION: ${{ inputs.version }}
+          IN_BUMP_TYPE: ${{ inputs.bump_type }}
         run: |
           set -euo pipefail
           CUR=$(grep -oE '"productVersion"[[:space:]]*:[[:space:]]*"[^"]+"' wails.json | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
           echo "current=$CUR"
-          IN="${{ inputs.version }}"
+          IN="$IN_VERSION"
           if [ -z "$IN" ]; then
             IFS='.' read -r MAJOR MINOR PATCH <<<"$CUR"
-            case "${{ inputs.bump_type }}" in
+            case "$IN_BUMP_TYPE" in
               major) NEW="$((MAJOR+1)).0.0" ;;
               minor) NEW="$MAJOR.$((MINOR+1)).0" ;;
               patch) NEW="$MAJOR.$MINOR.$((PATCH+1))" ;;
+              *) echo "::error::unknown bump_type '$IN_BUMP_TYPE'"; exit 1 ;;
             esac
           else
             NEW="${IN#v}"

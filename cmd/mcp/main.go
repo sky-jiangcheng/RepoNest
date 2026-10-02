@@ -21,6 +21,8 @@ import (
 )
 
 func main() {
+	platform.SetPrivateUmask() // owner-only files: DB sidecars, logs, exports
+
 	d, err := db.InitDB(platform.GetDbPath())
 	if err != nil {
 		log.Fatalf("database error: %v", err)

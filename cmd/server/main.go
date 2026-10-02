@@ -31,6 +31,8 @@ import (
 const headerTimeout = 10 * time.Second
 
 func main() {
+	platform.SetPrivateUmask() // owner-only files: DB sidecars, logs, exports
+
 	port := flag.String("port", envOr("REPONEST_HTTP_PORT", "18765"), "HTTP port for the headless API (loopback only)")
 	flag.Parse()
 

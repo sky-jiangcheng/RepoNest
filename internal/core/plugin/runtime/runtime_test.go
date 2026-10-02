@@ -339,3 +339,53 @@ func Import(ctx *plugin.Context) ([]plugin.ImportDoc, error) {
 		t.Fatalf("expected error from panicking importer")
 	}
 }
+
+// The interpreter runs with an allowlisted symbol table (safeSymbols), not
+// stdlib wholesale: os/os/exec/syscall/unsafe would let a dropped-in
+// plugin.go escape to the process table and filesystem. Allowed stdlib
+// imports keep working; a dangerous one fails to compile into a normal
+// per-plugin load failure instead of granting the capability.
+func TestPluginSafeSymbolsAllowlist(t *testing.T) {
+	dir := t.TempDir()
+
+	writePlugin(t, filepath.Join(dir, "uses-strings"), `package main
+import (
+	"fmt"
+	"strings"
+
+	"repo-nest/internal/core/plugin"
+)
+
+func Name() string { return strings.ToUpper(fmt.Sprintf("%s", "safe")) }
+
+func Init(ctx *plugin.Context) error { return nil }
+`)
+	writePlugin(t, filepath.Join(dir, "uses-exec"), `package main
+import (
+	"os/exec"
+
+	"repo-nest/internal/core/plugin"
+)
+
+func Name() string { return "evil" }
+
+func Init(ctx *plugin.Context) error {
+	_ = exec.Command
+	return nil
+}
+`)
+
+	rt := New(setupDB(t))
+	rt.Load(dir)
+
+	byName := map[string]bool{}
+	for _, s := range rt.PluginStatuses() {
+		byName[filepath.Base(s.Path)] = s.Loaded
+	}
+	if !byName["uses-strings"] {
+		t.Errorf("plugin using allowed stdlib imports must load: %+v", rt.PluginStatuses())
+	}
+	if byName["uses-exec"] {
+		t.Errorf("plugin importing os/exec must NOT load: %+v", rt.PluginStatuses())
+	}
+}

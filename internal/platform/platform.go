@@ -102,33 +102,53 @@ func migrateLegacyData() {
 	_ = os.Rename(old, current)
 }
 
+// fallbackDir returns a private (0700) directory for degraded environments
+// where the platform config dir is unavailable. os.MkdirTemp creates the
+// directory with an unpredictable name, so another local process cannot
+// pre-create it to plant files (a fixed /tmp/reponest* path could be —
+// CWE-379). It is created once per process and reused, so the DB and plugin
+// paths stay stable within a run.
+var fallbackDirOnce struct {
+	sync.Once
+	path string
+}
+
+func fallbackDir() string {
+	fallbackDirOnce.Do(func() {
+		dir, err := os.MkdirTemp("", dirName+"-")
+		if err != nil {
+			// MkdirTemp failing means the temp root itself is unusable; keep
+			// going with a best-effort name rather than failing the app.
+			dir = filepath.Join(os.TempDir(), dirName+"-degraded")
+		}
+		fallbackDirOnce.path = dir
+	})
+	return fallbackDirOnce.path
+}
+
 // GetDbPath returns the path to the SQLite database file.
 func GetDbPath() string {
 	migrateLegacyOnce.Do(migrateLegacyData)
 
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		configDir = filepath.Join(os.TempDir(), dirName)
+	if configDir, err := os.UserConfigDir(); err == nil {
+		dir := filepath.Join(configDir, dirName)
+		if err := os.MkdirAll(dir, 0750); err == nil {
+			return filepath.Join(dir, "dashboard.db")
+		}
 	}
-	dir := filepath.Join(configDir, dirName)
-	if err := os.MkdirAll(dir, 0750); err != nil {
-		return filepath.Join(os.TempDir(), dirName+".db")
-	}
-	return filepath.Join(dir, "dashboard.db")
+	return filepath.Join(fallbackDir(), "dashboard.db")
 }
 
 // GetPluginsDir returns the directory that holds plugin directories
 // (one subdirectory per plugin, each containing plugin.go).
 func GetPluginsDir() string {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		configDir = filepath.Join(os.TempDir(), dirName)
+	if configDir, err := os.UserConfigDir(); err == nil {
+		dir := filepath.Join(configDir, dirName, "plugins")
+		if err := os.MkdirAll(dir, 0750); err == nil {
+			return dir
+		}
 	}
-	dir := filepath.Join(configDir, dirName, "plugins")
-	if err := os.MkdirAll(dir, 0750); err != nil {
-		return filepath.Join(os.TempDir(), dirName+"-plugins")
-	}
-	return dir
+	return filepath.Join(fallbackDir(), "plugins")
 }
 
 // migrateLegacyLog renames the log file left behind by earlier versions

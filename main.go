@@ -22,6 +22,7 @@ import (
 var assets embed.FS
 
 func main() {
+	platform.SetPrivateUmask() // owner-only files: DB sidecars, logs, exports
 	log.Printf("RepoNest %s starting...", version.Version)
 
 	// Open database
@@ -57,13 +58,21 @@ func main() {
 			Handler: spaFallback{},
 			Middleware: func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					// Security headers on every response
-					// Note: script-src keeps 'unsafe-inline' (legacy allowance;
-					// tightening the CSP for the bundled SPA is a separate change).
-					// unsafe-eval is intentionally omitted; if dynamic eval is needed,
-					// refactor to use explicit Function() calls with a nonce instead.
+					// Security headers on every response.
+					// script-src has no 'unsafe-inline': the built index.html
+					// references a single external module bundle, and Wails
+					// injects its runtime as a native user script (WKUserScript
+					// on macOS, AddScriptToExecuteOnDocumentCreated on
+					// Windows), which page CSP does not govern. worker-src
+					// blob: covers Mermaid's ELK layout workers. connect-src
+					// intentionally omits https: — the app makes no remote API
+					// calls, so an injected script gets no exfiltration channel
+					// (remote note images remain allowed via img-src https:).
+					// unsafe-eval is intentionally omitted; if dynamic eval is
+					// needed, refactor to use explicit Function() calls with a
+					// nonce instead.
 					w.Header().Set("Content-Security-Policy",
-						"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' ws: wss: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+						"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' ws: wss:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
 					w.Header().Set("X-Content-Type-Options", "nosniff")
 					w.Header().Set("X-Frame-Options", "DENY")
 					w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
