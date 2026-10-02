@@ -66,6 +66,7 @@
 | P34 | `project_overview.go` 评估 → 不拆，`mineAndCache` recover 已生效 | S14 |
 | P36 | `knowledge.go` 进一步拆分评估 → 内聚度高暂不拆 | S14 |
 | P29 | `parseTimestamp` 多格式鲁棒解析（unix/RFC3339/ISO8601/git %ai/%ad 默认）+ 测试 | S14 |
+| P35·b | KnowledgeCard → `KnowledgeCard.module.css`（全局仅留共享 .pin-btn） | S14 |
 
 </details>
 
@@ -158,8 +159,9 @@
 ### P35: 前端 CSS 架构迁移（4,055 行全局 CSS）
 
 - [x] NoteSection CSS Modules 试点完成（notes.css 242→192 行，NoteSection.module.css 93 行新建）
+- [x] 第二组件 KnowledgeCard 迁移完成：卡片样式从 `knowledge.css` 迁入 `KnowledgeCard.module.css`（`kind-*` 动态类改为 `badgeByKind` 查表映射），全局仅保留共享的 `.pin-btn`（与 NoteSection 复用）与 `.markdown-body`/`.btn`；`knowledge.css` 随之收缩，`npm run build` + tsc + eslint 全绿
 - [ ] 保留全局 CSS 仅用于 reset、design tokens、跨组件基础样式
-- [ ] 逐组件迁移，每轮 sprint 处理 1-2 个组件（下一步：KnowledgeCard）
+- [ ] 逐组件迁移，每轮 sprint 处理 1-2 个组件（下一步：ProjectCard）
 
 ### P36: `knowledge.go` 进一步拆分评估（536 行）
 

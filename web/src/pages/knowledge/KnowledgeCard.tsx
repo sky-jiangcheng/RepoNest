@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { NoteWithProject } from '../../api/client'
 import { renderMarkdown, stripMarkdown, parseTags } from '../../utils/markdown'
 import Icon from '../../components/Icon'
+import s from './KnowledgeCard.module.css'
 
 interface Props {
   note: NoteWithProject
@@ -10,6 +11,14 @@ interface Props {
   onPin: (id: number, pinned: boolean) => void
   onExport: (id: number) => void
   onSelectTag: (tag: string) => void
+}
+
+// note.kind → scoped badge modifier. Unknown kinds fall back to the base
+// .badge style (mirrors the old kind-knowledge/idea/log variants).
+const badgeByKind: Record<string, string> = {
+  knowledge: s.badgeKnowledge,
+  idea: s.badgeIdea,
+  log: s.badgeLog,
 }
 
 /** One card in the knowledge-hub note grid. */
@@ -25,9 +34,9 @@ export default function KnowledgeCard({ note, exporting, onPin, onExport, onSele
         : t('project.noteWord')
 
   return (
-    <div className={`knowledge-card ${note.pinned ? 'pinned' : ''}`}>
-      <div className="knowledge-card-head">
-        <span className={`kind-badge kind-${note.kind}`}>{kindLabel}</span>
+    <div className={`${s.card} ${note.pinned ? s.pinned : ''}`}>
+      <div className={s.head}>
+        <span className={`${s.badge} ${badgeByKind[note.kind] ?? ''}`}>{kindLabel}</span>
         <button
           className={`pin-btn ${note.pinned ? 'pinned' : ''}`}
           onClick={() => onPin(note.id, note.pinned)}
@@ -36,17 +45,17 @@ export default function KnowledgeCard({ note, exporting, onPin, onExport, onSele
           <Icon name="pin" size={15} />
         </button>
       </div>
-      <Link to={`/project/${note.project_id}`} className="knowledge-card-body">
-        <div className="knowledge-card-title">{note.title || stripMarkdown(note.content, 40)}</div>
-        <div className="knowledge-card-snippet markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(stripMarkdown(note.content, 120)) }} />
-        <div className="knowledge-card-foot">
-          <span className="knowledge-project-name">{note.project_name}</span>
-          <span className="knowledge-time">{note.updated_at.slice(0, 10)}</span>
+      <Link to={`/project/${note.project_id}`} className={s.body}>
+        <div className={s.title}>{note.title || stripMarkdown(note.content, 40)}</div>
+        <div className={`${s.snippet} markdown-body`} dangerouslySetInnerHTML={{ __html: renderMarkdown(stripMarkdown(note.content, 120)) }} />
+        <div className={s.foot}>
+          <span className={s.projectName}>{note.project_name}</span>
+          <span className={s.time}>{note.updated_at.slice(0, 10)}</span>
         </div>
       </Link>
       {tags.length > 0 && (
-        <div className="knowledge-card-tags">
-          {tags.map(t => <span key={t} className="knowledge-tag" onClick={() => onSelectTag(t)}>#{t}</span>)}
+        <div className={s.tags}>
+          {tags.map(tag => <span key={tag} className={s.tag} onClick={() => onSelectTag(tag)}>#{tag}</span>)}
         </div>
       )}
       <button

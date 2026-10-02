@@ -15,6 +15,7 @@
 
 - **品牌重做**：`build/icon.svg`、`docs/favicon.*`、`web/public/favicon.*`、`ide/vscode/media/*` 依据新品牌标记重生成；配套调整图标按钮 / 空状态 / callout 的 CSS 与移除 UI 文案中的 emoji
 - **评估类待办收口（Sprint 14）**：P31/P33/P34/P36 逐条验证并落结论（均为「保持现状」——`Domain/types.go` 已收拢、`TrendChart` 实为 chart.js 封装而非纯 SVG、`project_overview.go` 内聚合理且后台 `mineAndCache` 的 `recover()` 已生效、`knowledge.go` 各探测函数仅以 `repoPath` 入参无共享状态）；P32 完成 Wails 绑定层审计（46 个方法无死绑定/无重复，`bindings.go` 顶部落「绑定 ↔ MCP 工具」审计块）
+- **KnowledgeCard 迁入 CSS Modules（P35 第二步）**：卡片样式从全局 `knowledge.css` 迁到新建的 `KnowledgeCard.module.css`（`kind-knowledge/idea/log` 动态类改为 `badgeByKind` 查表映射），全局仅保留与 NoteSection 复用的 `.pin-btn` 及 `.markdown-body`/`.btn`，继续把全局 CSS 收敛到 reset/tokens/跨组件基础样式
 
 ### 修复
 
