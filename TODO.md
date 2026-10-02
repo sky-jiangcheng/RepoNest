@@ -241,7 +241,8 @@
 
 ### M3: 语义检索 → [ADR-0012](docs/adr/0012-semantic-search.md)
 
-- [x] 评估完成：`modernc.org/sqlite/vec` 使向量存储/检索在**零 CGO** 下已可行（不改驱动）；混合检索 = FTS5 + vec 经 RRF 融合、默认关（详见 ADR-0012）
+- [x] 评估 + **实测验证**：`CGO_ENABLED=0` 下 `modernc.org/sqlite/vec`（bundled sqlite-vec v0.1.9）跑通 vec0 建表 + KNN + `vec_distance_l2`（回归测试 `internal/vecprobe`，副作用用无生产码的 test-only 包隔离）；混合检索中间件 `internal/search/hybrid`（`Embedder` 接口 + `FuseRRF` k=60 + 单测）已落地，尚未接入生产
+- [ ] 端到端接线（`db/search.go` 混合路径、`note_embeddings` vec0 表迁移、`semantic_search` 配置默认关、A/B 评测 harness）—— 阻塞于下方 embedding 决策
 - [ ] 本地 embedding 生成路径（远程 API / 纯 Go 小模型 / 仅增强 FTS 三选一）待定 —— M3 成败的唯一硬门，实现前须先做「纯 Go 小模型推理」可行性 spike + A/B 评测门
 
 ### M4: Agent 集成即插即用

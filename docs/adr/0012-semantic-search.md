@@ -1,6 +1,6 @@
 # ADR-0012: 语义检索评估——向量召回补 FTS5 字面盲区，守住零 CGO（M3）
 
-- 状态：Proposed（评估结论：向量侧已可零 CGO 落地，但本地 embedding 生成是唯一硬门；未实现）
+- 状态：Proposed（评估结论：向量侧已可零 CGO 落地——**已实测验证**；hybrid RRF 核心已落地；但本地 embedding 生成是唯一硬门，端到端未接线）
 - 日期：2026-10-02
 - 关联：[ADR-0003](0003-fts5-search.md)（FTS5 trigram 全文检索）、[ADR-0006](0006-scope-freeze.md)、[ADR-0007](0007-session-memory-protocol.md)、TODO 会话记忆路线 M3
 
@@ -12,7 +12,9 @@
 
 ## 决策 / 评估结论
 
-1. **向量存储与检索：零 CGO 这条路现在已成立（2026-09 更新的事实）**。`modernc.org/sqlite` 现已提供 **`modernc.org/sqlite/vec`**——纯 Go 移植、sqlite-vec 兼容的向量虚拟表/索引（KNN、`vec_distance_*`）。即「ANN 索引 + 相似度查询」这一半**不需要**换驱动、不需要 CGO。结论：向量侧技术可行性从「存疑」上调为「可行」，且与现有 FTS5 同库共存（一张 `vec0` 虚拟表 + 外键回连 `project_notes.id`）。
+1. **向量存储与检索：零 CGO 这条路现在已成立（2026-09 更新的事实，且本仓已实测验证）**。`modernc.org/sqlite` 现已提供 **`modernc.org/sqlite/vec`**——纯 Go 移植、sqlite-vec 兼容的向量虚拟表/索引（KNN、`vec_distance_*`）。即「ANN 索引 + 相似度查询」这一半**不需要**换驱动、不需要 CGO。结论：向量侧技术可行性从「存疑」上调为「可行」，且与现有 FTS5 同库共存（一张 `vec0` 虚拟表 + 外键回连 `project_notes.id`）。
+   - **实测（`internal/vecprobe`，`CGO_ENABLED=0 go test`）**：bundled sqlite-vec = **v0.1.9**，`vec0` 建表 + `MATCH … AND k=?` KNN + `vec_distance_l2` 全部在纯 Go 驱动下跑通（3-4-5 距离 = 5.0，KNN 命中正确最近邻）。注意其副作用：导入该包会使 `sqlite3_auto_extension` 初始化 SQLite，从而**禁用 `RegisterPageCache`**（本仓未用页面缓存自定义，无冲突）；vecprobe 用「只有 _test.go、不被 app 引用」的包隔离这一副作用。
+   - **已落地中间件（`internal/search/hybrid`）**：`Embedder` 接口（把「向量怎么来」与「怎么融合」解耦，embedding 路线未定不影响此层）+ `FuseRRF`（Reciprocal Rank Fusion，k=60，确定性 tie-break，无外部依赖）+ 单测。**尚未**接进 `db/search.go` / 建 `vec0` 生产表 / 加配置开关——那些要等下面决策 2 定了 embedding 路线、且过 A/B 门。
 2. **真正的硬门是本地 embedding 生成，且它才是默认关的理由**。要把笔记/query 变成向量，需要一个推理运行时；而主流本地方案（ONNX Runtime、llama.cpp、sentence-transformers 后端）普遍要 CGO 或附带大体积模型——这与「零 CGO + 桌面轻分发」正面冲突。M3 是否值得做，**几乎完全取决于能否找到零 CGO 的 embedding 路径**，需在下列选项中拍板：
    - A：**可选远程 embedding API**（零 CGO、零模型捆绑，但违背「纯本地」叙事且引入网络依赖/隐私面）；
    - B：**纯 Go 小模型推理**（若有满足质量阈的小 embedding 模型可在纯 Go 下跑；需先做技术验证，未知数最大）；
