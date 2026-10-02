@@ -249,8 +249,8 @@
 
 - [x] 评估 + **实测验证**：`CGO_ENABLED=0` 下 `modernc.org/sqlite/vec`（bundled sqlite-vec v0.1.9）跑通 vec0 建表 + KNN + `vec_distance_l2`（回归测试 `internal/vecprobe`，副作用用无生产码的 test-only 包隔离）；混合检索中间件 `internal/search/hybrid`（`Embedder` 接口 + `FuseRRF` k=60 + 单测）已落地，尚未接入生产
 - [x] **决策已定 + C 第一版已落地、默认生效**（`internal/db/search.go`）：放弃 B；默认走 C＝严格 FTS5 AND **命中为零**时做**停用词感知的 OR 查询松弛**（零外部词库/零 CGO，纯 FTS 内不新增 LIKE，坏索引语义不破、AND 有结果不误触发）；单测齐。A（远程 embedding）留作 B端可选、默认关
-- [x] **A 选型定 + 基座落地（嵌入器 + 向量存储 + 配置/密钥安全）**：OpenAI 兼容 `/v1/embeddings`（云/本地 Ollama 皆可、零 CGO）；`hybrid.RemoteEmbedder`（httptest）；`db/vecindex.go` vec0 存储（`EnsureVectorIndex`/`Put`/`KnnNoteIDs`/…，dim 自管 meta、不依赖 vec 内部 schema）；`semantic_search`/`embedding_*` 配置键，**`embedding_api_key` 在 GetConfig 掩码**（不回传前端）。全部**未接搜索热路径**、默认关
-- [ ] A 正式接线（需先过 A/B 门 + 显式开启）：全库重算索引（notes→Embed→PutNoteEmbedding 触发式重建）、`db/search.go` FTS+`KnnNoteIDs` 经 `FuseRRF` 融合接入、embedding 配置的前端 UI、A/B 评测 harness（recall@k）
+- [x] **A 后端接线完成 + 端到端测试**（`internal/service/search_semantic.go`）：`RebuildEmbeddings()`（全库分批重算、dim 自探）+ `fuseSemantic()`（FTS+`KnnNoteIDs` 经 `FuseRRF`；默认关，关闭/未配/失败一律退回纯词法，绝不减结果）；`App.RebuildEmbeddings` binding；httptest 桩端点验证「词法零命中→向量补出、关掉即回纯词法」
+- [ ] A 上线前：embedding 配置的前端 UI（A 未过 A/B 门前刻意不做面向普通用户的开关）、A/B 评测 harness（recall@k）、笔记增删改的增量 embed（现全量重建）
 
 ### M4: Agent 集成即插即用
 

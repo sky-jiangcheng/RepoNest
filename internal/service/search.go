@@ -23,7 +23,8 @@ func (s *Service) SearchNotes(query string) []domain.SearchHit {
 	if results == nil {
 		results = []domain.SearchHit{}
 	}
-	return results
+	// M3-A: optionally fuse vector recall (default off; a no-op bypass when off).
+	return s.fuseSemantic(results, query)
 }
 
 // SearchAll searches notes and todos together, returning ranked unified hits.

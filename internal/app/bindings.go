@@ -253,3 +253,10 @@ func (a *App) ImportClaudeMemory() (*service.ImportResult, error) {
 func (a *App) CaptureClaudeHandoff(projectID int64) (*service.HandoffResult, error) {
 	return a.svc.CaptureClaudeHandoff(projectID)
 }
+
+// RebuildEmbeddings (re)embeds every note into the semantic-search vector index.
+// Desktop-only admin action; requires semantic_search enabled + a configured
+// embedding endpoint (both default off — ADR-0012).
+func (a *App) RebuildEmbeddings() (int, error) {
+	return a.svc.RebuildEmbeddings()
+}

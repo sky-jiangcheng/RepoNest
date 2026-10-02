@@ -150,6 +150,67 @@ func KnnNoteIDs(db *sql.DB, query []float32, k int) ([]int64, error) {
 	return ids, rows.Err()
 }
 
+// NoteEmbeddingInput is one note's id + embeddable text for a rebuild pass.
+type NoteEmbeddingInput struct {
+	ID   int64
+	Text string
+}
+
+// ListNoteEmbeddingInputs returns id + text (title + content) for every note, in
+// id order, for a full re-embed. Content is capped so a huge note does not blow
+// the embedding request.
+func ListNoteEmbeddingInputs(db *sql.DB) ([]NoteEmbeddingInput, error) {
+	rows, err := db.Query("SELECT id, title, content FROM project_notes ORDER BY id")
+	if err != nil {
+		return nil, fmt.Errorf("db: list note inputs: %w", err)
+	}
+	defer rows.Close()
+	var out []NoteEmbeddingInput
+	for rows.Next() {
+		var id int64
+		var title, content string
+		if err := rows.Scan(&id, &title, &content); err != nil {
+			return nil, err
+		}
+		if len(content) > MaxNoteContentLen {
+			content = content[:MaxNoteContentLen]
+		}
+		out = append(out, NoteEmbeddingInput{ID: id, Text: strings.TrimSpace(title + "\n" + content)})
+	}
+	return out, rows.Err()
+}
+
+// NoteHitsByIDs loads note search-hits for the given ids (to materialise
+// vector-recall ids the lexical FTS pass did not return). Order not guaranteed.
+func NoteHitsByIDs(db *sql.DB, ids []int64, query string) ([]SearchHit, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	rows, err := db.Query(
+		"SELECT id, project_id, title, content FROM project_notes WHERE id IN ("+placeholders+")", args...)
+	if err != nil {
+		return nil, fmt.Errorf("db: note hits by ids: %w", err)
+	}
+	defer rows.Close()
+	var hits []SearchHit
+	for rows.Next() {
+		var h SearchHit
+		var content string
+		if err := rows.Scan(&h.ID, &h.ProjectID, &h.Title, &content); err != nil {
+			return nil, err
+		}
+		h.Type = "note"
+		h.Snippet = makeSnippet(content, query)
+		hits = append(hits, h)
+	}
+	return hits, rows.Err()
+}
+
 // encodeVector serialises a float32 vector to the JSON-array text form sqlite-vec
 // accepts for both insertion and MATCH queries (e.g. "[0.1,0.2]").
 func encodeVector(vec []float32) (string, error) {
