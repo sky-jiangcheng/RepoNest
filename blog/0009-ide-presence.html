@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!-- ADR-0009 博客化 · 杂志风单文件交付物 · 视觉骨架来自 delivery-artifact skill（<style> 未改动） -->
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>让插件跟人见面 —— RepoNest 的 IDE 分发决策（ADR-0009）</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500;600&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1a1a1a; --paper:#fafaf7; --line:#e7e5e0; --mute:#6b6760; --accent:#b8553a; --twitter:#1d9bf0; }
+  body { font-family:'Inter','Noto Sans SC',sans-serif; background:var(--paper); color:var(--ink); -webkit-font-smoothing:antialiased; }
+  .serif { font-family:'Noto Serif SC',Georgia,serif; }
+  .ornament { display:flex; align-items:center; justify-content:center; gap:14px; margin:48px 0; color:var(--mute); }
+  .ornament::before, .ornament::after { content:""; flex:1; max-width:60px; height:1px; background:var(--line); }
+  .article p { font-size:1.0625rem; line-height:1.8; color:#262421; margin:1.1em 0; max-width:65ch; }
+  .article h2 { font-family:'Noto Serif SC',serif; font-size:1.875rem; font-weight:700; margin:2.4em 0 0.8em; letter-spacing:-0.01em; }
+  .article blockquote { border-left:3px solid var(--accent); padding:0 0 0 20px; margin:1.6em 0; font-style:italic; color:var(--mute); font-family:'Noto Serif SC',serif; font-size:1.0625rem; line-height:1.7; }
+  .article a { color:var(--accent); text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:1px; }
+  .grain::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:0.4; background-image:radial-gradient(circle at 12% 18%, rgba(106,92,56,0.05), transparent 45%), radial-gradient(circle at 88% 72%, rgba(106,92,56,0.04), transparent 50%); }
+</style>
+</head>
+<body class="grain">
+<article class="article max-w-[720px] mx-auto px-6 pt-20 pb-32">
+
+  <!-- 信息卡：指向决策原文 -->
+  <div class="block mb-10 rounded-2xl border border-[var(--line)] bg-white/70 p-4 flex items-start gap-4">
+    <div class="shrink-0 w-10 h-10 rounded-full grid place-items-center" style="background:var(--accent)">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" class="text-white"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h7M9 16h7"/></svg>
+    </div>
+    <div class="min-w-0 flex-1">
+      <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--mute)] mb-1">决策原文 · ADR-0009</div>
+      <div class="text-[14px] font-medium text-[var(--ink)] leading-snug">本文是 ADR-0009 的可读版：背景、决策五条与后果均出自决策原文</div>
+      <div class="text-[12px] mt-1"><a href="https://github.com/sky-jiangcheng/repo-nest/blob/master/docs/adr/0009-ide-presence.md" style="color:var(--accent)">docs/adr/0009-ide-presence.md&nbsp;&nbsp;↗</a></div>
+    </div>
+  </div>
+
+  <div class="text-[11px] font-medium tracking-[0.22em] uppercase text-[var(--accent)] mb-5">架构决策 · 2026-10-02 · 分发策略</div>
+
+  <h1 class="serif text-[3rem] leading-[1.08] font-black tracking-tight mb-5">
+    AI 不会替我们分发：让插件<span class="italic font-bold" style="color:var(--accent)">跟人见面</span>
+  </h1>
+
+  <p class="text-[1.125rem] leading-relaxed text-[var(--mute)] font-light max-w-[60ch] mb-8">
+    RepoNest 的插件资产服务的一直是 agent，没有一样出现在开发者天天打开的界面上。ADR-0009 把「可见性」升级为产品级约束——先一键注册，再一个 VS Code 扩展，JetBrains 缓议。
+  </p>
+
+  <div class="flex items-center gap-3 text-[12px] text-[var(--mute)] pb-12 border-b border-[var(--line)]">
+    <div class="w-8 h-8 rounded-full" style="background:var(--accent)"></div>
+    <span class="font-medium text-[var(--ink)]">RepoNest</span>
+    <span>·</span><span>2026 年 10 月 2 日</span>
+    <span>·</span><span>约 6 分钟阅读</span>
+  </div>
+
+  <h2>「装完就隐形」的资产</h2>
+  <p><span class="serif font-bold text-[1.5rem] float-left mr-2 leading-none mt-1.5" style="color:var(--accent)">盘</span>点 RepoNest 现有的分发资产——MCP server、dsh Harness 插件、<code class="px-1.5 py-0.5 rounded bg-[#f0ece5] text-[0.92em] font-mono text-[#7a3d27]">llms.txt</code>——它们服务的对象全部是 agent。MCP 工具只出现在 agent 的聊天面板里；命令面板、状态栏、侧边栏这些 IDE 原生界面上，RepoNest 不存在。装完之后，它就隐形了。</p>
+  <p>这个盲区构成两条传播上的硬限制。第一，<strong class="font-semibold text-[var(--ink)]">agent 不会主动发现我们的插件</strong>：没有任何机制让一个新用户的 AI agent 主动说「你应该装 reponest-mcp」——分发必须由人来完成，而人只在自己天天打开的界面里发现工具。第二，<strong class="font-semibold text-[var(--ink)]">口口相传需要可见的货架</strong>：当有人问「你用什么管理项目记忆」，如果答案是一个装完就隐形的 server，传播链在第一步就断了。</p>
+  <blockquote>agent 不会替我们装插件——可见性必须由产品自己购买。</blockquote>
+
+  <div class="ornament"><span class="serif italic">·&nbsp;&nbsp;·&nbsp;&nbsp;·</span></div>
+
+  <h2>能力不缺，缺的是见面</h2>
+  <p>需要先澄清的是：这不是能力空洞。VS Code（Copilot Chat）与 JetBrains（AI Assistant / 内置 MCP 客户端）都已原生支持 MCP 注册，接入文档也早已写明手动路径。真正的缺口只有两个：一是<strong class="font-semibold text-[var(--ink)]">接入摩擦</strong>——新用户要手动改 <code class="px-1.5 py-0.5 rounded bg-[#f0ece5] text-[0.92em] font-mono text-[#7a3d27]">.mcp.json</code>；二是 <strong class="font-semibold text-[var(--ink)]">IDE 内「人」的体验为零</strong>——没有命令面板里的一条 <code class="px-1.5 py-0.5 rounded bg-[#f0ece5] text-[0.92em] font-mono text-[#7a3d27]">RepoNest: Handoff</code>，没有状态栏上的「上次交接」，没有侧边栏的笔记检索。</p>
+  <p>换言之，工具能力在两大 IDE 家族里今天就能到位；要补的是见面，不是功能。</p>
+
+  <div class="ornament"><span class="serif italic">·&nbsp;&nbsp;·&nbsp;&nbsp;·</span></div>
+
+  <h2>决策：先一键注册，再一个扩展</h2>
+  <p>ADR-0009 的路径分三步。第一步是已经落地的一键注册：<code class="px-1.5 py-0.5 rounded bg-[#f0ece5] text-[0.92em] font-mono text-[#7a3d27]">reponest-init</code> 探测 <code class="px-1.5 py-0.5 rounded bg-[#f0ece5] text-[0.92em] font-mono text-[#7a3d27]">reponest-mcp</code> 二进制，向 Claude Code、Cursor、VS Code、Windsurf 写入注册，并可选安装会话结束的自动交接 hook：</p>
+  <pre class="rounded-xl bg-[#f0ece5] text-[#7a3d27] font-mono text-[13px] leading-relaxed px-5 py-4 overflow-x-auto my-6">node scripts/reponest-init/index.mjs --with-hook</pre>
+  <p>第二步是一个 VS Code 扩展——而且是<strong class="font-semibold text-[var(--ink)]">唯一的</strong> IDE 扩展：命令面板三条命令（context / handoff / search）、状态栏显示上次交接时间、侧边栏笔记检索并跳转文件、首次使用引导一键注册。第三步是所有新资产共同遵守的<strong class="font-semibold text-[var(--ink)]">薄客户端纪律</strong>：MCP 保持唯一执行接口，<code class="px-1.5 py-0.5 rounded bg-[#f0ece5] text-[0.92em] font-mono text-[#7a3d27]">internal/service</code> 保持单一事实源，扩展只是薄壳，零逻辑复制——与 dsh 插件同一范式。</p>
+
+  <div class="ornament"><span class="serif italic">·&nbsp;&nbsp;·&nbsp;&nbsp;·</span></div>
+
+  <h2>为什么不是 IDEA 插件</h2>
+  <p>VS Code 先行不是偏好，是算术：一份 VSIX 同时覆盖 VS Code、Cursor、Windsurf 整个 fork 家族——这是「一次投入、全家族见面」的唯一形态；而 JetBrains 插件一份构建只覆盖一家，还需要独立的 Kotlin / Gradle 代码栈，维护面直接翻倍。在收到真实需求信号（issue / star）并补写 ADR 论证之前，它不立项、不写代码。</p>
+  <p>这个取舍也顺手调和了范围冻结（ADR-0006）：冻结的从来是平台化基础设施——插件 SPI、HTTP server、多后端存储——而不是「跟人见面的分发面」。薄客户端纪律让新资产只随对外 API 演进，维护成本保持有界。</p>
+
+  <div class="ornament"><span class="serif italic">·&nbsp;&nbsp;·&nbsp;&nbsp;·</span></div>
+
+  <h2>一条新的立项门槛</h2>
+  <p>ADR-0009 还留了一条长期原则：<strong class="font-semibold text-[var(--ink)]">分发评估门</strong>。今后每个分发资产立项时，必须回答「人在哪个界面上看见它」；只有 agent 能消费、人不可见的资产，需要说明它服务的是存量用户的深度，还是获客。可见性从此不是营销问题，而是产品自己要支付的成本。</p>
+
+  <div class="rounded-2xl border border-[var(--line)] bg-white/60 p-6 mt-12 flex items-start gap-4">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" class="shrink-0 mt-0.5" style="color:var(--accent)"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>
+    <div>
+      <div class="font-semibold text-[var(--ink)] mb-1">第一步已经落地。</div>
+      <div class="text-[13px] text-[var(--mute)]">reponest-init 位于 <code class="px-1.5 py-0.5 rounded bg-[#f0ece5] text-[0.92em] font-mono text-[#7a3d27]">scripts/reponest-init/</code>，幂等、可 dry-run；M5 的 VS Code 扩展骨架也已落在 <code class="px-1.5 py-0.5 rounded bg-[#f0ece5] text-[0.92em] font-mono text-[#7a3d27]">ide/vscode/</code>。决策全文见 <a href="https://github.com/sky-jiangcheng/repo-nest/blob/master/docs/adr/0009-ide-presence.md">docs/adr/0009-ide-presence.md</a>。</div>
+    </div>
+  </div>
+</article>
+</body>
+</html>

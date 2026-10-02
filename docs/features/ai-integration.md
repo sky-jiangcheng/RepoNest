@@ -60,7 +60,19 @@ MCP 是唯一的 AI 执行接口（`reponest` CLI 未随版本发布）。stdio 
 
 当 AI 发现「搜出来的东西好像不全」时，应该先跑 `reponest_integrity`，而不是直接下结论说知识库内容少。
 
-### 接入 Claude Code
+### 一键注册（reponest-init，推荐）
+
+[ADR-0009](../adr/0009-ide-presence.md) 的第一步：一条命令完成二进制探测与客户端注册，幂等可重复执行：
+
+```bash
+node scripts/reponest-init/index.mjs --with-hook
+```
+
+- 自动探测 `reponest-mcp`（`--bin` 可显式指定），向 Claude Code（`.mcp.json`）、Cursor（`.cursor/mcp.json`）、VS Code（`.vscode/mcp.json`）、Windsurf 写入注册（配置只落在对应客户端目录已存在的地方），JetBrains 打印手动指引
+- `--with-hook` 同时安装下方的 SessionEnd hook（脚本 + `settings.json` 合并，改前备份）
+- `--dry-run` 预览全部写入动作；找不到二进制时给出安装引导，`--yes` 以裸命令名 `reponest-mcp` 写入配置（装好即生效）
+
+### 手动接入 Claude Code（备选）
 
 ```bash
 claude mcp add reponest -- /path/to/reponest-mcp

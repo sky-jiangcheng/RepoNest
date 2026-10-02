@@ -60,7 +60,19 @@ The two self-check tools answer **different questions** — don't mix them up:
 
 When an AI notices that "the search results seem incomplete", it should run `reponest_integrity` first instead of jumping to the conclusion that the knowledge base has little content.
 
-### Connect Claude Code
+### One-command registration (reponest-init, recommended)
+
+Step one of [ADR-0009](../adr/0009-ide-presence.md): detect the binary and register every supported client with a single command; idempotent and safe to re-run:
+
+```bash
+node scripts/reponest-init/index.mjs --with-hook
+```
+
+- Detects `reponest-mcp` (override with `--bin`) and registers it with Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`), VS Code (`.vscode/mcp.json`) and Windsurf (configs land only where the client's directory exists); JetBrains gets printed manual guidance
+- `--with-hook` also installs the SessionEnd hook below (script + merged `settings.json`, backed up before changes)
+- `--dry-run` previews every write; when the binary is missing it prints install guidance, and `--yes` writes the bare command name `reponest-mcp` (works once installed)
+
+### Connect Claude Code manually (alternative)
 
 ```bash
 claude mcp add reponest -- /path/to/reponest-mcp

@@ -13,7 +13,7 @@ Session start → reponest_context   → one call, full project context (handoff
 Session end   → reponest_handoff   → record what happened for the next session
 ```
 
-0. **First run**: on a fresh install call `reponest_scan` once — it seeds the default scan roots and scans them synchronously, so the knowledge base is populated without ever opening the desktop app. Call it again any time `reponest_context` reports no projects.
+0. **First run**: on a fresh install call `reponest_scan` once — it seeds the default scan roots and scans them synchronously, so the knowledge base is populated without ever opening the desktop app. Call it again any time `reponest_context` reports no projects. (Humans: `node scripts/reponest-init/index.mjs --with-hook` registers the MCP server and the SessionEnd handoff hook in one command — see ADR-0009.)
 1. **Start**: call `reponest_context` once — it returns tech stack, README excerpt, dependencies, recent commits, open todos and the most relevant notes (previous session handoffs lead). This replaces chaining `projects_list` → `notes_search` → `notes_read`.
 2. **End**: call `reponest_handoff` with `summary` (required) plus any of `changes` / `decisions` / `gotchas` / `next_steps`. The note is tagged `handoff` and the next session reads it first — regardless of which agent wrote it.
    - Handoff notes are protocol records: `reponest_notes_update` refuses to overwrite them (write a new handoff instead), and `reponest_context` renders the latest one in full.

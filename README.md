@@ -143,7 +143,13 @@ AI clients talk to the independently distributed `reponest-mcp` (an MCP stdio se
 | Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp` |
 | Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp` |
 
-Then register it with your AI client:
+Then register it with your AI client — one command covers Claude Code / Cursor / VS Code / Windsurf (step one of [ADR-0009](docs/adr/0009-ide-presence.md), idempotent):
+
+```bash
+node scripts/reponest-init/index.mjs --with-hook
+```
+
+Or register Claude Code only:
 
 ```bash
 claude mcp add reponest -- "$(which reponest-mcp)"

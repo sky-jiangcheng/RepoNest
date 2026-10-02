@@ -145,7 +145,13 @@ AI 客户端走的是独立分发的 `reponest-mcp`（MCP stdio 服务器），*
 | Homebrew | Linux | `brew tap sky-jiangcheng/repo && brew install sky-jiangcheng/repo/reponest-mcp` |
 | Scoop | Windows | `scoop bucket add repo https://github.com/sky-jiangcheng/scoop-repo && scoop install repo/reponest-mcp` |
 
-装好后注册到 AI 客户端：
+装好后注册到 AI 客户端——一条命令覆盖 Claude Code / Cursor / VS Code / Windsurf（[ADR-0009](docs/adr/0009-ide-presence.md) 第一步，幂等可重复执行）：
+
+```bash
+node scripts/reponest-init/index.mjs --with-hook
+```
+
+或只注册 Claude Code：
 
 ```bash
 claude mcp add reponest -- "$(which reponest-mcp)"

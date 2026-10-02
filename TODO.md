@@ -215,9 +215,9 @@
 
 ---
 
-## 🟢 会话记忆路线（ADR-0007 后续）
+## 🟢 会话记忆路线（ADR-0007 / ADR-0009 后续）
 
-> 定位升级为「AI agent 记忆层」后的主攻方向，按传播价值排序。
+> 定位升级为「AI agent 记忆层」后的主攻方向，按传播价值排序；M4-M5 的分发决策（薄客户端纪律、VS Code 先行、JetBrains 缓议）见 [ADR-0009](docs/adr/0009-ide-presence.md)。
 
 ### M1: 会话自动捕捉（零人工参与）
 
@@ -235,7 +235,13 @@
 ### M4: Agent 集成即插即用
 
 - [x] Claude Code hook 示例：SessionEnd hook 自动触发 reponest_handoff（v1.9.4 交付于 docs/features/ai-integration.md「会话结束自动交接」节）
-- [ ] `npx reponest-init` 类一键注册脚本（写 .mcp.json + 提示 hook 配置）
+- [x] `npx reponest-init` 类一键注册脚本（写 .mcp.json + 提示 hook 配置；ADR-0009 第一步，该 ADR Proposed→Accepted 的门槛项）——已交付 `scripts/reponest-init/`（零依赖 Node ≥18，幂等 + dry-run + hook 安装，2026-10-02）
+
+### M5: IDE 存在感（ADR-0009 薄客户端分发）
+
+- [x] VS Code 扩展（唯一 IDE 扩展，一份 VSIX 覆盖 VS Code / Cursor / Windsurf 全 fork 家族）——骨架已交付 `ide/vscode/`（tsc 零错误）：命令面板 context / handoff / search + 状态栏入口 + 侧边栏笔记检索（MCP stdio 薄客户端）；余：VSIX 打包 / CI、状态栏「上次交接时间」（需服务端交接时间戳 API）
+- [ ] JetBrains 插件：缓议——独立 Kotlin/Gradle 代码库双倍维护面，待真实需求信号（issue/star）并补充 ADR 后再立项
+- [ ] 分发评估门：此后每个分发资产立项时必须回答「人在哪个界面上看见它」；仅 agent 可消费的资产需说明服务存量深度而非获客（ADR-0009 决策 5）
 
 ---
 

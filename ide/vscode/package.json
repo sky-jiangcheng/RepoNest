@@ -1,0 +1,80 @@
+{
+  "name": "reponest-vscode",
+  "displayName": "RepoNest",
+  "publisher": "sky-jiangcheng",
+  "version": "0.1.0",
+  "description": "RepoNest inside your IDE: session context, handoff and knowledge search from the command palette, status bar and sidebar. Thin client over the RepoNest headless service (ADR-0009 step two / TODO M5).",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "reponest.loadContext",
+        "title": "RepoNest: Load Session Context"
+      },
+      {
+        "command": "reponest.handoff",
+        "title": "RepoNest: Write Session Handoff"
+      },
+      {
+        "command": "reponest.search",
+        "title": "RepoNest: Search Knowledge"
+      },
+      {
+        "command": "reponest.registerMcp",
+        "title": "RepoNest: Register MCP Server (reponest-init)"
+      }
+    ],
+    "configuration": {
+      "title": "RepoNest",
+      "properties": {
+        "reponest.serverUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:18765",
+          "description": "RepoNest headless service URL (reponest server)."
+        },
+        "reponest.projectId": {
+          "type": "string",
+          "default": "",
+          "description": "RepoNest project id used for context / handoff. Empty = let the service resolve the current workspace."
+        }
+      }
+    },
+    "views": {
+      "reponest-explorer": [
+        {
+          "id": "reponest.notesSearch",
+          "name": "Knowledge Search"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "reponest-explorer",
+          "title": "RepoNest",
+          "icon": "media/reponest.svg"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.5.0"
+  }
+}

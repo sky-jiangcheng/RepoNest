@@ -15,9 +15,10 @@ order: 21
 | [0006](0006-scope-freeze.md) | 范围冻结与功能分级（核心闭环优先） | Accepted |
 | [0007](0007-session-memory-protocol.md) | 会话记忆协议（context / handoff 双工具） | Accepted |
 | [0008](0008-pwa-removal.md) | PWA 移出桌面主构建（落实 ADR-0006 暂缓档） | Accepted |
+| [0009](0009-ide-presence.md) | IDE 存在感——薄客户端分发策略（一键注册 → VS Code 扩展 → JetBrains 缓议） | Accepted |
 
 ## 约定
 
 - 每个重大不可逆决策一篇：背景 → 决策 → 后果
 - 被 superseded 的 ADR 保留原文与横幅，不删除
-- 新 ADR 从 `0008` 递增编号，文件名 `NNNN-kebab-title.md`
+- 新 ADR 从 `0009` 递增编号，文件名 `NNNN-kebab-title.md`

@@ -4,10 +4,25 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
-## [Unreleased]
+## [1.10.0] - 2026-10-02
 
 ### 新增
 
+- **发布独立博客**：ADR-0009 博客化《AI 不会替我们分发：让插件跟人见面》（杂志风单文件 HTML，`blog/0009-ide-presence.html`，
+  不依赖 docs 构建管线，双击即开，内链指向 GitHub 决策原文）
+- **一键注册 CLI（ADR-0009 第一步 / TODO M4）**：新增 `scripts/reponest-init/`（零依赖 Node ≥18，可直接发布为 npm 包），
+  一条命令探测 `reponest-mcp` 二进制并注册到 Claude Code（`.mcp.json`）/ Cursor（`.cursor/mcp.json`）/
+  VS Code（`.vscode/mcp.json`）/ Windsurf，配置只落在对应客户端目录已存在的地方；`--with-hook` 同时安装
+  SessionEnd 交接 hook（脚本 + settings.json 合并，改前备份），幂等可重复执行，`--dry-run` 预览，
+  二进制缺失时打印安装引导（`--yes` 以裸命令名写入）。JetBrains 打印手动指引。
+  同轮新增 [ADR-0009「IDE 存在感——薄客户端分发策略」](docs/adr/0009-ide-presence.md)（Accepted：薄客户端纪律、
+  VS Code 扩展为唯一 IDE 扩展、JetBrains 缓议、分发评估门）；README / SKILL.md / ai-integration 文档（中英）
+  同步一键注册路径。
+- **VS Code 扩展骨架（ADR-0009 第二步 / TODO M5）**：新增 `ide/vscode/`（TypeScript 薄客户端，tsc 零错误）：
+  命令面板三条命令（context / handoff / search）经 `reponest-mcp` stdio 调用（复用 MCP 唯一执行接口，零逻辑复制），
+  侧边栏笔记检索（FTS5 结果树视图 + 只读打开），状态栏入口 + headless 服务健康探测，
+  一键注册命令（终端内运行 `reponest-init`）。一份 VSIX 覆盖 VS Code / Cursor / Windsurf 全 fork 家族；
+  VSIX 打包与 marketplace 发布待后续。
 - **文档双语化，英文为默认语言**：手册 15 个核心页面全部提供英文版（`docs/en/`，中文源保留在 `docs/`），
   README 拆分为英文主文件 + `README.zh-CN.md`（互链切换）。文档站改为双 locale 构建：
   英文输出到站点根路径，中文在 `/zh/` 子路径，每页侧栏带语言切换器，英文站根页对中文浏览器
