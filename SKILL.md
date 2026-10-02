@@ -129,11 +129,11 @@ Or in a project-level `.mcp.json` / user-level MCP config (Cursor: Settings → 
 | Log | `~/Library/Logs/reponest.log` | `$XDG_STATE_HOME/reponest/reponest.log` (default `~/.local/state/reponest/`) | `%APPDATA%\reponest\logs\reponest.log` |
 | Claude memory | `~/.claude/projects/*/memory/*.md` | same | same |
 
-## Architecture (v1.7.0)
+## Architecture
 
 - **Backend**: Go + SQLite (modernc, zero CGO), Wails v2 desktop app
 - **Layering**: `internal/app` (thin Wails bindings) → `internal/service` (business core, shared by desktop/MCP) → `internal/db` + `internal/core/git`
-- **Frontend**: React 19 + Vite 8 + TypeScript 7, hand-rolled CSS design system
+- **Frontend**: React 19 + Vite 8 + TypeScript 6, hand-rolled CSS design system
 - **Search**: FTS5 trigram + bm25, LIKE fallback for short CJK queries
 - **i18n**: react-i18next, zh-CN + en
 - **Markdown**: Mermaid, KaTeX, callouts, highlight.js

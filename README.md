@@ -33,7 +33,7 @@ The dashed edge is the point: handoffs are stored in local SQLite, not in any ag
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript)](https://www.typescriptlang.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
 Both paths meet at one local knowledge base — the human side (desktop app, VS Code extension), the agent side (MCP tools, llms.txt), one service layer underneath, and `reponest-init` wiring the agent side in one command:
@@ -62,13 +62,13 @@ flowchart TB
 > A single-file Wails v2 desktop app (Go + React, embedded SQLite, zero CGO) for **macOS / Windows / Linux**.
 > Works offline with no cloud dependency; AI reads the same local database through the independently distributed [`reponest-mcp`](#set-up-the-ai-execution-interface-reponest-mcp) MCP server.
 > Switch agents without losing context: a handoff written by Claude Code is read directly by Cursor.
-> For positioning priorities, feature tiers and the scope freeze, see [ADR-0006](docs/adr/0006-scope-freeze.md) (Chinese) and the [positioning brief](docs/positioning-brief.md) (Chinese).
+> For positioning priorities, feature tiers and the scope freeze, see [ADR-0006](docs/en/adr/0006-scope-freeze.md) and the [positioning brief](docs/positioning-brief.md) (Chinese).
 
 **Why RepoNest?** Coding agents are great at reading code but don't retain *the judgment you've accumulated across these repos*: why something was designed this way, what gotcha you hit last time, what the next todo is. Each agent keeps a private memory format, so switching tools means starting from zero. RepoNest sinks all of that into a local, searchable memory layer that any agent can read and write — `reponest_context` injects it at session start, `reponest_handoff` captures it at session end, and everything in between is retrieved on demand.
 
 ## Features
 
-> Tier legend: **Core** (completes the discover → understand → record → retrieve → AI loop) | **Support** (makes the loop legible) | **Experimental** (kept, not expanded) | **Paused** (no further investment). See [ADR-0006](docs/adr/0006-scope-freeze.md) (Chinese).
+> Tier legend: **Core** (completes the discover → understand → record → retrieve → AI loop) | **Support** (makes the loop legible) | **Experimental** (kept, not expanded) | **Paused** (no further investment). See [ADR-0006](docs/en/adr/0006-scope-freeze.md).
 
 ### Knowledge Base (Core)
 
@@ -144,7 +144,7 @@ Download the archive for your platform from Releases and run it:
 | Linux | same | `/usr/local/bin/reponest` + `/usr/local/bin/reponest-mcp` |
 | Windows | `iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scripts/install.ps1 \| iex` | `%LOCALAPPDATA%\RepoNest` (added to user PATH automatically) |
 
-macOS also ships via Homebrew (add the tap first — see [`packaging/`](packaging/README.md), Chinese):
+macOS also ships via Homebrew (add the tap first — see [`packaging/`](packaging/README.md)):
 
 ```bash
 brew tap sky-jiangcheng/repo
@@ -207,7 +207,7 @@ Any time in between you can just ask:
 
 The agent chains `reponest_projects_list` → `reponest_notes_search` → `reponest_notes_read`; new conclusions go back with `reponest_notes_create`. You can also export any note as `.md` with YAML frontmatter, or generate an LLM-oriented `llms.txt` overview. The full tool list and workflows live in [SKILL.md](SKILL.md).
 
-The manifests are in [`packaging/`](packaging/README.md) (Chinese); versions derive from `wails.json` and `sha256` values come from the actual release assets (Homebrew / Scoop refuse to install on checksum mismatch — by design). Published taps:
+The manifests are in [`packaging/`](packaging/README.md); versions derive from `wails.json` and `sha256` values come from the actual release assets (Homebrew / Scoop refuse to install on checksum mismatch — by design). Published taps:
 
 - **Homebrew**: [sky-jiangcheng/homebrew-repo](https://github.com/sky-jiangcheng/homebrew-repo)
 - **Scoop**: [sky-jiangcheng/scoop-repo](https://github.com/sky-jiangcheng/scoop-repo)
@@ -249,7 +249,7 @@ Tests & checks:
 ```bash
 go test ./...            # full Go test suite (service/db/knowledge/scanner/diff…)
 cd web && npm test       # vitest
-cd web && npm run build  # strict tsc check + build (ESLint status: see TODO.md)
+cd web && npm run build  # strict tsc check + production build
 ```
 
 ## Project Grouping
@@ -287,7 +287,7 @@ web/src/
   locales/ styles/       # zh-CN + en; design-system CSS
 ```
 
-Architecture decisions: see the [ADRs](docs/adr/) (Chinese), especially [ADR-0005 service-layer refactor](docs/adr/0005-service-layer.md); layering and data flows in [Architecture](docs/en/architecture.md). The frontend/backend contract (Wails binding surface) is in [API Reference](docs/en/api/reference.md).
+Architecture decisions: see the [ADRs](docs/en/adr/), especially [ADR-0005 service-layer refactor](docs/en/adr/0005-service-layer.md); layering and data flows in [Architecture](docs/en/architecture.md). The frontend/backend contract (Wails binding surface) is in [API Reference](docs/en/api/reference.md).
 
 ## Naming Layers
 
@@ -304,7 +304,7 @@ Why frozen: the data directory `reponest` has already been through two automatic
 
 ## Documentation
 
-English pages are the default; the [Chinese manual](https://sky-jiangcheng.github.io/repo-nest/zh/) mirrors them. ADRs and some deep-dives are currently Chinese-only.
+English pages are the default; the [Chinese manual](https://sky-jiangcheng.github.io/repo-nest/zh/) mirrors them. Only the [positioning brief](docs/positioning-brief.md) and [product reviews](docs/product-review/) remain Chinese-only.
 
 | Document | Contents |
 |----------|----------|
@@ -334,7 +334,7 @@ cd web && npm test                                # frontend tests
 wails dev                                         # dev mode (optional)
 ```
 
-Architecture conventions: [docs/architecture.md](docs/en/architecture.md) and [docs/adr/](docs/adr/) (Chinese). Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Security issues go through the [private reporting channel](SECURITY.md) (Chinese).
+Architecture conventions: [docs/architecture.md](docs/en/architecture.md) and [docs/en/adr/](docs/en/adr/). Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Security issues go through the [private reporting channel](SECURITY.md).
 
 ## License
 

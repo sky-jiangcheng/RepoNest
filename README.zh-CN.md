@@ -1,7 +1,5 @@
 # RepoNest: Local Git Knowledge Base
 
-**The local-first memory layer for AI coding agents.** Your agents (Claude Code, Cursor, OpenCode...) read code brilliantly and forget everything the moment the session ends — why a decision was made, what gotcha was discovered, what to do next. RepoNest keeps that knowledge on your machine, searchable, and hands it back to *any* agent in one tool call.
-
 本地优先的**跨 agent 项目记忆层**：自动发现本地 Git 项目，把散落在终端和记忆里的项目上下文，变成可检索、可复用、任何 agent 都能读写的记忆。
 
 [English](README.md) | 简体中文
@@ -12,7 +10,7 @@
 - [快速开始](#快速开始)
 - [从源码构建](#从源码构建)
 - [项目分组规则](#项目分组规则)
-- [项目结构（1.7.0 重构后）](#项目结构170-重构后)
+- [项目结构](#项目结构)
 - [命名分层](#命名分层)
 - [文档](#文档)
 - [参与贡献](#参与贡献)
@@ -31,7 +29,7 @@ flowchart LR
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript)](https://www.typescriptlang.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
 ```mermaid
@@ -245,7 +243,7 @@ go build -o reponest-mcp ./cmd/mcp/
 ```bash
 go test ./...            # Go 全量测试（service/db/knowledge/scanner/diff…）
 cd web && npm test       # vitest
-cd web && npm run build  # tsc 严格检查 + 构建（ESLint 现状见 TODO.md）
+cd web && npm run build  # tsc 严格检查 + 生产构建
 ```
 
 ## 项目分组规则
@@ -258,7 +256,7 @@ cd web && npm run build  # tsc 严格检查 + 构建（ESLint 现状见 TODO.md�
 
 在项目详情页可手动 **向上合并** / **向下拆分** 调整分组级别（单事务，笔记与待办随迁）。
 
-## 项目结构（1.7.0 重构后）
+## 项目结构
 
 ```
 main.go                  # Wails 入口：DB 初始化、扫描根播种、窗口与安全头
@@ -303,7 +301,8 @@ web/src/
 | 文档 | 内容 |
 |------|------|
 | [快速开始](docs/getting-started.md) | 安装、首次配置、扫描 |
-| [功能手册](docs/features/dashboard.md) | 仪表盘 / 知识库 / 项目详情 / 设置 / 命令面板 |
+| [数据与备份](docs/data-management.md) | 备份、迁移机器、重置与卸载 |
+| [功能手册](docs/features/knowledge.md) | 仪表盘 / 知识库 / 项目详情 / 设置 / 命令面板 |
 | [知识源导入](docs/plugins/overview.md) | 插件 SPI、事件、知识源导入器 |
 | [AI 集成](docs/features/ai-integration.md) | CLI、MCP、llms.txt |
 | [API 参考](docs/api/reference.md) | Wails 绑定面契约 + OpenAPI |
