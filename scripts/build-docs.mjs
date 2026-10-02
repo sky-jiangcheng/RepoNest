@@ -60,10 +60,17 @@ try {
     insertRule() { return 0 }
   }
   // Container tags: union of children's boxes, offsets applied.
-  // Text-bearing leaves: 8px/char estimate (stable, cosmetic-only drift).
+  // Text-bearing leaves: per-char width estimate (stable, cosmetic-only drift).
   const BBOX_CONTAINERS = new Set([
     'svg', 'g', 'a', 'div', 'p', 'span', 'foreignObject', 'marker', 'pattern', 'defs',
   ])
+  // Text width estimate: CJK glyphs are full-width (~16px at 16px font), latin
+  // ~8px. A flat 8px/char halves CJK label widths and overflows the boxes.
+  const textWidthOf = (s) => {
+    let w = 0
+    for (const ch of s || '') w += ch.codePointAt(0) > 0x2e7f ? 16 : 8
+    return Math.max(w, 40)
+  }
   const translateOf = (el) => {
     const t = el.getAttribute && el.getAttribute('transform')
     const m = t && /translate\(\s*([-\d.]+)[ ,]+([-\d.]+)/.exec(t)
@@ -88,11 +95,10 @@ try {
       }
       if (any) return { x: x0, y: y0, width: Math.max(x1 - x0, 1), height: Math.max(y1 - y0, 1) }
     }
-    const len = (this.textContent || '').length
-    return { x: 0, y: 0, width: Math.max(len * 8, 40), height: 20 }
+    return { x: 0, y: 0, width: textWidthOf(this.textContent), height: 20 }
   }
   w.SVGElement.prototype.getComputedTextLength = function () {
-    return (this.textContent || '').length * 8
+    return textWidthOf(this.textContent)
   }
   for (const k of ['document', 'window', 'CSSStyleSheet', 'DOMParser', 'XMLSerializer',
     'Element', 'Node', 'HTMLElement', 'SVGElement', 'Text', 'CustomEvent', 'location']) {
@@ -105,7 +111,18 @@ try {
   globalThis.getComputedStyle = w.getComputedStyle.bind(w)
   // mermaid lives in web/node_modules; import it via the same dep tree as marked.
   const { default: mermaid } = await import(requireFromWeb.resolve('mermaid'))
-  mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' })
+  // htmlLabels:false is load-bearing under mermaid 12: with html labels the
+  // flowchart renderer sizes <foreignObject> from the div's layout height,
+  // which jsdom (no layout engine) always reports as 0 — every label ships
+  // with height="0" and the diagram renders as empty boxes. SVG-text labels
+  // are measured through getComputedTextLength/getBBox above instead.
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'neutral',
+    securityLevel: 'strict',
+    htmlLabels: false,
+    flowchart: { htmlLabels: false },
+  })
   let seq = 0
   mermaidRender = async (source) => {
     const { svg } = await mermaid.render(`mmd-${Date.now()}-${seq++}`, source)
