@@ -7,6 +7,7 @@ import (
 	pluginruntime "repo-nest/internal/core/plugin/runtime"
 	"repo-nest/internal/importers/claude"
 	"repo-nest/internal/importers/codex"
+	"repo-nest/internal/importers/opencode"
 	"repo-nest/internal/platform"
 )
 
@@ -96,15 +97,17 @@ func (s *Service) ReloadPlugins() []pluginruntime.PluginStatus {
 
 // registerBuiltinImporters registers the built-in knowledge importers with the
 // plugin runtime. Sources are registered with different auto-import policies:
-//   - claude: AUTO — it reads curated ~/.claude/.../memory/*.md the user keeps.
-//   - codex:  MANUAL — it reads raw ~/.codex session transcripts, so it is
-//     excluded from the startup auto-import and only runs when the user
-//     triggers "codex" explicitly from the knowledge-sources list (ADR-0011).
+//   - claude:   AUTO — it reads curated ~/.claude/.../memory/*.md the user keeps.
+//   - codex:    MANUAL — raw ~/.codex session transcripts, excluded from the
+//     startup auto-import; only runs when triggered explicitly by name.
+//   - opencode: MANUAL — ~/.local/share/opencode session summaries, same gate.
 //
-// Both appear in GetKnowledgeSources, so each remains one-click triggerable.
+// Manual sources still appear in GetKnowledgeSources, so each stays one-click
+// triggerable. ADR-0011 决策 4.
 func (s *Service) registerBuiltinImporters() {
 	s.rt.RegisterSource(claude.SourceName, claude.New(s.db))
 	s.rt.RegisterSourceManual(codex.SourceName, codex.New(s.db))
+	s.rt.RegisterSourceManual(opencode.SourceName, opencode.New(s.db))
 }
 
 // ImportResult summarizes a Claude memory import run.

@@ -231,20 +231,21 @@
 ### M1: 会话自动捕捉（零人工参与）→ [ADR-0010](docs/adr/0010-session-auto-capture.md)
 
 - [x] **解析核心已落地**（`internal/importers/claude/session.go`）：`ParseSession` 流式解析 `~/.claude/projects/<slug>/<id>.jsonl`，宽松跳过未知/超长行、忽略 sidechain，抽取稳定信封字段（sessionId/cwd/gitBranch/timestamp）+ 最后一条 assistant 文本 + 首次 user 指令 + 去重工具名；实测对齐真机 v2.1.278（`session_test.go`）
-- [ ] 端到端落地**阻塞于隐私决策**：`Session`→`service.HandoffInput` 映射 + 写 `CreateHandoffNote` + 触发方式（SessionEnd hook vs 按需）+ 默认开/关 —— ADR-0010 决策 1/4 待拍板；解析器不自动运行、不读盘，未拍板前零隐私暴露
+- [ ] 端到端接线（**决策已定**：默认关；C端按需 / B端可选 SessionEnd hook；风险项写进设置+文档由 B端自担，ADR-0010 决策落地节）：`Session`→`service.HandoffInput` 映射 + `CreateHandoffNote` + 按需捕获方法 + `claude_session_capture` 配置默认关 + hook 接入；解析器目前不自动运行、不读盘
 - [x] 体积与隐私评估：ADR-0010 已定「默认关 + 只读路径白名单 + 尾部 N 有界提取 + 宽松失败 + golden-file」，边界与既有 claude *memory* importer（读 `memory/*.md`，非 jsonl 逐字稿）划清
 
 ### M2: 多 agent 记忆源导入 → [ADR-0011](docs/adr/0011-multi-agent-memory-importers.md)
 
 - [x] **Codex 源已落地**：`internal/importers/codex`（流式解析 `~/.codex/sessions/**/rollout-*.jsonl`，取 cwd→项目匹配 + 首次指令 + 最近回复成一条 `log` 笔记），复用 `plugin.KnowledgeImporter`/`upsertDoc`；抽公共件 `internal/importers/memsrc`（`MatchProject`/`ReadCapped`/`LastPathSegment`），claude 改为委托（测试不破）。**隐私门**：新增 `RegisterSourceManual` + `sourceEntry.auto`，`ImportAll`（启动自动导入）只跑 auto 源、Codex 经设置里 sources 列表显式一键触发（ADR-0011 决策 4）。golden-style 测试 + runtime 门控测试
-- [ ] OpenCode 源（有公开形状可循，待真机样本验证）
-- [ ] Cursor 源缓行：`state.vscdb` 未公开、易碎（ADR-0011 决策 3）
+- [x] **OpenCode 源已落地**（`internal/importers/opencode`，opt-in MANUAL）：真机核验 `~/.local/share/opencode/storage/session/<hash>/ses_*.json`（自带 title/summary/directory，已是摘要级），`directory` 末段→项目匹配；golden-style 测试 + 接口断言
+- [ ] Cursor 源（范围内、未实现）：`state.vscdb` 未公开 SQLite blob，先只读核验 chat 表编码再写；默认关、标非官方契约——风险最高一源
+- [ ] OpenClaw/Hermes 源（范围内、未实现）：**Hermes ⊂ OpenClaw 运行时**；记忆=`workspace/{IDENTITY,SOUL,USER,...}.md`，importer **必须 allowlist 到这些 md**（同目录含私钥/vault/identity，绝不整目录遍历、绝不把 key 落进笔记）。**阻塞项**：需产品给出「2.0 vs 1.0」的存储/版本判别依据（`openclaw.json` 未见顶层 version）
 
 ### M3: 语义检索 → [ADR-0012](docs/adr/0012-semantic-search.md)
 
 - [x] 评估 + **实测验证**：`CGO_ENABLED=0` 下 `modernc.org/sqlite/vec`（bundled sqlite-vec v0.1.9）跑通 vec0 建表 + KNN + `vec_distance_l2`（回归测试 `internal/vecprobe`，副作用用无生产码的 test-only 包隔离）；混合检索中间件 `internal/search/hybrid`（`Embedder` 接口 + `FuseRRF` k=60 + 单测）已落地，尚未接入生产
-- [ ] 端到端接线（`db/search.go` 混合路径、`note_embeddings` vec0 表迁移、`semantic_search` 配置默认关、A/B 评测 harness）—— 阻塞于下方 embedding 决策
-- [ ] 本地 embedding 生成路径（远程 API / 纯 Go 小模型 / 仅增强 FTS 三选一）待定 —— M3 成败的唯一硬门，实现前须先做「纯 Go 小模型推理」可行性 spike + A/B 评测门
+- [ ] **决策已定（ADR-0012 落地节）**：放弃 B（纯 Go 本地模型）；**默认 C**＝FTS5 增强（同义词/query 改写，本地零依赖）；**A＝远程 embedding API 面向 B端可选、默认关**，风险项（内容出机器/依赖网络密钥）必须写进设置+文档由用户显式确认。下一步实现 C 为默认；A 待 Provider 选型（`Embedder` 接口已就绪，插一个远程 client 即可）
+- [ ] 端到端接线：C 先做（`db/search.go` 近义扩展）；A 走时补 `note_embeddings` vec0 表迁移 + hybrid RRF 接进 search + `semantic_search` 配置默认关 + A/B 评测门
 
 ### M4: Agent 集成即插即用
 

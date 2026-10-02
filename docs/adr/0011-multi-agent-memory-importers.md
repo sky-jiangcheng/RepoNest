@@ -1,6 +1,6 @@
 # ADR-0011: 多 agent 记忆源导入——可复用的 importer 框架与各源可行性（M2）
 
-- 状态：Proposed（框架已存在；**Codex 源已落地**为 opt-in 手动源，OpenCode 待验证、Cursor 缓行）
+- 状态：Proposed（框架已存在；**Codex、OpenCode 已落地**为 opt-in 手动源；Cursor、OpenClaw/Hermes 已纳入范围但待格式细化门）
 - 日期：2026-10-02
 - 关联：[ADR-0002](0002-c-end-repositioning.md)（进程内插件运行时）、[ADR-0007](0007-session-memory-protocol.md)、[ADR-0010](0010-session-auto-capture.md)、TODO 会话记忆路线 M2
 
@@ -38,3 +38,13 @@ M2 要把同一管线扩展到 Cursor / Codex / OpenCode 等。但 2026-10 现�
 - 正面：多 agent 记忆可汇入同一知识库与 `reponest_context`；新增源成本随公共件下沉递减。
 - 负面：+N 个外部格式适配器，每个都绑定上游版本；需持续维护真机样本测试。
 - **待决**：① project 匹配规则是否对所有源统一（Claude 现按路径/slug 匹配目标项目，Codex/Cursor 的项目边界未必同名）；② Cursor 是否值得做，或改走「让用户导出为 markdown 再导入」的离线兜底；③ 是否需要一个「记忆源」设置页的统一开关面板。
+
+## 落地进度与各源真机核验（2026-10-02）
+
+产品决策：M2 **全部源都做**（覆盖 claude/codex/opencode/cursor/openclaw）。逐源按 ADR-0011 决策 3 的真机格式核验结果：
+
+- **claude**（已有）：读 `~/.claude/projects/*/memory/*.md`，AUTO 源（人工整理的记忆文档，可启动自动导入）。
+- **codex**（已落地，opt-in MANUAL）：`~/.codex/sessions/**/rollout-*.jsonl` 流式解析，每会话→一条 log 笔记。真机核验：session_meta.payload.cwd + response_item message content 块。
+- **opencode**（已落地，opt-in MANUAL）：`~/.local/share/opencode/storage/session/<hash>/ses_*.json`，字段已自带 `{id,projectID,directory,title,summary,time}`（已是摘要级，无需解析逐条消息），`directory` 末段驱动项目匹配。真机核验通过（v1.1.36 样本）。
+- **cursor**（范围内，未实现）：聊天/Agent 历史在未公开的 `state.vscdb`（本机 7.4MB SQLite，序列化了 workspace 键控的 blob），逆向、易碎。实现前须先只读核验 `itemTable`/`cursorDiskKV` 之类表里 chat 记录的真实编码，且**默认关**、明确标注非官方契约。风险最高的一源。
+- **openclaw / hermes**（范围内，未实现）：**Hermes 不是独立源**——它是 OpenClaw 的运行时（`~/.openclaw-autoclaw/.hermes-runtime-receipts`）。OpenClaw 的「记忆」= `workspace/{IDENTITY,SOUL,USER,AGENTS,HEARTBEAT,TOOLS}.md`（与 RepoNest 自身 awareness 文件同名同形）。**安全红线**：`~/.openclaw-autoclaw` 目录内含**私钥**（`office-plugin-tls/*.pem`）、`vault-roots.json`、`identity/`、`client-sign.json` 等——importer 必须**严格 allowlist 到 `workspace/*.md` 白名单**，绝不遍历整目录、绝不把任何 key/token/vault 落进笔记。此外「1.0 已淘汰、只做 2.0」需要一个明确的**版本判别位**（当前 `openclaw.json`/`openclaw.runtime.json` 未见顶层 `version` 字段）——**此项需产品给出 2.0 存储路径/判别依据后方可实现**，不臆测。

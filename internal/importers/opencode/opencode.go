@@ -1,0 +1,198 @@
+// Package opencode implements the built-in OpenCode session KnowledgeImporter
+// (ADR-0011, source #3 after claude and codex). OpenCode stores structured,
+// per-session JSON under its XDG data dir:
+//
+//	<dataroot>/storage/session/<projectHash>/ses_<id>.json   {id,projectID,directory,title,slug,summary,time}
+//	<dataroot>/storage/project/<projectID>.json              {id,worktree,...}
+//
+// Unlike codex (raw rollouts) this source is already summarized: each session
+// file carries a title + a one-line summary + the project directory, so we can
+// emit one compact note per session directly. The session's `directory` last
+// path segment drives project matching (memsrc).
+//
+// Registered as an OPT-IN manual source (like codex): session history is
+// sensitive, so it is excluded from the startup auto-import and only runs when
+// triggered explicitly. See ADR-0011 决策 4.
+package opencode
+
+import (
+	"database/sql"
+	"encoding/json"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"repo-nest/internal/core/plugin"
+	"repo-nest/internal/db"
+	"repo-nest/internal/importers/memsrc"
+)
+
+// SourceName is the stable knowledge-source identifier for OpenCode sessions.
+const SourceName = "opencode"
+
+// maxSessionFileBytes bounds one session JSON read; session files are small
+// metadata blobs, so anything larger is corrupt or unexpected.
+const maxSessionFileBytes = db.MaxNoteContentLen + 1
+
+// Importer implements plugin.KnowledgeImporter for OpenCode sessions.
+type Importer struct {
+	db *sql.DB
+}
+
+// New creates an OpenCode importer bound to the application database.
+func New(database *sql.DB) *Importer {
+	return &Importer{db: database}
+}
+
+// Source returns the stable source identifier "opencode".
+func (i *Importer) Source() string { return SourceName }
+
+// sessionFile is the subset of OpenCode's session JSON we rely on. Unknown
+// fields are ignored so schema drift in unrelated fields does not break import.
+type sessionFile struct {
+	ID        string `json:"id"`
+	ProjectID string `json:"projectID"`
+	Directory string `json:"directory"`
+	Title     string `json:"title"`
+	Slug      string `json:"slug"`
+	Summary   string `json:"summary"`
+	Time      struct {
+		Created int64 `json:"created"`
+		Updated int64 `json:"updated"`
+	} `json:"time"`
+}
+
+// Import walks the OpenCode session storage and returns one note per session.
+func (i *Importer) Import() ([]plugin.ImportDoc, error) {
+	root, ok := sessionRoot()
+	if !ok {
+		return nil, nil // no OpenCode data dir: successful no-op
+	}
+	projects, _ := db.GetAllProjects(i.db)
+	repos, _ := db.GetAllRepositories(i.db)
+
+	var docs []plugin.ImportDoc
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".json") {
+			return nil
+		}
+		if doc, ok := i.docFor(path, projects, repos); ok {
+			docs = append(docs, doc)
+		}
+		return nil
+	})
+	return docs, nil
+}
+
+// docFor reads and shapes one session file into an ImportDoc.
+func (i *Importer) docFor(path string, projects []db.Project, repos []db.Repository) (plugin.ImportDoc, bool) {
+	raw, err := memsrc.ReadCapped(path, maxSessionFileBytes)
+	if err != nil {
+		log.Printf("opencode importer: skipping %s: %v", path, err)
+		return plugin.ImportDoc{}, false
+	}
+	var s sessionFile
+	if json.Unmarshal(raw, &s) != nil {
+		return plugin.ImportDoc{}, false // not a session file we recognize
+	}
+	title := strings.TrimSpace(s.Title)
+	if title == "" {
+		title = strings.TrimSpace(s.Slug)
+	}
+	summary := strings.TrimSpace(s.Summary)
+	if title == "" && summary == "" {
+		return plugin.ImportDoc{}, false // nothing usable
+	}
+
+	pid := memsrc.MatchProject(memsrc.LastPathSegment(s.Directory), projects, repos)
+	content := renderNote(s, title, summary)
+	if len(content) > db.MaxNoteContentLen {
+		content = content[:db.MaxNoteContentLen]
+	}
+	return plugin.ImportDoc{
+		ProjectID: pid,
+		Title:     noteTitle(title, s.ID),
+		Content:   content,
+		Kind:      "log",
+		Tags:      "opencode",
+		Source:    SourceName,
+	}, true
+}
+
+// sessionRoot returns <dataroot>/storage/session. XDG_DATA_HOME honored, else
+// ~/.local/share. ok=false when the home dir cannot be resolved.
+func sessionRoot() (string, bool) {
+	base := ""
+	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+		base = filepath.Join(xdg, "opencode")
+	} else if home, err := os.UserHomeDir(); err == nil {
+		base = filepath.Join(home, ".local", "share", "opencode")
+	} else {
+		return "", false
+	}
+	return filepath.Join(base, "storage", "session"), true
+}
+
+// noteTitle keeps a stable, unique title: display title plus a short session-id
+// suffix so same-titled sessions do not collide under the runtime's
+// (project, source, title) upsert key.
+func noteTitle(title, id string) string {
+	base := title
+	if base == "" {
+		base = "OpenCode 会话"
+	}
+	base = truncateRunes(firstLine(base), 60)
+	tail := id
+	if len(tail) > 8 {
+		tail = tail[len(tail)-8:]
+	}
+	return base + " · " + tail
+}
+
+// renderNote composes the compact markdown body.
+func renderNote(s sessionFile, title, summary string) string {
+	var b strings.Builder
+	b.WriteString("> 由 RepoNest 从 OpenCode 会话记录自动导入（source: opencode）\n\n")
+	if title != "" {
+		b.WriteString("**标题**：" + title + "\n\n")
+	}
+	if s.Directory != "" {
+		b.WriteString("**目录**：`" + s.Directory + "`\n\n")
+	}
+	if d := formatMillis(s.Time.Updated); d != "" {
+		b.WriteString("**日期**：" + d + "\n\n")
+	}
+	if summary != "" {
+		b.WriteString("## 摘要\n\n")
+		b.WriteString(truncateRunes(summary, 4000))
+		b.WriteString("\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return strings.TrimSpace(s[:i])
+	}
+	return strings.TrimSpace(s)
+}
+
+func formatMillis(ms int64) string {
+	if ms <= 0 {
+		return ""
+	}
+	return time.UnixMilli(ms).Format("2006-01-02")
+}
+
+func truncateRunes(s string, max int) string {
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	if max <= 1 {
+		return "…"
+	}
+	return string(r[:max-1]) + "…"
+}

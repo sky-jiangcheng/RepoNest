@@ -1,6 +1,6 @@
 # ADR-0010: 会话自动捕捉——零人工参与的 Claude Code 会话交接（M1）
 
-- 状态：Proposed（**解析核心已落地** `internal/importers/claude/session.go`，实测对齐真机格式；端到端自动捕捉的默认开关/触发方式仍需产品拍板）
+- 状态：Accepted-in-principle（解析核心已落地 `internal/importers/claude/session.go`；**默认关 + C端/B端分层 + 触发方式已拍板**，见文末「决策落地」；端到端接线进行中）
 - 日期：2026-10-02
 - 关联：[ADR-0007](0007-session-memory-protocol.md)（context/handoff 协议与 `handoff` 标签）、[ADR-0009](0009-ide-presence.md)（SessionEnd hook 一键接入）、[ADR-0006](0006-scope-freeze.md)（范围冻结）、TODO 会话记忆路线 M1
 
@@ -31,3 +31,13 @@ M1 要补的是「零人工参与」的下限：**不依赖 agent 主动调用**
 - 正面：不依赖 agent 自觉也能沉淀会话交接；记忆环对「忘了调工具」的用户自动兜底。
 - 负面/风险：绑定 Claude Code 未公开的 jsonl 格式，需持续跟随其变更；引入一个敏感只读路径，隐私声明与文案必须同步。
 - **待决（实现前需回答）**：① 默认触发用 (A) hook、(B) 按需，还是都上；② 尾部 N 的取值与是否需要「去工具结果」红白名单；③ 生成的 handoff 是否标注「自动捕捉」来源以与 agent 推送区分；④ 非 Claude 客户端（见 ADR-0011）是否纳入同一机制。
+
+## 决策落地（2026-10-02 产品拍板）
+
+1. **按用户分层（C端 / B端）**：这是与 M3 embedding 路线共享的一条产品分层。
+   - **C端（个人用户）**：会话逐字稿敏感度最高，**默认关**，只走**按需**触发（设置里手动「捕获最近会话」），风险自负面最小。
+   - **B端（企业用户）**：有自有风控、愿意接受更强自动化（含远程服务，见 ADR-0012）。可开启 hook 式自动捕捉，但**必须在文档里把「读取本地会话逐字稿」这一风险项与相关配置显式说明清楚**，由 B端自行评估并承担其合规决定；RepoNest 不替其默认开启。
+2. **默认关 + 显式开**：无论 C/B，功能安装即关；开启是用户的一次明确动作。
+3. **触发**：C端＝按需按钮；B端＝可选 SessionEnd hook（复用 ADR-0009 已交付的 hook 接入），二者都不引入后台轮询。
+4. **风险文档为交付物的一部分**：设置项与文档需写清「本功能会读取 `~/.claude/projects/*.jsonl` 会话逐字稿（含潜在敏感信息），产物仅存本地 SQLite、不外传」，并把 hook 自动触发标为面向 B端的进阶项。
+5. 待补（实现细化）：`Session`→`service.HandoffInput` 映射的字段取舍（最后 assistant 文本进 Summary、工具名进 Changes、首次指令进 title 上下文）、是否给自动 handoff 加「auto-captured」标签与 agent 推送版区分。
