@@ -8,6 +8,7 @@
 
 - [功能特性](#功能特性)
 - [快速开始](#快速开始)
+- [VS Code 扩展（预览）](#vs-code-扩展预览)
 - [从源码构建](#从源码构建)
 - [项目分组规则](#项目分组规则)
 - [项目结构](#项目结构)
@@ -220,6 +221,24 @@ Agent 会调用 `reponest_projects_list` → `reponest_notes_search` → `repone
 - **Linux**: `~/.config/reponest/dashboard.db`
 
 日志路径见[故障排查](docs/troubleshooting.md)。
+
+## VS Code 扩展（预览）
+
+扩展（VS Code / Cursor / Windsurf —— 一个 VSIX 三端通用）目前是**预览版**，**尚未上架应用商店**——上架需要 publisher 入驻与图标资产，是 [ADR-0009](docs/adr/0009-ide-presence.md) 的第二步，落地前请从源码手动安装：
+
+```bash
+git clone https://github.com/sky-jiangcheng/repo-nest.git
+cd repo-nest/ide/vscode
+npm install
+npx @vscode/vsce package --no-dependencies   # → reponest-vscode-0.1.0.vsix
+```
+
+安装生成的 `.vsix`：
+
+- **界面**：扩展视图 → `⋯` 菜单 → **从 VSIX 安装…**
+- **命令行**：`code --install-extension reponest-vscode-0.1.0.vsix`（Cursor / Windsurf 把 `code` 换成 `cursor` / `windsurf`）
+
+扩展是瘦客户端：命令经 stdio 调用 `reponest-mcp`（请先安装——brew / scoop / [Releases](https://github.com/sky-jiangcheng/repo-nest/releases)），所有答案都来自与桌面应用相同的 `internal/service` 层。能力清单见 [`ide/vscode/README.md`](ide/vscode/README.md)。
 
 ## 从源码构建
 
