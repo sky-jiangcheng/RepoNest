@@ -18,13 +18,15 @@
 - [参与贡献](#参与贡献)
 - [许可](#许可)
 
-```
-首次安装  →  reponest_scan      一次调用发现本地仓库（纯 MCP 可用，无需桌面应用）
-会话开始  →  reponest_context   一次调用加载项目全部上下文（技术栈/README/待办/历史笔记/上次交接）
-   ...
-会话结束  →  reponest_handoff   结构化记录：做了什么、为什么、踩了什么坑、下一步
-   ↓
-任何 agent 的下一次会话，都从上一次结束的地方开始
+```mermaid
+flowchart LR
+    S[首次安装<br/>reponest_scan<br/>一次调用发现本地仓库<br/>纯 MCP 可用，无需桌面应用] --> C[会话开始<br/>reponest_context<br/>一次调用加载全部上下文<br/>技术栈 · README · 待办 · 笔记 · 上次交接]
+    C --> W((…干活…))
+    W --> H[会话结束<br/>reponest_handoff<br/>结构化记录：做了什么 · 为什么 · 踩坑 · 下一步]
+    H -. 任何 agent 的下一次会话，都从上一次结束的地方开始 .-> C
+    style S fill:#f0f7ff,stroke:#4a90d9
+    style C fill:#f0fff4,stroke:#4caf50
+    style H fill:#fdf2f8,stroke:#d946a0
 ```
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev)

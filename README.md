@@ -16,13 +16,15 @@ English | [简体中文](README.zh-CN.md)
 - [Contributing](#contributing)
 - [License](#license)
 
-```
-First install  →  reponest_scan      discover local repos in one call (pure MCP works, no desktop app needed)
-Session start  →  reponest_context   load the project's full context in one call (tech stack / README / todos / past notes / last handoff)
-   ...
-Session end    →  reponest_handoff   structured record: what was done, why, gotchas hit, what's next
-   ↓
-Any agent's next session picks up exactly where the last one ended
+```mermaid
+flowchart LR
+    S[First install<br/>reponest_scan<br/>discover local repos in one call<br/>pure MCP works — no desktop app] --> C[Session start<br/>reponest_context<br/>full context in one call<br/>tech stack · README · todos · notes · last handoff]
+    C --> W((…work…))
+    W --> H[Session end<br/>reponest_handoff<br/>structured record: what · why · gotchas · next]
+    H -. any agent's next session starts exactly here .-> C
+    style S fill:#f0f7ff,stroke:#4a90d9
+    style C fill:#f0fff4,stroke:#4caf50
+    style H fill:#fdf2f8,stroke:#d946a0
 ```
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev)
