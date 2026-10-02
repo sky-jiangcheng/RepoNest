@@ -16,9 +16,12 @@ order: 21
 | [0007](0007-session-memory-protocol.md) | 会话记忆协议（context / handoff 双工具） | Accepted |
 | [0008](0008-pwa-removal.md) | PWA 移出桌面主构建（落实 ADR-0006 暂缓档） | Accepted |
 | [0009](0009-ide-presence.md) | IDE 存在感——薄客户端分发策略（一键注册 → VS Code 扩展 → JetBrains 缓议） | Accepted |
+| [0010](0010-session-auto-capture.md) | 会话自动捕捉——零人工参与的 Claude Code 会话交接（M1） | Proposed |
+| [0011](0011-multi-agent-memory-importers.md) | 多 agent 记忆源导入——可复用 importer 框架与各源可行性（M2） | Proposed |
+| [0012](0012-semantic-search.md) | 语义检索评估——向量召回补 FTS5 盲区，守住零 CGO（M3） | Proposed |
 
 ## 约定
 
 - 每个重大不可逆决策一篇：背景 → 决策 → 后果
 - 被 superseded 的 ADR 保留原文与横幅，不删除
-- 新 ADR 从 `0009` 递增编号，文件名 `NNNN-kebab-title.md`
+- 新 ADR 从 `0012` 递增编号，文件名 `NNNN-kebab-title.md`

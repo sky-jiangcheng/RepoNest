@@ -228,18 +228,19 @@
 
 > 定位升级为「AI agent 记忆层」后的主攻方向，按传播价值排序；M4-M5 的分发决策（薄客户端纪律、VS Code 先行、JetBrains 缓议）见 [ADR-0009](docs/adr/0009-ide-presence.md)。
 
-### M1: 会话自动捕捉（零人工参与）
+### M1: 会话自动捕捉（零人工参与）→ [ADR-0010](docs/adr/0010-session-auto-capture.md)
 
-- [ ] 解析 `~/.claude/projects/*/*.jsonl` 会话记录，提取最后一条 assistant 消息 + 工具调用摘要生成 handoff
-- [ ] 体积与隐私评估：只读最后 N 条消息，`.gitignore` 级别的路径白名单
+- [ ] 解析 `~/.claude/projects/*/*.jsonl` 会话记录，提取最后一条 assistant 消息 + 工具调用摘要生成 handoff —— 设计见 ADR-0010，**实现待隐私默认/触发方式拍板**
+- [x] 体积与隐私评估：ADR-0010 已定「默认关 + 只读路径白名单 + 尾部 N 有界提取 + 宽松失败 + golden-file」，边界与既有 claude *memory* importer（读 `memory/*.md`，非 jsonl 逐字稿）划清
 
-### M2: 多 agent 记忆源导入
+### M2: 多 agent 记忆源导入 → [ADR-0011](docs/adr/0011-multi-agent-memory-importers.md)
 
-- [ ] Cursor（`~/.cursor/*/memory` 或 rules）、Codex、OpenCode 记忆格式导入器（复用 plugin.ImportDoc upsert 管线）
+- [ ] Cursor / Codex / OpenCode 记忆格式导入器（复用 plugin.ImportDoc upsert 管线）—— 框架与推进顺序（Codex 先、OpenCode 次、Cursor 缓行：`state.vscdb` 未公开易碎）见 ADR-0011；各源实现前先做真机样本格式验证门
 
-### M3: 语义检索
+### M3: 语义检索 → [ADR-0012](docs/adr/0012-semantic-search.md)
 
-- [ ] 评估本地 embedding + sqlite-vec（保持零 CGO），补充 FTS5 字面匹配盲区；先做 A/B 评测再决定默认开关
+- [x] 评估完成：`modernc.org/sqlite/vec` 使向量存储/检索在**零 CGO** 下已可行（不改驱动）；混合检索 = FTS5 + vec 经 RRF 融合、默认关（详见 ADR-0012）
+- [ ] 本地 embedding 生成路径（远程 API / 纯 Go 小模型 / 仅增强 FTS 三选一）待定 —— M3 成败的唯一硬门，实现前须先做「纯 Go 小模型推理」可行性 spike + A/B 评测门
 
 ### M4: Agent 集成即插即用
 
