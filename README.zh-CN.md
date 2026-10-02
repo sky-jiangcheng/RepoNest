@@ -284,7 +284,7 @@ web/src/
   locales/ styles/       # zh-CN + en；设计系统 CSS
 ```
 
-架构决策见 [ADR](docs/adr/)（尤其 [ADR-0005 服务层重构](docs/adr/0005-service-layer.md)）；分层与数据流详见[架构说明](docs/architecture.md)。前后端接口契约（Wails 绑定面）见 [API 参考](docs/api/reference.md)。
+架构决策见 [ADR](docs/adr/index.md)（尤其 [ADR-0005 服务层重构](docs/adr/0005-service-layer.md)）；分层与数据流详见[架构说明](docs/architecture.md)。前后端接口契约（Wails 绑定面）见 [API 参考](docs/api/reference.md)。
 
 ## 命名分层
 
@@ -329,7 +329,7 @@ cd web && npm test                                 # 前端测试
 wails dev                                          # 开发模式（可选）
 ```
 
-架构约定见 [docs/architecture.md](docs/architecture.md) 与 [docs/adr/](docs/adr/)。提交规范采用 [Conventional Commits](https://www.conventionalcommits.org/)。安全问题请走[私密报告渠道](SECURITY.md)。
+架构约定见 [docs/architecture.md](docs/architecture.md) 与 [docs/adr/](docs/adr/index.md)。提交规范采用 [Conventional Commits](https://www.conventionalcommits.org/)。安全问题请走[私密报告渠道](SECURITY.md)。
 
 ## 许可
 

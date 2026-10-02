@@ -36,7 +36,7 @@ cd web && npm run build  # tsc 严格检查（ESLint 现状见 TODO.md）
 
 - **业务逻辑只写在 `internal/service`**：Wails 桌面、headless HTTP（`cmd/server`）、MCP（`cmd/mcp`）三端共享同一实现；`internal/app` 是薄绑定层，每个方法 1-3 行委托，不放逻辑
 - **改绑定面必须同步文档**：`internal/app` 的方法签名是对外契约，变更需同步 [docs/api/reference.md](docs/api/reference.md)
-- **重大决策走 ADR**：在 [docs/adr/](docs/adr/) 新增编号文件，说明背景、决策与代价；历史决策（分层、FTS5、块编辑器、范围冻结）见 ADR 索引
+- **重大决策走 ADR**：在 [docs/adr/](docs/adr/index.md) 新增编号文件，说明背景、决策与代价；历史决策（分层、FTS5、块编辑器、范围冻结）见 ADR 索引
 
 ## 范围冻结（重要）
 

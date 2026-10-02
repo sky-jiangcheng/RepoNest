@@ -290,7 +290,7 @@ web/src/
   locales/ styles/       # zh-CN + en; design-system CSS
 ```
 
-Architecture decisions: see the [ADRs](docs/en/adr/), especially [ADR-0005 service-layer refactor](docs/en/adr/0005-service-layer.md); layering and data flows in [Architecture](docs/en/architecture.md). The frontend/backend contract (Wails binding surface) is in [API Reference](docs/en/api/reference.md).
+Architecture decisions: see the [ADRs](docs/en/adr/index.md), especially [ADR-0005 service-layer refactor](docs/en/adr/0005-service-layer.md); layering and data flows in [Architecture](docs/en/architecture.md). The frontend/backend contract (Wails binding surface) is in [API Reference](docs/en/api/reference.md).
 
 ## Naming Layers
 
@@ -307,7 +307,7 @@ Why frozen: the data directory `reponest` has already been through two automatic
 
 ## Documentation
 
-English pages are the default; the [Chinese manual](https://sky-jiangcheng.github.io/repo-nest/zh/) mirrors them. Only the [positioning brief](docs/positioning-brief.md) and [product reviews](docs/product-review/) remain Chinese-only.
+English pages are the default; the [Chinese manual](https://sky-jiangcheng.github.io/repo-nest/zh/) mirrors them. Only the [positioning brief](docs/positioning-brief.md) and [product reviews](docs/product-review/2026-08-27-new-deep-review.md) remain Chinese-only.
 
 | Document | Contents |
 |----------|----------|
@@ -337,7 +337,7 @@ cd web && npm test                                # frontend tests
 wails dev                                         # dev mode (optional)
 ```
 
-Architecture conventions: [docs/architecture.md](docs/en/architecture.md) and [docs/en/adr/](docs/en/adr/). Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Security issues go through the [private reporting channel](SECURITY.md).
+Architecture conventions: [docs/architecture.md](docs/en/architecture.md) and [docs/en/adr/](docs/en/adr/index.md). Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Security issues go through the [private reporting channel](SECURITY.md).
 
 ## License
 

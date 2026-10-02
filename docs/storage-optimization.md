@@ -24,7 +24,7 @@ RepoNest 对 git 仓库做的不是「压缩 / 去重」类存储优化，而是
 | 6 | **挖掘结果缓存** | `repo_meta` 用 `ON CONFLICT DO UPDATE` + `updated_at` 判断失效，增量重挖，避免重复扫描文件系统 |
 | 7 | **工程层调优** | SQLite WAL + 单连接调优，并发读写不阻塞；12 个版本化迁移自动执行，迁移不可变、仅追加 |
 
-上表每一项在代码里的位置：`projects` / `repositories` 归一化与 `daily_stats` 物化在 [`internal/db`](../internal/db)，FTS5 与触发器定义见 `migrate.go`，挖掘缓存见 `repo_meta.go`。
+上表每一项在代码里的位置：`projects` / `repositories` 归一化与 `daily_stats` 物化在 [`internal/db`](../internal/db/db.go)，FTS5 与触发器定义见 `migrate.go`，挖掘缓存见 `repo_meta.go`。
 
 > 第 5 项是「AI 价值」的根本来源：git 仓库的原始信息（commit 历史、文件路径、文件内容）是**易变且昂贵的**，每次让 AI 直接 `git log` / 逐文件读都是一次性消费。RepoNest 在**扫描时一次性解析**，之后查询不再触碰 `git` 命令。
 

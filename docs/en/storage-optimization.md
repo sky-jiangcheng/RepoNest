@@ -58,7 +58,7 @@ How to read it: the two paths **diverge at "one query"**. When AI reads git dire
 | **Cost** | Rereading = paying tokens again | Parse once, query unlimited times |
 | **Offline / latency** | Depends on network and the model | Local SQLite, zero latency, works offline |
 
-The two tables are two views of the same fact: **the upper one** says what is stored (seven storage optimizations), **the lower one** says what that buys. What actually does the work is not any single optimization but item 5 — statistics materialization — because it turns a "query" from "run a git command" into "look up a row". In code: `projects` / `repositories` normalization and `daily_stats` materialization live in [`internal/db`](../../internal/db); the FTS5 tables and triggers are defined in `migrate.go`; the mining cache is in `repo_meta.go`.
+The two tables are two views of the same fact: **the upper one** says what is stored (seven storage optimizations), **the lower one** says what that buys. What actually does the work is not any single optimization but item 5 — statistics materialization — because it turns a "query" from "run a git command" into "look up a row". In code: `projects` / `repositories` normalization and `daily_stats` materialization live in [`internal/db`](../../internal/db/db.go); the FTS5 tables and triggers are defined in `migrate.go`; the mining cache is in `repo_meta.go`.
 
 ## 3. The core argument
 
