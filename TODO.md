@@ -67,6 +67,7 @@
 | P36 | `knowledge.go` 进一步拆分评估 → 内聚度高暂不拆 | S14 |
 | P29 | `parseTimestamp` 多格式鲁棒解析（unix/RFC3339/ISO8601/git %ai/%ad 默认）+ 测试 | S14 |
 | P35·b | KnowledgeCard → `KnowledgeCard.module.css`（全局仅留共享 .pin-btn） | S14 |
+| C11·A | 插件运行时：`loader.go` 合入 `runtime.go`（删 loader.go，Claude importer 路径不受影响） | S14 |
 
 </details>
 
@@ -138,9 +139,9 @@
 
 ### C11: 插件运行时精简评估（669 行）
 
-- [ ] 方案 A（推荐）：`loader.go`（52 行）合并入 `runtime.go`，减少文件碎片
+- [x] **方案 A（推荐）已完成**：`loader.go`（实际 121 行，非 52）合入 `runtime.go` 末尾「yaegi script loader」段，删除 `loader.go`；`runtime.go` import 合并（+reflect/strings/interp/stdlib），符号无冲突（`exportedTypes`↔`Context`、`loadPlugin`↔`compileScript` 同包互引）；`go build ./... + go vet + go test ./internal/core/plugin/runtime/` 全绿
 - [ ] 方案 B（2.0 考虑）：评估移除 yaegi 依赖，Claude importer 改为内置函数
-- [ ] Claude importer 路径确认不受影响
+- [x] Claude importer 路径确认不受影响：`internal/importers/claude` 是 Go 原生 `plugin.KnowledgeImporter`，经 `service/plugin.go:100` 的 `rt.RegisterSource` 注册，不走 yaegi `compileScript`/`script` 路径，本次合并不触碰
 
 ### C15: install 脚本评估
 
