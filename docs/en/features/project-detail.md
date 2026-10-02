@@ -9,6 +9,18 @@ The project detail page shows a single project's statistics, repository knowledg
 
 ## Page structure
 
+```mermaid
+flowchart TB
+    HEAD["Header card<br/>name / path · split & merge<br/>summary statistics"]
+    HEAD --> MINE["Project overview<br/>knowledge mining (cached in repo_meta)"]
+    MINE --> HEAT["Commit heatmap<br/>this project only"]
+    HEAT --> TREND["Trend chart<br/>added / deleted / files changed"]
+    TREND --> SUBS["Sub-repository list"]
+    MINE --> PANEL["Notes & todos panel<br/>scoped to the project"]
+```
+
+How to read it: vertically top to bottom, with the header card in the top-left as the **single point of action** — "split down / merge up" adjusts the grouping level there, and notes and todos migrate with it; the remaining five blocks are read-only. The README / tech stack / dependencies / contributors in "Project overview" are a **mining cache** (mined live once, then read from `repo_meta`), while the heatmap and trend chart come from the materialized `daily_stats` table; both are **independent** of the dashboard's global heatmap.
+
 ### Header card
 
 - Project name and path, automatic/manual grouping marker

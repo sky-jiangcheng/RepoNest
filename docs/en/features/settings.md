@@ -10,7 +10,9 @@ The Settings page has six tabs: Scan Directories, Code Target, Author, Appearanc
 ## Scan Directories
 
 - Add / remove scan roots (a rescan is required after saving for changes to take effect)
-- For the default roots seeded automatically on first launch, see [Quick Start](../getting-started.md)
+- For the default roots seeded automatically on first launch, see [Getting Started](../getting-started.md)
+
+Only directories added here get scanned — which is exactly what step "① Configure scan directories" in [Getting Started](../getting-started.md#2-run-a-scan) is for.
 
 ## Code Target
 

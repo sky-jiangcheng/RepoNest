@@ -31,6 +31,8 @@ flowchart LR
     A -. session boundaries .-> D
 ```
 
+The five steps map one-to-one onto the five capabilities listed at the end of this section. The dashed edge is what separates RepoNest from a plain notes tool: capturing knowledge is not the end state — it is the input of the next session.
+
 The session memory loop (both ends of the protocol):
 
 ```mermaid
@@ -48,6 +50,8 @@ sequenceDiagram
     RN->>KB: structured handoff persisted, tagged 'handoff'
     Note over KB,Agent: the next session (any agent) reads it automatically
 ```
+
+How to read it: the three participants are **three separate processes** — the AI side holds no data, RepoNest does not schedule agents, and the knowledge base is the only place the two meet. The upper half is cold start (`reponest_scan`) and session open (`reponest_context`); the lower half is session close (`reponest_handoff`). That last Note is the proof the loop closes: once the handoff is persisted, **the next session — possibly run by a different agent — reads it back automatically** via `reponest_context`, with nothing carried over by hand.
 
 The "hand it to AI" step happens at **session boundaries**: `reponest_scan` builds the knowledge base, `reponest_context` injects the full context once when a session starts, and `reponest_handoff` captures a structured handoff when it ends — reusable across agents.
 
@@ -108,7 +112,7 @@ flowchart TB
     style INIT fill:#fdf2f8,stroke:#d946a0
 ```
 
-How to read it: **the top two rows are the shelf** — the desktop App and the VS Code extension meet humans, the MCP toolset, dsh plugin and llms.txt meet agents; **the middle is the vault** — every entry point calls the same service layer with zero logic duplication; **the bottom is the wiring** — `reponest-init` connects the agent side in one command, and the SessionEnd hook makes the handoff happen automatically at session end. The full distribution argument lives in [ADR-0009](adr/0009-ide-presence.md).
+How to read it: **the top two rows are the shelf** — the desktop App and the VS Code extension meet humans, the MCP toolset, dsh plugin and llms.txt meet agents; **the middle is the vault** — every entry point calls the same service layer with zero logic duplication; **the bottom is the wiring** — `reponest-init` connects the agent side in one command, and the SessionEnd hook makes the handoff happen automatically at session end. Every arrow points inward at `internal/service`: no entry point bypasses it to talk to the database (exceptions noted in [Architecture](architecture.md#layering-backend)), which is why all three surfaces behave identically. Two edges deserve a second look: the `INIT` row only writes toward the agent side (`.mcp.json` / `.cursor` / `.vscode` / the SessionEnd hook) because it is a **one-time wiring action at install time**, and `OUT` (Markdown export / version history / LCS diff) points back at `HUMAN` because the readable artifact of captured knowledge is ultimately for people. The full distribution argument lives in [ADR-0009](adr/0009-ide-presence.md).
 
 ## About These Docs
 

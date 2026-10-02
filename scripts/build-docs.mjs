@@ -38,6 +38,13 @@ const { marked } = requireFromWeb('marked')
 // CSSStyleSheet (adoptedStyleSheets path) and getBBox/getComputedTextLength
 // (label measurement — 8px/char is a rough but stable approximation; layout
 // differences vs a real browser are cosmetic, not structural).
+//
+// getBBox must be UNION-OF-CHILDREN for container elements, not a textContent
+// estimate: mermaid reads the root <svg>'s bbox to size the viewBox, and a
+// textContent-based estimate scales with total characters (a 4000-char diagram
+// → a 32000px-wide viewBox with height 36), which flattens every flowchart into
+// a hairline. Container tags recurse into children, accumulating their
+// transform/x/y offsets; only text-bearing leaves get the 8px/char estimate.
 let mermaidRender = null
 const mermaidPending = []  // in-flight render promises, resolved before writeFileSync
 try {
@@ -52,7 +59,35 @@ try {
     replaceSync() {}
     insertRule() { return 0 }
   }
+  // Container tags: union of children's boxes, offsets applied.
+  // Text-bearing leaves: 8px/char estimate (stable, cosmetic-only drift).
+  const BBOX_CONTAINERS = new Set([
+    'svg', 'g', 'a', 'div', 'p', 'span', 'foreignObject', 'marker', 'pattern', 'defs',
+  ])
+  const translateOf = (el) => {
+    const t = el.getAttribute && el.getAttribute('transform')
+    const m = t && /translate\(\s*([-\d.]+)[ ,]+([-\d.]+)/.exec(t)
+    return m ? [parseFloat(m[1]), parseFloat(m[2])] : [0, 0]
+  }
   w.SVGElement.prototype.getBBox = function () {
+    const kids = this.children ? Array.from(this.children) : []
+    if (BBOX_CONTAINERS.has(this.tagName) && kids.length) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, any = false
+      for (const k of kids) {
+        const b = typeof k.getBBox === 'function' ? k.getBBox() : null
+        if (!b || !isFinite(b.width) || !isFinite(b.height)) continue
+        const [tx, ty] = translateOf(k)
+        const ax = parseFloat((k.getAttribute && k.getAttribute('x')) || 0)
+        const ay = parseFloat((k.getAttribute && k.getAttribute('y')) || 0)
+        const ox = tx + ax, oy = ty + ay
+        any = true
+        if (b.x + ox < x0) x0 = b.x + ox
+        if (b.y + oy < y0) y0 = b.y + oy
+        if (b.x + ox + b.width > x1) x1 = b.x + ox + b.width
+        if (b.y + oy + b.height > y1) y1 = b.y + oy + b.height
+      }
+      if (any) return { x: x0, y: y0, width: Math.max(x1 - x0, 1), height: Math.max(y1 - y0, 1) }
+    }
     const len = (this.textContent || '').length
     return { x: 0, y: 0, width: Math.max(len * 8, 40), height: 20 }
   }

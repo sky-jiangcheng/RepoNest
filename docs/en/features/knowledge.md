@@ -7,6 +7,19 @@ order: 3
 
 The knowledge base is the app's home page and the hub for cross-project notes: Markdown / block editor, tag categories, FTS5 full-text search, version history, and AI memory import.
 
+```mermaid
+flowchart LR
+    NEW["Create a note<br/>home page or project detail"] --> ED["Block editor<br/>Markdown ↔ blocks"]
+    ED --> AUTO["Autosaved draft"]
+    AUTO --> SNAP["Every save → version snapshot<br/>latest 50 kept"]
+    SNAP --> DIFF["Line-level LCS diff<br/>against the current version"]
+    DIFF --> BACK["One-click restore of any version"]
+    ED --> IDX["FTS5 trigram index<br/>synced by trigger"]
+    IDX --> SEARCH["Search / ask the knowledge base<br/>highlighted snippets · ranked"]
+```
+
+How to read it: one **trunk (edit → save → snapshot → diff → restore)** plus one **branch (index → search)**. The trunk solves "knowledge must not be lost"; the branch solves "knowledge must be findable" — both are triggered by the same save action (snapshots via a write trigger, the index via the FTS sync trigger), so there is no save button to remember. The **History** button on a note card enters the version side; the search box enters the branch.
+
 ## Managing notes
 
 - **Create a note**: pick a project in "Quick create note" on the home page, or create one from the notes panel on the project detail page

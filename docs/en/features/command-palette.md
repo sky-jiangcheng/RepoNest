@@ -5,6 +5,22 @@ order: 6
 
 # Command Palette and Keyboard Shortcuts
 
+```mermaid
+flowchart TB
+    KEY["⌘ / Ctrl + K<br/>global hotkey"] --> PAL["Command palette"]
+    SEARCH["Dashboard search box"] --> PAL
+    TYPE["Type a keyword<br/>300ms debounce"] --> PAL
+    PAL --> M1["Notes & todos<br/>FTS5 full-text search"]
+    PAL --> M2["Projects<br/>filtered by project name"]
+    PAL --> M3["Quick entries<br/>no input: recent projects"]
+    M1 --> ACT["Enter opens<br/>jumps to the owning project"]
+    M2 --> ACT
+    M3 --> ACT
+    ACT --> STAR["Results can be starred directly<br/>(dashboard search box only)"]
+```
+
+How to read it: **two entries (the global hotkey and the dashboard search box) merge into one palette** with identical capabilities afterwards; the only difference is the marked edge — results from the dashboard search box can be starred directly. The three branches above are the three result classes (notes / projects / quick entries), and they all fall back to the same action below (open on Enter). Navigation uses `↑` `↓` with `aria-activedescendant`; `Esc` closes and returns focus to the trigger.
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action | Notes |

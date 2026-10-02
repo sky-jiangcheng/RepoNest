@@ -48,6 +48,8 @@ sequenceDiagram
     Note over K,A: the next session (any agent) reads it first via context
 ```
 
+How to read it: the protocol has exactly **two entry calls** (`reponest_context` to open a session, `reponest_handoff` to close it) and one guarantee in between — a handoff note is written once, tagged `handoff`, and `reponest_notes_update` refuses to overwrite it, so the next session always reads the same record at the top of its context.
+
 | Tool | Description | Read/Write |
 |------|-------------|------------|
 | `reponest_scan` | Cold start: seeds the default scan roots and scans them synchronously, discovering local Git repositories (works with a pure MCP install, no desktop app needed) | Write |

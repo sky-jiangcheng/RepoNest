@@ -30,6 +30,8 @@ flowchart LR
     A -. 会话边界自动注入/收回 .-> D
 ```
 
+五个环节与下面五条能力一一对应（分别见本节末尾的「发现 / 理解 / 记录 / 检索 / AI 使用」）。虚线那条是**产品与一般知识库工具的区别**：知识沉淀不是终点，而是下一个会话的输入。
+
 会话边界的记忆环（协议两端）：
 
 ```mermaid
@@ -47,6 +49,8 @@ sequenceDiagram
     RN->>KB: 结构化交接落库，带 handoff 标签
     Note over KB,Agent: 下一个会话（任何 agent）自动读到
 ```
+
+读图：三个参与者是**三个独立进程**——AI 侧不持有数据，RepoNest 不调度 agent，知识库是双方唯一交汇的地方。上半段是冷启动（`reponest_scan`）与开会话（`reponest_context`），下半段是收会话（`reponest_handoff`）；最后一条 Note 是闭环成立的证据：交接笔记落库后，**下一个会话（可能是另一个 agent）经 `reponest_context` 自动读到**，不需要人工搬运。
 
 其中「交给 AI 使用」落在**会话边界**：`reponest_scan` 建立知识库，`reponest_context` 开会话一次注入全上下文，`reponest_handoff` 收会话结构化交接，跨 agent 复用。
 
@@ -107,7 +111,9 @@ flowchart TB
     style INIT fill:#fdf2f8,stroke:#d946a0
 ```
 
-读法：**上面两排是「货架」**——桌面 App 和 VS Code 扩展跟人见面，MCP 工具面、dsh 插件、llms.txt 跟 agent 见面；**中间是「仓库」**——所有入口都只调同一份 service 层，零逻辑复制；**底部是「接线员」**——`reponest-init` 一条命令把 agent 侧接好，SessionEnd hook 让交接在会话结束时必然发生。分发策略的完整论证见 [ADR-0009](adr/0009-ide-presence.md)。
+读法：**上面两排是「货架」**——桌面 App 和 VS Code 扩展跟人见面，MCP 工具面、dsh 插件、llms.txt 跟 agent 见面；**中间是「仓库」**——所有入口都只调同一份 service 层，零逻辑复制；**底部是「接线员」**——`reponest-init` 一条命令把 agent 侧接好，SessionEnd hook 让交接在会话结束时必然发生。箭头全部向内指向 `internal/service`：没有任何一个入口绕过它直连数据库（例外见[架构说明](architecture.md#分层后端)），所以三端行为永远一致。
+
+两个虚线来源值得单独看：`INIT` 那一排只写向 agent 侧（`.mcp.json` / `.cursor` / `.vscode` / SessionEnd hook），因为它是**装机时跑一次**的接线动作；`OUT`（Markdown 导出 / 版本历史 / LCS diff）指向 `HUMAN`，因为知识沉淀的可读产物最终是给人看的。分发策略的完整论证见 [ADR-0009](adr/0009-ide-presence.md)。
 
 ## 文档说明
 

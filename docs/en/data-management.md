@@ -7,6 +7,17 @@ order: 8
 
 RepoNest is a local-first app: there are no cloud services or accounts, and all knowledge data (notes, todos, project metadata, statistics) lives only in a single SQLite database on your machine. AI clients such as Claude Code read that same local data over MCP. That means **backing up = copying one directory, and migrating = moving one directory**.
 
+```mermaid
+flowchart LR
+    APP["RepoNest desktop app<br/>writes"] --> DIR[("Data directory reponest/<br/>dashboard.db + -wal/-shm<br/>plugins/ · logs")]
+    DIR --> MCP["MCP / headless HTTP<br/>AI agents read the same DB"]
+    DIR --> CP["Cold backup<br/>quit the app, then copy"]
+    DIR --> RM["Reset<br/>delete the directory → restart"]
+    CP --> NEW["New machine: launch once<br/>to create the layout → overwrite → fix scan roots"]
+```
+
+How to read it: the box in the middle is the **single source of truth** — the desktop app writes it, the AI side reads the same database, and backup / migration / reset are all just a copy or a deletion of it. That is also where this page's two constraints come from: the database runs in WAL mode (copying it while the app is running can lose un-flushed `-wal` content, so **quit the app before backing up**), and scan roots are stored as **absolute paths** (after migrating machines you must change them to the new paths in Settings).
+
 ## Where the Data Lives
 
 | Item | Location |

@@ -15,15 +15,18 @@ order: 20
 
 ```mermaid
 flowchart TB
+    ENTRY[/"三端入口：Wails · MCP · headless HTTP"/]
     MAIN[main.go · Wails 入口<br/>DB 初始化 / 扫描根播种 / 窗口与安全头]
     APP[internal/app · 绑定层<br/>每方法 1-3 行委托 service]
     SVC[internal/service · 业务核心<br/>笔记 / 搜索 / 上下文 / 交接]
     DB[(internal/db · SQLite)]
     GIT[internal/core/git · Git Provider 抽象<br/>本地 CLI 实现]
-    MAIN --> APP --> SVC
+    ENTRY --> MAIN --> APP --> SVC
     SVC --> DB
     SVC --> GIT
 ```
+
+读图：箭头是调用方向，自上而下**逐层变薄**——`main.go` 只做启动期初始化，`internal/app` 每个方法 1-3 行纯委托，逻辑全部收敛到 `internal/service`；再往下分成两条数据出口，写库走 `internal/db`，读 git 走 `internal/core/git` 的 Provider 抽象（本地实现是 CLI，换成别的实现不影响上层）。最上方的 `三端入口` 是同一个入口的三个面——Wails 桌面、MCP、headless HTTP，谁都不是特例，见下段。
 
 **Wails 桌面、MCP（cmd/mcp）与 headless HTTP（cmd/server）三种入口共享同一 service 实现**——行为永远一致，新功能只需实现一次。两个例外直连 db：`internal/core/plugin/runtime`（插件知识导入的 upsert 管线）与 `internal/importers/claude`（Claude 记忆读取），均为 service 之外的既有约定。
 
@@ -33,12 +36,18 @@ flowchart TB
 
 ### 扫描管线（service/scan.go，唯一管线）
 
+```mermaid
+flowchart LR
+    ROOTS[(scan_roots<br/>播种的扫描根)] --> SCAN[scanner.ScanRepositories<br/>递归发现 Git 仓库]
+    SCAN --> GROUP[grouper.GroupRepositories<br/>Monorepo / 单仓库分组]
+    GROUP --> TX[["db 事务<br/>SyncProjectTx · UpsertRepositoryTx<br/>CleanupStaleDataTx"]]
+    TX --> STATS[refreshCollectedStats<br/>365 天窗口 · all + 个人作者双行 upsert]
+    STATS --> EVT[["事件 project.scanned"]]
+    EVT -. 驱动 .-> REFRESH
+    REFRESH[refreshRepoStatsRange<br/>service/refresh.go · 唯一循环]
 ```
-scan_roots ──▶ scanner.ScanRepositories ──▶ grouper.GroupRepositories
-        ──▶ db 事务：SyncProjectTx + UpsertRepositoryTx + CleanupStaleDataTx
-        ──▶ refreshCollectedStats（365 天窗口，all + 个人作者双行 upsert）
-        ──▶ 事件 project.scanned
-```
+
+读图：一条**单向、事务收口**的管线。发现与分组在事务外（可能很慢，不该占着写锁），三个写操作 `SyncProjectTx` / `UpsertRepositoryTx` / `CleanupStaleDataTx` 在**同一个事务**内完成——这是「重复扫描不产生脏数据」的根本原因。末尾抛 `project.scanned` 事件，触发右侧的统计刷新循环（下一节）。
 
 ### 统计刷新（service/refresh.go，唯一循环）
 
@@ -46,7 +55,16 @@ scan_roots ──▶ scanner.ScanRepositories ──▶ grouper.GroupRepositorie
 
 ### 知识库
 
-`project_notes` + FTS5 trigram 虚拟表（bm25 排序，短查询降级 LIKE，见 [ADR-0003](adr/0003-fts5-search.md)）；每次更新触发器写入 `note_versions` 快照（保留 50），diff 由 `internal/diff` LCS 生成。
+```mermaid
+flowchart LR
+    W["写：笔记 upsert"] --> FTS[("project_notes_fts<br/>trigram 虚拟表 · bm25")]
+    W --> VER[("note_versions<br/>快照 · 保留 50")]
+    FTS --> R["读：reponest_notes_search / ask<br/>短查询降级 LIKE"]
+    VER --> DIFF["internal/diff<br/>LCS 行级 diff"]
+    DIFF --> RESTORE["恢复任意历史版本"]
+```
+
+读图：**写一次，读两路**。笔记落库时由触发器同时维护 FTS 索引（检索侧）与版本快照（历史侧），应用层零维护代码——索引不可能与正文失配，除非触发器被破坏（这正是 `reponest_integrity` 的检查项，见[AI 集成](features/ai-integration.md#就绪度-vs-数据可信度)）。检索侧读 trigram 索引拿相关性与 snippet，历史侧读快照算 LCS diff。细节见 [ADR-0003](adr/0003-fts5-search.md)。
 
 ### 插件运行时（ADR-0002）
 
@@ -70,6 +88,19 @@ styles/     设计系统：tokens / reset / components / layouts / features
 单文件 SQLite（WAL + 外键），12 个版本化迁移自动执行；表：`projects` / `repositories` / `daily_stats` / `project_notes`(+FTS) / `project_todos`(+FTS) / `note_versions` / `repo_meta` / `app_config` / `scan_roots`。查询按域拆分文件（projects.go / notes.go / …）；升降级等事务操作（`SplitProjectDown` / `MergeProjectUp`）有单测覆盖。
 
 ## 构建与产物
+
+```mermaid
+flowchart LR
+    SRC["Go 源码"] --> B1["go build → reponest<br/>根包 · scripts/build.sh"]
+    SRC --> B2["go build → reponest-mcp<br/>cmd/mcp"]
+    WEB["web/dist<br/>go:embed 内联"] --> B1
+    MD["docs/**/*.md<br/>zh + en 镜像"] --> B3["build-docs.mjs<br/>构建时 mermaid → 内联 SVG"]
+    B3 --> PAGES[("GitHub Pages")]
+    B1 --> REL[("GitHub Releases<br/>多平台 · macOS 签名公证")]
+    B2 --> REL
+```
+
+读图：左侧两条产物线——桌面应用把 `web/dist` 用 `go:embed` 打进二进制（用户只拿到一个文件），MCP server 是独立 stdio 二进制；右侧是文档站，**图在构建期就渲染成内联 SVG**，因此页面零运行时依赖、可离线，GitHub 原生渲染与文档站同源可读。
 
 | 产物 | 来源 | 说明 |
 |------|------|------|

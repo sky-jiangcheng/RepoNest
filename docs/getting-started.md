@@ -35,15 +35,14 @@ iwr -useb https://raw.githubusercontent.com/sky-jiangcheng/repo-nest/master/scri
 
 ```mermaid
 flowchart LR
-    A[配置扫描目录] --> B[执行扫描
-发现仓库并挖掘知识]
-    B --> C[收藏仓库
-可选]
-    C --> D[回填 365 天历史
-可选]
-    B -. 纯 MCP 用户 .-> E[agent 调用
-reponest_scan]
+    A["① 配置扫描目录"] --> B["② 执行扫描<br/>发现仓库并挖掘知识"]
+    B -->|到这一步| DONE["知识库已可用<br/>写笔记 · 搜索 · 交给 AI<br/>reponest_context / handoff"]
+    B -. 仅仪表盘统计需要 .-> C["③ 收藏仓库（可选）"]
+    C -.-> D["④ 回填 365 天历史（可选）"]
+    B -. 纯 MCP 用户 .-> E["agent 调 reponest_scan<br/>无需桌面应用"]
 ```
+
+读图：实线路径是必做的；**实线与虚线的分界就是“知识库可用”的边界**——② 走完，笔记 / 搜索 / AI 注入就全部可用（见下方提示框），而 ③ ④ 只把仪表盘统计填满，不做任何事它们也照样能用。纯 MCP 用户走另一条虚线，让 agent 自己完成 ①②。
 
 ### 1. 配置扫描目录
 
@@ -73,6 +72,13 @@ reponest_scan]
 
 在收藏的仓库卡片上点击 **刷新历史** 按钮，回填该仓库近 365 天的每日统计数据（进度环与热力图随即填充）。
 
+### 5. 沉淀第一条知识笔记
+
+前四步只是把仓库“登记”进来；让知识库真正开始有价值的，是留下一条谁都能复用的笔记。两条路径：
+
+- **桌面端**：首页 **快速创建笔记** 选项目，写下“这个项目怎么跑起来的 / 坑在哪”（见[知识库](features/knowledge.md)）；
+- **AI 侧**：会话结束自动写入 `handoff` 笔记，下一个会话开头自动置顶（见[AI 集成](features/ai-integration.md)）。
+
 ## 核心功能速览
 
 | 功能 | 定位 | 说明 |
@@ -83,6 +89,8 @@ reponest_scan]
 | AI 集成 | 核心 | llms.txt、笔记导出、MCP server（含 agent-score 自检，见[AI 集成](features/ai-integration.md)） |
 | 仪表盘 | 支持 | 每日目标进度环、项目卡片、趋势折线图、提交热力图 |
 | 插件系统 | 实验 | yaegi 进程内 Go 脚本 + 知识源导入（见[知识源导入](plugins/overview.md)） |
+
+各页展开的图：仪表盘的页面分层见[仪表盘](features/dashboard.md#页面结构自上而下)，笔记的保存与版本链路见[知识库](features/knowledge.md)，知识库为何比 AI 直读 git 更划算见[存储结构优化与 AI 价值](storage-optimization.md#二比-ai-直接读-git-仓库的优势)。
 
 ## 数据与日志位置
 

@@ -28,6 +28,17 @@ This page targets two audiences:
 
 ## 2. Advantages over reading git repositories directly with AI
 
+```mermaid
+flowchart TB
+    Q["One query<br/>stats / search / cross-repo aggregation"]
+    G1["AI reads git directly"] -. re-runs every time .-> GL["git log --shortstat<br/>per-file reads<br/>whole-repo dumping"]
+    G2["RepoNest reads materialized data"] --> MAT[("SQLite<br/>daily_stats pre-aggregated<br/>repo_meta cached<br/>FTS5 index")]
+    GL --> R1["slow · burns tokens<br/>overflows the context window<br/>may hallucinate or miss files"]
+    MAT --> R2["millisecond · deterministic SQL<br/>returns only matching slices"]
+```
+
+How to read it: the two paths **diverge at "one query"**. When AI reads git directly, every query re-executes `git log` / per-file scanning (left), so the cost scales linearly with the number of queries and large repos hit the context window ceiling. RepoNest materializes raw git data into SQLite **once at scan time** (right), after which queries only land on that table — the materialized layer is not a cache, it is the **single source of truth**. The table below compares dimension by dimension.
+
 | Dimension | AI reading git directly | RepoNest structured storage |
 |------|--------------------|----------------------|
 | **Retrieval** | File-by-file scans / whole-repo dumps; the context explodes | FTS5 trigram exact retrieval, Chinese-friendly, millisecond-level |
@@ -38,6 +49,8 @@ This page targets two audiences:
 | **Determinism** | The model may hallucinate or skip binaries / `.gitignore` | Deterministic SQL, reproducible |
 | **Cost** | Rereading = paying tokens again | Parse once, query unlimited times |
 | **Offline / latency** | Depends on network and the model | Local SQLite, zero latency, works offline |
+
+The two tables are two views of the same fact: **the upper one** says what is stored (seven storage optimizations), **the lower one** says what that buys. What actually does the work is not any single optimization but item 5 — statistics materialization — because it turns a "query" from "run a git command" into "look up a row". In code: `projects` / `repositories` normalization and `daily_stats` materialization live in [`internal/db`](../../internal/db); the FTS5 tables and triggers are defined in `migrate.go`; the mining cache is in `repo_meta.go`.
 
 ## 3. The core argument
 

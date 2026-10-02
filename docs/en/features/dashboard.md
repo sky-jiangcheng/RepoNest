@@ -9,6 +9,18 @@ The dashboard shows daily commit statistics, goal progress, and a year-long comm
 
 ## Page structure (top to bottom)
 
+```mermaid
+flowchart TB
+    RING["① Goal progress<br/>progress ring · summary bar"]
+    HEAT["② Commit heatmap<br/>last 52 weeks · click to jump to a day"]
+    CTRL["③ Controls<br/>date switch · combined search<br/>filters · sorting · rescan"]
+    GRID["④ Project grid"]
+    GRID --> STAR["Starred: full stat card<br/>added today · goal bar · team total"]
+    GRID --> PLAIN["Unstarred: minimal card<br/>name + star button"]
+```
+
+How to read it: the page is a **vertical reading order** in four bands. The heatmap (②) is the global time view, the control bar (③) is its operating panel (switching the date changes both the heatmap and the project cards at once), and the project grid (④) splits cards by starred state — unstarred shows only the name, and you have to star a repository before it shows statistics. All three bands follow the **git author setting** (see [Settings](settings.md#author-configuration)).
+
 ### Goal progress
 
 - **Progress ring**: today's (or the selected date's) personal added lines vs the daily goal; no goal is shown on non-workdays

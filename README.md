@@ -16,6 +16,8 @@ English | [简体中文](README.zh-CN.md)
 - [Contributing](#contributing)
 - [License](#license)
 
+The whole product is one loop — three tool calls at session boundaries, and every agent that comes after you reuses what the last one left behind:
+
 ```mermaid
 flowchart LR
     S[First install<br/>reponest_scan<br/>discover local repos in one call<br/>pure MCP works — no desktop app] --> C[Session start<br/>reponest_context<br/>full context in one call<br/>tech stack · README · todos · notes · last handoff]
@@ -27,10 +29,14 @@ flowchart LR
     style H fill:#fdf2f8,stroke:#d946a0
 ```
 
+The dashed edge is the point: handoffs are stored in local SQLite, not in any agent's private memory, so the loop closes across agents — Claude Code writes the handoff, Cursor reads it. The rest of this README is the same loop seen from the inside: how discovery and grouping work, where your data lives, and how the pieces are layered.
+
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+
+Both paths meet at one local knowledge base — the human side (desktop app, VS Code extension), the agent side (MCP tools, llms.txt), one service layer underneath, and `reponest-init` wiring the agent side in one command:
 
 ```mermaid
 flowchart TB

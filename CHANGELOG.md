@@ -4,6 +4,26 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [1.12.0] - 2026-10-02
+
+### 新增
+
+- **文档图文搭配体系化 + 图数 8 → 16（zh/en 逐页对齐）**：确立「每张图必配1-3 句读图文字，且只画正文线性文字表达不了的东西」的规则，
+  全站补齐读图段（中文「读图：」/ 英文「How to read it:」）：架构页 1 → 4 张（新增扫描管线图、知识库「写一次读两路」图、
+  构建双产物线图，分层图补 `ENTRY` 三端入口节点）；`storage-optimization`、`dashboard`、`knowledge`、`project-detail`、
+  `command-palette`、`data-management`、`plugins/overview` 七页从零图各补一张结构图；`getting-started` 上手流程图重画
+  （原图只是把编号步骤复述一遍，改为体现「实线/虚线 = 知识库可用边界」）并新增第 5 步「沉淀第一条知识笔记」；
+  `settings` 因六个标签页为平铺枚举无结构可表达，按不硬凑原则不配图
+- **图语言分工，消除 ASCII/mermaid 混用**：结构 / 时序 / 对比 / 界面布局一律 mermaid；目录树、配置片段、JSON、shell
+  保留代码块（它们不是图）。架构页扫描管线由 ASCII 箭头升级为 mermaid flowchart
+
+### 修复
+
+- **文档站 mermaid flowchart 被压成一条线（既有缺陷，非本次引入）**：`scripts/build-docs.mjs` 的 `getBBox` polyfill
+  对根 `<svg>` 也按 `textContent` 长度估算尺寸，而 mermaid 恰恰读根 svg 的 bbox 定viewBox，导致所有 flowchart 的
+  viewBox 变成「宽 4 万 px、高 36px」，站点上显示为发丝线（sequenceDiagram 因布局路径不同幸免）。改为容器元素递归取
+  子元素并集并累加 `transform="translate(...)"` 与 `x`/`y` 偏移，仅文本叶子做 8px/char 估算。修复后图形比例恢复正常
+
 ## [1.11.0] - 2026-10-02
 
 ### 新增

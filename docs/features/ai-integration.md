@@ -48,6 +48,8 @@ sequenceDiagram
     Note over K,A: 下一个会话（任何 agent）经 context 置顶读到
 ```
 
+读图：整个协议只有**两个入口调用**——开会话 `reponest_context`、收会话 `reponest_handoff`，中间的工作期走的是普通读写工具。两条关键保证：交接笔记**写入一次即带 `handoff` 标签**，且 `reponest_notes_update` 拒绝覆盖它（所以下一个会话读到的始终是同一条记录，置顶渲染）；落库走的是统一模板，不是自由文本。
+
 | 工具 | 说明 | 读写 |
 |------|------|------|
 | `reponest_scan` | 冷启动：播种默认扫描根目录并同步扫描，发现本地 Git 仓库（纯 MCP 安装可用，无需桌面应用） | 写 |

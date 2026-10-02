@@ -9,6 +9,19 @@ order: 8
 
 RepoNest 支持通过 yaegi 解释执行的 Go 脚本向知识库幂等导入文档。
 
+```mermaid
+flowchart LR
+    SRC["知识源<br/>内置 claude 记忆<br/>或插件注册的导入器"] --> RUN["yaegi 解释执行<br/>或 service 内的 claude 导入"]
+    RUN --> KEY["幂等键<br/>(project_id, source, title)"]
+    KEY --> HIT{"命中已有笔记?"}
+    HIT -->|是| UPD["更新既有笔记<br/>内容 + 元数据"]
+    HIT -->|否| INS["新建笔记<br/>带 source 标签"]
+    UPD --> DB[("project_notes<br/>+ FTS5 索引")]
+    INS --> DB
+```
+
+读图：两条入口（内置 `claude` 记忆、插件脚本）**汇入同一条 upsert 路径**，幂等性由三元组 `(project_id, source, title)` 保证。因此重复导入是**更新**而非重复创建——重新导入不会把知识库越堆越脏。写入后由触发器同步 FTS 索引，导入的文档立刻可被 `reponest_notes_search` 命中。
+
 ## 内置知识源
 
 | 源 | 说明 |

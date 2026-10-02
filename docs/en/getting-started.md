@@ -35,15 +35,14 @@ The five-minute path — the first two steps are required, the last two only aff
 
 ```mermaid
 flowchart LR
-    A[Configure scan dirs] --> B[Run scan
-discover repos & mine knowledge]
-    B --> C[Star repos
-optional]
-    C --> D[Backfill 365-day history
-optional]
-    B -. MCP-only users .-> E[agent calls
-reponest_scan]
+    A["① Configure scan dirs"] --> B["② Run scan<br/>discover repos & mine knowledge"]
+    B -->|at this point| DONE["Knowledge base is usable<br/>write notes · search · hand to AI<br/>reponest_context / handoff"]
+    B -. dashboard statistics only .-> C["③ Star repos (optional)"]
+    C -.-> D["④ Backfill 365-day history (optional)"]
+    B -. MCP-only users .-> E["agent calls reponest_scan<br/>no desktop app needed"]
 ```
+
+How to read it: the solid path is required; **the boundary between solid and dashed is exactly the "knowledge base is usable" line** — once ② is done, notes / search / AI injection all work (see the callout below), while ③ and ④ only fill in the dashboard and change nothing if you never do them. MCP-only users take the other dashed edge and let the agent complete ① and ② itself.
 
 ### 1. Configure Scan Directories
 
@@ -73,6 +72,13 @@ Click the star icon on the dashboard to star the repositories you care about. On
 
 Click the **Backfill History** button on a starred repository card to backfill the last 365 days of daily statistics for that repository (the progress ring and heatmap fill in right away).
 
+### 5. Write Your First Knowledge Note
+
+The first four steps only *register* your repositories; what actually makes the knowledge base valuable is leaving behind one note anyone can reuse. Two paths:
+
+- **Desktop**: pick a project in **Quick create note** on the home page and write down how the project runs and where its gotchas are (see [Knowledge Base and Notes](features/knowledge.md));
+- **AI side**: the session end automatically writes a `handoff` note, which is pinned at the top of the next session's context (see [AI Integration](features/ai-integration.md)).
+
 ## Core Features at a Glance
 
 | Feature | Tier | Description |
@@ -83,6 +89,8 @@ Click the **Backfill History** button on a starred repository card to backfill t
 | AI integration | Core | llms.txt, note export, MCP server (with agent-score self-check; see [AI Integration](features/ai-integration.md)) |
 | Dashboard | Supporting | Daily goal progress ring, project cards, trend line charts, commit heatmap |
 | Plugin system | Experimental | In-process Go scripts via yaegi + knowledge source import (see [Knowledge Source Import](plugins/overview.md)) |
+
+The diagrams behind each page: the dashboard's page layering is in [Dashboard](features/dashboard.md#page-structure-top-to-bottom), the save-and-version chain of a note is in [Knowledge Base and Notes](features/knowledge.md), and why a knowledge base beats letting AI read git directly is in [Storage Optimization and AI Value](storage-optimization.md#2-advantages-over-reading-git-repositories-directly-with-ai).
 
 ## Data and Log Locations
 
