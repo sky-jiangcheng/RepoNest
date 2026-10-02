@@ -24,24 +24,40 @@ func SearchNotes(db *sql.DB, query string) ([]SearchHit, error) {
 		return nil, nil
 	}
 	if ftsUsable(q) {
-		hits, err := searchNotesFTS(db, q)
+		hits, err := searchNotesFTS(db, q, escapeFTS(q))
 		if err == nil {
-			return hits, nil
+			if len(hits) > 0 {
+				return hits, nil // strict AND matched: behaviour unchanged
+			}
+			// M3-C (ADR-0012): strict AND yielded ZERO rows — relax by dropping
+			// English stopwords and OR-ing the remaining terms. This only ever
+			// adds results in cases that returned empty before, so it cannot
+			// degrade a currently-good result set (zero dictionary, zero CGO).
+			// It stays WITHIN FTS (no new LIKE fallback), so a broken/empty
+			// index still yields nothing exactly as before.
+			if orExpr := escapeFTSOR(q); orExpr != "" {
+				if relaxed, rerr := searchNotesFTS(db, q, orExpr); rerr == nil {
+					return relaxed, nil
+				}
+			}
+			return hits, nil // empty AND result: preserve original behaviour
 		}
 		// FTS index missing or query rejected: fall through to LIKE.
 	}
 	return searchNotesLike(db, q)
 }
 
-// searchNotesFTS matches the query against the FTS5 index, ranked by bm25.
-func searchNotesFTS(db *sql.DB, q string) ([]SearchHit, error) {
+// searchNotesFTS matches a prepared FTS5 expression against the index, ranked
+// by bm25. `matchExpr` is produced by escapeFTS (strict AND) or escapeFTSOR
+// (relaxed); `q` is the original query, used only to render the snippet.
+func searchNotesFTS(db *sql.DB, q, matchExpr string) ([]SearchHit, error) {
 	rows, err := db.Query(
 		"SELECT n.id, n.project_id, n.title, n.content, bm25(project_notes_fts) "+
 			"FROM project_notes_fts f "+
 			"JOIN project_notes n ON n.id = f.rowid "+
 			"WHERE project_notes_fts MATCH ? "+
 			"ORDER BY bm25(project_notes_fts), n.pinned DESC, n.updated_at DESC LIMIT ?",
-		escapeFTS(q), searchResultLimit)
+		matchExpr, searchResultLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +213,37 @@ func escapeFTS(query string) string {
 		parts = append(parts, `"`+term+`"`)
 	}
 	return strings.Join(parts, " ")
+}
+
+// escapeFTSOR builds a relaxed FTS5 expression: English stopwords are dropped
+// and the remaining (>=3-char, since ftsUsable gated it) terms are OR-combined,
+// each quoted as a phrase. Returns "" when fewer than two non-stopword terms
+// remain (a single term's OR is identical to its AND, so relaxation is pointless
+// and would only risk noise).
+func escapeFTSOR(query string) string {
+	var parts []string
+	for _, term := range strings.Fields(query) {
+		if searchStopwords[strings.ToLower(term)] {
+			continue
+		}
+		term = strings.ReplaceAll(term, `"`, `""`)
+		parts = append(parts, `"`+term+`"`)
+	}
+	if len(parts) < 2 {
+		return ""
+	}
+	return strings.Join(parts, " OR ")
+}
+
+// searchStopwords is a tiny, deterministic English function-word set used ONLY
+// for M3-C query relaxation (never to reject a strict AND match, only to avoid
+// OR-ing pure noise terms). Deliberately small and not a full thesaurus — the
+// goal is recall, not semantics.
+var searchStopwords = map[string]bool{
+	"the": true, "and": true, "for": true, "with": true, "that": true,
+	"this": true, "from": true, "they": true, "have": true, "were": true,
+	"what": true, "when": true, "your": true, "about": true, "into": true,
+	"there": true, "these": true, "some": true, "then": true, "than": true,
 }
 
 func escapeLike(s string) string {

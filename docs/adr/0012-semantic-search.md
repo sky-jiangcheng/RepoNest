@@ -1,6 +1,6 @@
 # ADR-0012: 语义检索评估——向量召回补 FTS5 字面盲区，守住零 CGO（M3）
 
-- 状态：Accepted-in-principle（向量侧零 CGO 已实测、hybrid RRF 核心已落地；**产品拍板：放弃 B（纯 Go 本地模型），默认走 C，A（远程 embedding API）作面向 B端的可选进阶，风险须文档化**；端到端接线进行中）
+- 状态：Accepted-in-principle（向量侧零 CGO 已实测、hybrid RRF 核心已落地；**C（FTS5 查询松弛）已默认落地**；A 远程 embedding 为 B端可选、待 Provider 选型与 A/B 门；放弃 B）
 - 日期：2026-10-02
 - 关联：[ADR-0003](0003-fts5-search.md)（FTS5 trigram 全文检索）、[ADR-0006](0006-scope-freeze.md)、[ADR-0007](0007-session-memory-protocol.md)、TODO 会话记忆路线 M3
 
@@ -44,3 +44,7 @@
    - 开启即走「远程 embedding + `modernc.org/sqlite/vec` 向量存储 + `internal/search/hybrid` 的 RRF 与 FTS5 融合」——向量存储侧零 CGO 已实测可行，缺的就是 embedding 由远程产出。
    - **风险文档是硬性交付项**：设置页 + 文档必须显著写明「开启 A 会把笔记内容（query 与/或正文）发送到第三方 embedding API，数据离开本机、依赖网络与密钥、可能涉及合规」，并要求用户显式确认；Provider 具体选型待产品给定（`Embedder` 接口已就绪，实现一个远程 client 即可插）。
 4. **A/B 评测仍保留为开关门**：C 先行上线；A 上线前用标注 query 集测 recall@k，确认语义确有增益再作为 B端默认推荐，否则维持只开 C。
+
+## C 落地进度（2026-10-03）
+
+**C 的第一版已实现、默认生效、零依赖**：`internal/db/search.go` 的笔记检索在严格 FTS5 AND **命中为零**时，做一次**停用词感知的 OR 查询松弛**（丢小写英文停用词、把剩余词 OR 合并）；仍**在 FTS 内**完成，不新增 LIKE 兜底，因此「索引坏/空→返回空」的既有语义与 `migrate_fts_repair_test` 不破。AND 有结果时**不触发松弛**（不会误加只含部分词的文档）——纯召回增量，不改变当前好结果集。单测 `TestEscapeFTSOR` / `TestSearchNotes_ORRelaxationWhenANDEmpty` / `TestSearchNotes_NoRelaxationWhenANDMatches`。这是「纯 query 改写、零外部词库」的最小可用形态；更进一步的同义/近义（需词库或 embedding）留待 A 路线过 A/B 门后再评估。

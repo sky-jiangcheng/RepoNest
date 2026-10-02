@@ -220,3 +220,76 @@ func TestMakeSnippet_NearEndNoPanic(t *testing.T) {
 		t.Errorf("expected query highlighted in snippet, got %q", snippet)
 	}
 }
+
+// -- M3-C lexical query relaxation (ADR-0012) --
+
+func TestEscapeFTSOR(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"login and flow", `"login" OR "flow"`}, // stopword "and" dropped
+		{"kubernetes terraform", `"kubernetes" OR "terraform"`},
+		{"login", ""},                      // single term: OR == AND, skip
+		{"the and for", ""},                // all stopwords -> nothing to relax
+		{`quote a"b`, `"quote" OR "a""b"`}, // double quotes escaped
+	}
+	for _, c := range cases {
+		if got := escapeFTSOR(c.in); got != c.want {
+			t.Errorf("escapeFTSOR(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestSearchNotes_ORRelaxationWhenANDEmpty(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	pid := createTestProject(t, db, "relax-project")
+	// No single doc contains BOTH terms, so the strict AND yields zero.
+	if _, err := CreateNoteEx(db, pid, "Deploy", "kubernetes ingress setup guide", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CreateNoteEx(db, pid, "IaC", "terraform module registry", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Sanity: AND of both terms alone would be empty.
+	if h, _ := searchNotesFTS(db, "kubernetes terraform", escapeFTS("kubernetes terraform")); len(h) != 0 {
+		t.Fatalf("expected strict AND to yield 0, got %d", len(h))
+	}
+
+	hits, err := SearchNotes(db, "kubernetes terraform")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 2 {
+		t.Fatalf("OR relaxation expected 2 hits, got %d: %+v", len(hits), hits)
+	}
+	got := map[string]bool{}
+	for _, h := range hits {
+		got[h.Title] = true
+	}
+	if !got["Deploy"] || !got["IaC"] {
+		t.Errorf("expected Deploy and IaC via relaxation, got %v", got)
+	}
+}
+
+func TestSearchNotes_NoRelaxationWhenANDMatches(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	pid := createTestProject(t, db, "precise-project")
+	if _, err := CreateNoteEx(db, pid, "both", "the login flow module", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CreateNoteEx(db, pid, "partial", "only login screen here", "", "other", "manual"); err != nil {
+		t.Fatal(err)
+	}
+	// AND matches "both" -> relaxation must NOT fire (would wrongly add "partial").
+	hits, err := SearchNotes(db, "login flow")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hits) != 1 || hits[0].Title != "both" {
+		t.Fatalf("expected only 'both' (strict AND), got %d: %+v", len(hits), hits)
+	}
+}

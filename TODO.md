@@ -247,8 +247,8 @@
 ### M3: 语义检索 → [ADR-0012](docs/adr/0012-semantic-search.md)
 
 - [x] 评估 + **实测验证**：`CGO_ENABLED=0` 下 `modernc.org/sqlite/vec`（bundled sqlite-vec v0.1.9）跑通 vec0 建表 + KNN + `vec_distance_l2`（回归测试 `internal/vecprobe`，副作用用无生产码的 test-only 包隔离）；混合检索中间件 `internal/search/hybrid`（`Embedder` 接口 + `FuseRRF` k=60 + 单测）已落地，尚未接入生产
-- [ ] **决策已定（ADR-0012 落地节）**：放弃 B（纯 Go 本地模型）；**默认 C**＝FTS5 增强（同义词/query 改写，本地零依赖）；**A＝远程 embedding API 面向 B端可选、默认关**，风险项（内容出机器/依赖网络密钥）必须写进设置+文档由用户显式确认。下一步实现 C 为默认；A 待 Provider 选型（`Embedder` 接口已就绪，插一个远程 client 即可）
-- [ ] 端到端接线：C 先做（`db/search.go` 近义扩展）；A 走时补 `note_embeddings` vec0 表迁移 + hybrid RRF 接进 search + `semantic_search` 配置默认关 + A/B 评测门
+- [x] **决策已定 + C 第一版已落地、默认生效**（`internal/db/search.go`）：放弃 B；默认走 C＝严格 FTS5 AND **命中为零**时做**停用词感知的 OR 查询松弛**（零外部词库/零 CGO，纯 FTS 内不新增 LIKE，坏索引语义不破、AND 有结果不误触发）；单测齐。A（远程 embedding）留作 B端可选、默认关
+- [ ] A 路线（远程 embedding，B端可选、默认关）：待 Provider 选型 + `note_embeddings` vec0 表迁移 + `internal/search/hybrid` RRF 接进 `db/search.go` + A/B 评测门；上线前强风险披露（内容出机器/依赖网络密钥），`Embedder` 接口已就绪插一个远程 client 即可
 
 ### M4: Agent 集成即插即用
 
