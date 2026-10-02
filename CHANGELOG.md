@@ -4,6 +4,25 @@
 
 版本号 SSOT 为 `wails.json` 的 `info.productVersion`，由 `scripts/bump-version.sh` 同步至 `web/package.json`、`internal/version/version.go` 与文档站徽章。
 
+## [1.11.0] - 2026-10-02
+
+### 新增
+
+- **文档 Mermaid 图全站化 + 双语全景图**：构建管线启用 mermaid 构建时渲染（```` ```mermaid ````
+  代码块 → 内联 SVG，jsdom polyfill，渲染失败自动降级为可读源码文本，构建不失败；GitHub 上同名源码
+  原生渲染保持同源可读）：落地页新增核心闭环图 + 会话记忆环时序图 + **「两类用户，一套产物」全景图**
+  （个人用户货架：桌面 App / VS Code 扩展 / 博客；Agent 货架：reponest-mcp / dsh 插件 / llms.txt；
+  单一事实源 service 层 + reponest-init 接线员，中英双语），架构页加分层图，AI 集成页加协议时序图，
+  快速开始加上手流程图，SKILL.md 会话环改图示；README 增全景缩略图
+- **语言切换器对齐修复**：侧栏顶部的 `English · 中文` 内联文本在窄视口下悬挂分隔符、中英按钮错位，
+  改为固定成对的 pill 按钮（当前语言实心 / 另一语言描边），窄视口不再不对称换行
+
+### 修复
+
+- **Pages CI 补齐 docs 构建依赖**：`.github/workflows/pages.yml` 原只安装 `marked`，
+  mermaid 渲染器在 CI 上不可用会静默降级为源码文本发布；补装 `mermaid` + `jsdom`
+- `build-docs.mjs` 清理未消费的 `hasMermaid` 死参数（渲染器失败已由 slot 内 fallback 表达）
+
 ## [1.10.0] - 2026-10-02
 
 ### 新增
