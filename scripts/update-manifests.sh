@@ -76,24 +76,51 @@ echo "  grep -rn '$VERSION' packaging/"
 echo "  ruby -c packaging/homebrew/Casks/reponest.rb"
 echo "  python3 -m json.tool packaging/scoop/reponest-mcp.json > /dev/null"
 echo
-echo "sha256 fields still need filling once the release assets are published —"
-echo "see packaging/README.md."
+echo "sha256 fields are filled automatically by release.yml (fill-sha256 job) after"
+echo "each tag's release is published, or manually via:"
+echo "  ./scripts/update-manifests.sh --fill-sha256 --from-api"
 
 # --- sha256 filling -----------------------------------------------------------
 #
-# `--fill-sha256` reads assets/releases/v<version>/SHA256SUMS and replaces the
-# __FILL_SHA256_*__ placeholders in packaging/ with the real digests. It only
-# touches a manifest when the exact asset that manifest's URL points at is
-# present in the checksum file, so a partial release leaves the remaining
-# placeholders in place instead of writing a digest that does not correspond to
-# the download.
+# `--fill-sha256` replaces the __FILL_SHA256_*__ placeholders in packaging/ with
+# the real digests of the published release. It only touches a manifest when
+# the exact asset that manifest's URL points at has a digest available, so a
+# partial release leaves the remaining placeholders in place instead of writing
+# a digest that does not correspond to the download.
 #
-# Run it *after* the release assets are published:
-#   ./scripts/update-manifests.sh --fill-sha256
+# Two digest sources:
+#   --fill-sha256                reads assets/releases/v<version>/SHA256SUMS
+#                                (offline path: build locally first, or use the
+#                                file the release workflow already produced)
+#   --fill-sha256 --from-api     reads the per-asset digest the GitHub Release
+#                                API reports for the tag (recommended: matches
+#                                what the release actually serves, no download;
+#                                anonymous access, 60 req/h is ample for one run)
 if [ "${1:-}" = "--fill-sha256" ]; then
-  SUMS="$ROOT/assets/releases/v$VERSION/SHA256SUMS"
+  if [ "${2:-}" = "--from-api" ]; then
+    SUMS="$ROOT/assets/releases/v$VERSION/SHA256SUMS.api"
+    echo "Reading digests for v$VERSION from the GitHub Release API (anonymous)"
+    mkdir -p "$(dirname "$SUMS")"
+    curl -fsSL -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/repos/sky-jiangcheng/repo-nest/releases/tags/v$VERSION" \
+    | python3 -c "
+import json, sys
+rel = json.load(sys.stdin)
+assets = rel.get('assets')
+if assets is None:
+    sys.exit('no release found (message: %s)' % rel.get('message', '?'))
+for a in assets:
+    name, digest = a.get('name', ''), a.get('digest', '')
+    if name and digest.startswith('sha256:'):
+        print('%s  assets/releases/v$VERSION/%s' % (digest[7:], name))
+" > "$SUMS"
+  else
+    SUMS="$ROOT/assets/releases/v$VERSION/SHA256SUMS"
+  fi
   if [ ! -f "$SUMS" ]; then
-    echo "ERROR: $SUMS not found. Build the assets first:" >&2
+    echo "ERROR: $SUMS not found. Either fetch digests from the release API:" >&2
+    echo "         ./scripts/update-manifests.sh --fill-sha256 --from-api" >&2
+    echo "       or build the assets first:" >&2
     echo "         ./scripts/build-release-assets.sh" >&2
     exit 1
   fi
@@ -174,6 +201,6 @@ if [ "${1:-}" = "--fill-sha256" ]; then
 
   echo
   echo "Any manifest still holding a __FILL_SHA256_*__ placeholder needs a"
-  echo "release artifact that was not built on this host - build it, or leave it."
+  echo "release asset that was not published - fetch it from the release page."
   exit 0
 fi

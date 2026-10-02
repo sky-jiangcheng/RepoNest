@@ -279,10 +279,12 @@ jobs:
   # After the release is published, the sha256 of every shipped asset is a
   # known fact. Homebrew and Scoop hard-fail on a missing/wrong digest, so the
   # manifests ship with `__FILL_SHA256_*__` placeholders (or a stale digest from
-  # the previous release) and get stamped here. This job downloads the published
-  # assets, generates assets/releases/v<ver>/SHA256SUMS, runs
-  # scripts/update-manifests.sh --fill-sha256 and commits the packaging/ changes
-  # back to master so the downstream tap/bucket can pick them up.
+  # the previous release) and get stamped here. This job reads the per-asset
+  # digest the GitHub Release API reports for the tag (one call replaces
+  # downloading every asset just to hash it locally), writes
+  # assets/releases/v<ver>/SHA256SUMS, runs scripts/update-manifests.sh
+  # --fill-sha256, verifies no placeholder survived, and commits the packaging/
+  # changes back to master so the downstream tap/bucket can pick them up.
   fill-sha256:
     name: Fill manifest sha256
     needs: create-release
@@ -305,50 +307,70 @@ jobs:
         id: ver
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-      - name: Download published release assets
+      - name: Read published digests from the Release API
         run: |
           set -euo pipefail
           VER="${{ steps.ver.outputs.version }}"
           DIR="assets/releases/v$VER"
           mkdir -p "$DIR"
-          cd "$DIR"
-          BASE="https://github.com/sky-jiangcheng/RepoNest/releases/download/v$VER"
-          # Every asset the manifests reference. Missing ones are skipped:
-          # update-manifests.sh --fill-sha256 only rewrites a manifest line when
-          # the exact asset is present in SHA256SUMS, so a partial release leaves
-          # the remaining placeholders untouched instead of writing a wrong hash.
-          for asset in \
-            reponest-darwin-arm64.dmg \
-            reponest-darwin-amd64.dmg \
-            reponest-windows-amd64.zip \
-            reponest-mcp-darwin-arm64.tar.gz \
-            reponest-mcp-darwin-amd64.tar.gz \
-            reponest-mcp-linux-amd64.tar.gz \
-            reponest-mcp-windows-amd64.zip ; do
-            if curl -fsSL -o "$asset" "$BASE/$asset"; then
-              echo "downloaded $asset"
-            else
-              echo "WARN: $asset not published, leaving its digest untouched"
-              rm -f "$asset"
-            fi
-          done
-          ls -lh
-
-      - name: Generate SHA256SUMS
-        run: |
-          set -euo pipefail
-          VER="${{ steps.ver.outputs.version }}"
-          # From repo root so filenames carry the assets/releases/v<ver>/ prefix,
-          # which is what scripts/update-manifests.sh sha_for() matches on.
-          # Exclude SHA256SUMS itself from its own checksum list.
-          cd "$GITHUB_WORKSPACE"
-          find "assets/releases/v$VER" -type f ! -name SHA256SUMS -print0 \
-            | sort -z \
-            | xargs -0 sha256sum > "assets/releases/v$VER/SHA256SUMS"
-          cat "assets/releases/v$VER/SHA256SUMS"
+          # The Release API reports a sha256 digest per uploaded asset; one call
+          # replaces downloading every asset just to hash it locally. Assets
+          # without a digest are simply absent from SHA256SUMS, which makes
+          # --fill-sha256 skip the manifests that reference them - a partial
+          # release leaves placeholders instead of writing wrong hashes. The
+          # repo slug is the canonical one (no redirect dependence).
+          python3 - "$VER" "$DIR/SHA256SUMS" <<'PY'
+          import json, os, sys, urllib.request
+          ver, out = sys.argv[1], sys.argv[2]
+          url = f"https://api.github.com/repos/sky-jiangcheng/repo-nest/releases/tags/v{ver}"
+          headers = {"Accept": "application/vnd.github+json"}
+          # Authenticate when a token is available: shared runner IPs exhaust
+          # the anonymous 60 req/hour limit and make this step flaky.
+          token = os.environ.get("GITHUB_TOKEN", "")
+          if token:
+              headers["Authorization"] = f"Bearer {token}"
+          rel = json.load(urllib.request.urlopen(urllib.request.Request(url, headers=headers)))
+          with open(out, "w") as fh:
+              for asset in rel.get("assets", []):
+                  name = asset.get("name", "")
+                  digest = asset.get("digest", "")
+                  if name == "SHA256SUMS" or not digest.startswith("sha256:"):
+                      continue
+                  fh.write(f"{digest[7:]}  assets/releases/v{ver}/{name}\n")
+          PY
+          cat "$DIR/SHA256SUMS"
 
       - name: Fill sha256 in packaging manifests
         run: ./scripts/update-manifests.sh --fill-sha256
+
+      - name: Verify every manifest digest belongs to this release
+        run: |
+          set -euo pipefail
+          VER="${{ steps.ver.outputs.version }}"
+          SUMS="assets/releases/v$VER/SHA256SUMS"
+          # Gate 1: no placeholder may survive. brew/scoop hard-fail on them.
+          if grep -rn "__FILL_SHA256_" packaging/; then
+            echo "ERROR: at least one asset this release should ship is missing" >&2
+            echo "       (its manifest kept the placeholder). Check the release page." >&2
+            exit 1
+          fi
+          # Gate 2: freshness. A normal bump leaves the PREVIOUS release's
+          # digests in place; if --fill-sha256 skipped an asset that exists in
+          # no manifest line it touched, a stale digest would silently ship
+          # and break every install. Every 64-hex digest in packaging/ must
+          # appear in THIS release's SHA256SUMS.
+          bad=0
+          for d in $(grep -rhoE '[a-f0-9]{64}' packaging/homebrew packaging/scoop | sort -u); do
+            if ! grep -q "$d" "$SUMS"; then
+              echo "STALE digest in packaging/: $d"
+              bad=1
+            fi
+          done
+          if [ "$bad" -ne 0 ]; then
+            echo "ERROR: packaging/ carries digests that do not match release v$VER." >&2
+            exit 1
+          fi
+          echo "all packaging/ digests match release v$VER"
 
       - name: Commit and push manifests
         run: |

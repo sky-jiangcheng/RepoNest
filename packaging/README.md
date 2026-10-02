@@ -31,19 +31,38 @@ or Cask `binary` stanza.
 which stamps the new version into every manifest below. `scripts/bump-version.sh`
 should call it automatically — see the note in that script.
 
-## sha256 fields are release-time
+## sha256 fields are automated
 
 No release artifact exists for a given tag until the release workflow runs, so
 the `sha256` fields ship as explicit `__FILL_SHA256_*__` placeholders. Homebrew
 and Scoop both hard-fail on a mismatch, which is the behaviour we want: a
 placeholder must never be mistaken for a verified hash.
 
-After publishing a release, fill them in:
+The **fill-sha256 job in `.github/workflows/release.yml`** closes the loop
+automatically: after the release is published it reads the per-asset digest the
+GitHub Release API reports for the tag, writes
+`assets/releases/v<ver>/SHA256SUMS`, runs `scripts/update-manifests.sh
+--fill-sha256`, verifies that no placeholder survived **and that every digest
+in packaging/ belongs to this release** (a stale digest from the previous
+version fails the job), then commits the result back to master as
+`chore(packaging): fill sha256 for v<ver>`.
+
+The same fill is available locally against an already-published release:
 
 ```bash
-# for each asset you ship
-curl -sL https://github.com/sky-jiangcheng/repo-nest/releases/download/v1.7.9/reponest-mcp-linux-amd64.tar.gz | shasum -a 256
+# digests straight from the release API (recommended; anonymous, no download)
+./scripts/update-manifests.sh --fill-sha256 --from-api
+
+# or from a locally produced checksum file
+./scripts/build-release-assets.sh
+./scripts/update-manifests.sh --fill-sha256
 ```
+
+The two paths write different cache files (`SHA256SUMS.api` vs `SHA256SUMS`),
+so they never clobber each other. Digests must come from the **published
+release**, not from a local build of the same version: a binary compiled on a
+different host (or with different flags) is a different file, and a manifest
+carrying its digest would reject every real download.
 
 ## Where these are published
 
@@ -82,18 +101,21 @@ Both are safe to run in CI on every change.
 #    Linux, Xcode on macOS and MSVC on Windows, so it comes from CI instead.
 ./scripts/build-release-assets.sh
 
-# 3. Fill in the digests of whatever was built.
-./scripts/update-manifests.sh --fill-sha256
+# 3. sha256 is filled automatically: after CI publishes the release, the
+#    fill-sha256 job commits `chore(packaging): fill sha256 for v1.8.0` to
+#    master. To fill locally instead:
+#      ./scripts/update-manifests.sh --fill-sha256 --from-api
 
 # 4. Commit, tag, push. The tag is what makes release.yml run on the native
 #    runners and produce the desktop artifacts.
 git add -A && git commit -m "chore: release 1.8.0"
 git tag -a v1.8.0 -m "Release v1.8.0"
-git push origin master --tags
+git push github master --tags
 
-# 5. After CI publishes the desktop artifacts, download them into
-#    assets/releases/v1.8.0/ and re-run step 3 so the two remaining
-#    __FILL_SHA256_*__ placeholders are filled.
+# 5. After CI publishes the desktop artifacts, the fill-sha256 job closes the
+#    loop automatically (see "sha256 fields are automated" above). Nothing to
+#    do by hand unless the job fails - it fails loudly on a missing asset or
+#    a stale digest.
 ```
 
 For v1.8.0 all eight digests are filled in and match what the release

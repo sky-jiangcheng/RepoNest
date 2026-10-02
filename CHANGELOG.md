@@ -31,6 +31,13 @@
 
 ### 修复
 
+- **sha256 回填全自动化 + 加固（release.yml fill-sha256 job）**：回填改从 GitHub Release API
+  读取每个资产的官方 digest（一次调用替代全量下载后本地算 hash），并修正硬编码的错误仓库名
+  `sky-jiangcheng/RepoNest` → 规范 `repo-nest`；新增发后双重校验——占位符清零 + packaging/ 内
+  每个 64 位 digest 必须属于本版 SHA256SUMS（防旧版 digest 静默残留导致全线安装失败），
+  校验不过则 job 显式失败；API 调用带 GITHUB_TOKEN 鉴权避免共享出口 IP 撞匿名限额。
+  `update-manifests.sh` 新增 `--fill-sha256 --from-api` 本地路径（匿名 API，已对 v1.10.0 实测幂等），
+  packaging/README 同步为「自动为主、手工兕底」，bump 脚本的过时手工提示改为指向自动流程
 - 文档站落地页 `<title>` 不再自我拼接（「RepoNest 文档 · RepoNest 文档」）；
   英文落地页副标题去除重复句
 - 统一存储优化文档的 schema 迁移数量口径：8 → 12（以 `internal/db/migrate.go`
