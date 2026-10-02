@@ -239,7 +239,7 @@
 
 - [x] **Codex 源已落地**：`internal/importers/codex`（流式解析 `~/.codex/sessions/**/rollout-*.jsonl`，取 cwd→项目匹配 + 首次指令 + 最近回复成一条 `log` 笔记），复用 `plugin.KnowledgeImporter`/`upsertDoc`；抽公共件 `internal/importers/memsrc`（`MatchProject`/`ReadCapped`/`LastPathSegment`），claude 改为委托（测试不破）。**隐私门**：新增 `RegisterSourceManual` + `sourceEntry.auto`，`ImportAll`（启动自动导入）只跑 auto 源、Codex 经设置里 sources 列表显式一键触发（ADR-0011 决策 4）。golden-style 测试 + runtime 门控测试
 - [x] **OpenCode 源已落地**（`internal/importers/opencode`，opt-in MANUAL）：真机核验 `~/.local/share/opencode/storage/session/<hash>/ses_*.json`（自带 title/summary/directory，已是摘要级），`directory` 末段→项目匹配；golden-style 测试 + 接口断言
-- [ ] Cursor 源（范围内、未实现）：`state.vscdb` 未公开 SQLite blob，先只读核验 chat 表编码再写；默认关、标非官方契约——风险最高一源
+- [ ] Cursor 源（**真机核验后暂缓**）：`state.vscdb` 正文散在 `bubbleId` blob + 版本化 headers + ProseMirror，且项目归属在 DB 内缺失、本机仅空 draft 无从校验 → 低 ROI 高脆弱，按「不背未公开易碎格式债」暂缓；有稳定真实样例再立项
 - [x] **OpenClaw 源已落地**（`internal/importers/openclaw`，opt-in MANUAL）：allowlist 到 `~/.openclaw-autoclaw/workspace/*.md` 单层非递归（parent 含私钥/vault，绝不触碰；有 allowlist 单测），全局记忆经 `openclaw_project` 配置定向（未设→skip）；「只做 2.0」＝按当前布局
 - [x] **Hermes(curated) 源已落地**（`internal/importers/hermes`，opt-in MANUAL）：**Nous Research 独立产品，与 OpenClaw 两家**（早先误判已更正）。官网文档核验 root `~/.hermes/`（`$HERMES_HOME` 覆盖），allowlist 到 `memories/{MEMORY,USER}.md`（`.env`/`mcp-tokens`/`state.db` 绝不读），`hermes_project` 配置定向
 - [ ] Hermes sessions（`~/.hermes/sessions/` + `state.db`）未导入：schema 无文档、本机不可核验 → 待真实样例/官方 schema 再实现（不猜活格式）

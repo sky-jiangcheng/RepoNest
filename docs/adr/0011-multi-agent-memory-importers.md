@@ -1,6 +1,6 @@
 # ADR-0011: 多 agent 记忆源导入——可复用的 importer 框架与各源可行性（M2）
 
-- 状态：Proposed（框架已存在；**Codex、OpenCode、OpenClaw、Hermes(curated) 已落地**为 opt-in 手动源；Cursor、Hermes sessions 待格式核验门）
+- 状态：Proposed（框架已存在；**Codex、OpenCode、OpenClaw、Hermes(curated) 已落地**为 opt-in 手动源；Cursor 核验后暂缓、Hermes sessions 待 schema）
 - 日期：2026-10-02
 - 关联：[ADR-0002](0002-c-end-repositioning.md)（进程内插件运行时）、[ADR-0007](0007-session-memory-protocol.md)、[ADR-0010](0010-session-auto-capture.md)、TODO 会话记忆路线 M2
 
@@ -46,6 +46,6 @@ M2 要把同一管线扩展到 Cursor / Codex / OpenCode 等。但 2026-10 现�
 - **claude**（已有）：读 `~/.claude/projects/*/memory/*.md`，AUTO 源（人工整理的记忆文档，可启动自动导入）。
 - **codex**（已落地，opt-in MANUAL）：`~/.codex/sessions/**/rollout-*.jsonl` 流式解析，每会话→一条 log 笔记。真机核验：session_meta.payload.cwd + response_item message content 块。
 - **opencode**（已落地，opt-in MANUAL）：`~/.local/share/opencode/storage/session/<hash>/ses_*.json`，字段已自带 `{id,projectID,directory,title,summary,time}`（已是摘要级，无需解析逐条消息），`directory` 末段驱动项目匹配。真机核验通过（v1.1.36 样本）。
-- **cursor**（范围内，未实现）：聊天/Agent 历史在未公开的 `state.vscdb`（本机 7.4MB SQLite，序列化了 workspace 键控的 blob），逆向、易碎。实现前须先只读核验 `itemTable`/`cursorDiskKV` 之类表里 chat 记录的真实编码，且**默认关**、明确标注非官方契约。风险最高的一源。
+- **cursor**（**核验后决定暂缓，不实现**）：真机只读核验 `state.vscdb`（`ItemTable`/`cursorDiskKV`/`composerHeaders` 三表）。**结论：低 ROI + 高脆弱，暂缓**——① 线程索引 `composerHeaders` 有干净列（composerId/workspaceId/时间/isSubagent），但**正文分散在 `cursorDiskKV` 的 `bubbleId:<id>` blob、由版本化 headers（`"value":17`）串联**，composer 输入又是 ProseMirror 文档树，逐条还原=多表 join + 内部版本 schema；② **项目归属拿不到**：`workspaceId` 常为 `empty-window`、DB 内无 folder 路径映射；③ 本机仅 4 条且全是空 draft，**无法对真实数据校验** parser。按 ADR-0011 决策 3/5（不背未公开易碎格式的长期债）与「先核验真机格式再写」的纪律，判定为当前**不值得**投入；有真实需求信号 + 能拿到稳定样例时再立项，届时也需 `cursor_project` 显式定向 + 默认关 + 标非官方契约。
 - **openclaw**（**已落地，opt-in MANUAL**）：记忆 = `~/.openclaw-autoclaw/workspace/{IDENTITY,SOUL,USER,AGENTS,HEARTBEAT,TOOLS}.md`（真机核验 + 与 RepoNest 自身 awareness 同名同形）。**安全红线**：parent `~/.openclaw-autoclaw/` 含私钥（`office-plugin-tls/*.pem`）/`vault-roots.json`/`identity/`/`client-sign.json`——importer **硬 scoping 到 `workspace/*.md` 单层非递归**，绝不读 parent/子目录/非 md（有 allowlist 单测：parent `.md`、子目录 `.md`、非 md 一律不导入）。版本日期式 `lastTouchedVersion: 2026.x`，**无 1.0/2.0 判别位**→「只做 2.0」＝按当前布局实现。**全局记忆的项目归属**：走 `openclaw_project` 配置（项目名或 id），未设/未知 → ProjectID 0（被管线 skip），不硬塞、不乱撒。
 - **hermes**（**已落地 curated-memory 层，opt-in MANUAL**）：**Nous Research 独立产品**（`com.nousresearch.hermes`），与 OpenClaw 两家——早先误判为 OpenClaw 运行时，已更正。经官网文档核验：root `~/.hermes/`（`$HERMES_HOME` 可覆盖），**curated 记忆 = `~/.hermes/memories/{MEMORY.md,USER.md}`**（Markdown）。同目录含 `.env`（密钥）/`mcp-tokens/`/`state.db`→**硬 scoping 到 `memories/*.md` 单层非递归**。项目归属同 openclaw（`hermes_project` 配置）。**Sessions 未导入**：`~/.hermes/sessions/` + `state.db` 记录 schema 无文档且本机不可核验，按「不猜活格式」纪律**暂缓**（见待决）。
