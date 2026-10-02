@@ -15,7 +15,7 @@
 - **M3 语义检索可行性实测 + 混合检索核心**：`internal/vecprobe`（`CGO_ENABLED=0` 下实测 `modernc.org/sqlite/vec` = sqlite-vec v0.1.9 的 vec0 建表 / KNN / `vec_distance_l2` 全跑通，以无生产码的 test-only 包隔离其 `auto_extension` 副作用）作为零 CGO 向量能力的回归锁；`internal/search/hybrid` 落地 vendor 中立的 `Embedder` 接口 + `FuseRRF`（k=60、确定性 tie-break、无外部依赖）+ 单测。端到端接线与本地 embedding 路线仍为待定决策（ADR-0012）
 - **M1 会话解析核心（ADR-0010，未接线）**：`internal/importers/claude/session.go` 新增 `ParseSession`/`LatestSessionFile`，流式解析 Claude Code `*.jsonl` 会话（实测对齐 v2.1.278）：抽 sessionId/cwd/gitBranch/timestamp + 最后一条 assistant 文本 + 首次指令 + 去重工具名，忽略 sidechain、宽松跳过未知/超长行。刻意无副作用、不自动读盘——`Session→HandoffInput` 与触发/默认开关属隐私决策，未拍板前不接入
 - **OpenCode 会话导入器（M2 源 #3）**：新增 `internal/importers/opencode`（opt-in 手动源），真机核验 `~/.local/share/opencode/storage/session/<hash>/ses_*.json`（自带 title/summary/directory 摘要级字段），每会话→一条 `log` 笔记、`directory` 末段驱动项目匹配；golden-style + 接口测试
-- **M1/M2/M3 决策落进设计文档**：ADR-0010「默认关 + C端按需/B端可选 hook + 风险项文档化由 B端自担」；ADR-0012「放弃 B（纯 Go 本地模型）、默认 C（FTS5 增强）、A 远程 embedding 作 B端可选默认关 + 强风险披露」；ADR-0011「M2 全源真机核验：OpenCode 可行；Cursor=`state.vscdb` 高风险待核验；OpenClaw 记忆须 allowlist 到 workspace/*.md（同目录含私钥，绝不整树遍历）、Hermes 属 OpenClaw 运行时、2.0/1.0 判别位待产品给定」
+- **M1/M2/M3 决策落进设计文档**：ADR-0010「默认关 + C端按需/B端可选 hook + 风险项文档化由 B端自担」；ADR-0012「放弃 B（纯 Go 本地模型）、默认 C（FTS5 增强）、A 远程 embedding 作 B端可选默认关 + 强风险披露」；ADR-0011「M2 全源真机核验：OpenCode 可行；Cursor=`state.vscdb` 高风险待核验；OpenClaw 记忆须 allowlist 到 workspace/*.md（同目录含私钥，绝不整树遍历）且为 agent 全局记忆、项目归属待决；Hermes 是 Nous Research 独立产品（先前误判为 OpenClaw 运行时已更正），本机无可检视数据目录、需真实样例再实现」
 
 ### 变更
 
