@@ -150,6 +150,34 @@ func KnnNoteIDs(db *sql.DB, query []float32, k int) ([]int64, error) {
 	return ids, rows.Err()
 }
 
+// VectorStoreHealthCheck verifies the vec0 store works end to end: ensure the
+// index at `dim`, write a probe vector at a sentinel rowid, confirm KNN returns
+// it, then delete the probe. Returns nil only if the round-trip succeeds. Leaves
+// a correctly-sized (probe-clean) index behind. Used by cmd/vector-init.
+func VectorStoreHealthCheck(db *sql.DB, dim int) error {
+	if dim < 1 || dim > maxEmbeddingDim {
+		return fmt.Errorf("db: health check: invalid dim %d", dim)
+	}
+	if err := EnsureVectorIndex(db, dim); err != nil {
+		return err
+	}
+	const probeRowid = int64(-1) // note ids are positive; -1 is a safe sentinel
+	probe := make([]float32, dim)
+	probe[0] = 1
+	if err := PutNoteEmbedding(db, probeRowid, probe); err != nil {
+		return err
+	}
+	defer func() { _ = DeleteNoteEmbedding(db, probeRowid) }()
+	ids, err := KnnNoteIDs(db, probe, 1)
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 || ids[0] != probeRowid {
+		return fmt.Errorf("db: health check KNN returned %v, want probe %d", ids, probeRowid)
+	}
+	return nil
+}
+
 // NoteEmbeddingInput is one note's id + embeddable text for a rebuild pass.
 type NoteEmbeddingInput struct {
 	ID   int64

@@ -84,6 +84,27 @@ func TestVecIndexDimChangeRebuilds(t *testing.T) {
 	}
 }
 
+func TestVecIndexHealthCheck(t *testing.T) {
+	database := setupTestDB(t)
+	defer database.Close()
+	if err := VectorStoreHealthCheck(database, 4); err != nil {
+		t.Fatalf("health check: %v", err)
+	}
+	if !VectorIndexReady(database) {
+		t.Error("index should exist after health check")
+	}
+	if _, ok := storedVectorDim(database); !ok {
+		t.Error("meta dim should be tracked")
+	}
+	// probe row must not linger.
+	if ids, _ := KnnNoteIDs(database, []float32{1, 0, 0, 0}, 5); len(ids) != 0 {
+		t.Errorf("probe row leaked: %v", ids)
+	}
+	if err := VectorStoreHealthCheck(database, 0); err == nil {
+		t.Error("dim 0 should error")
+	}
+}
+
 func TestVecIndexGuards(t *testing.T) {
 	database := setupTestDB(t)
 	defer database.Close()
