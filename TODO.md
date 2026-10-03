@@ -252,7 +252,7 @@
 - [x] **A 后端接线完成 + 端到端测试**（`internal/service/search_semantic.go`）：`RebuildEmbeddings()`（全库分批重算、dim 自探）+ `fuseSemantic()`（FTS+`KnnNoteIDs` 经 `FuseRRF`；默认关，关闭/未配/失败一律退回纯词法，绝不减结果）；`App.RebuildEmbeddings` binding；httptest 桩端点验证「词法零命中→向量补出、关掉即回纯词法」
 - [x] **A/B 评测门已就绪**：`internal/search/abeval`（Recall@k/NDCG@k + `Compare` delta + 单测）+ `cmd/abeval`（对活库跑 lexical vs hybrid、`GATE PASS/FAIL`、`-min-recall` 阈值；无端点则 hybrid=lexical 自然不过门）
 - [x] **向量存储选型定 + 安装引导落地（[ADR-0013](docs/adr/0013-vector-database-selection.md)）**：轴 B 默认**本地 sqlite-vec（`modernc.org/sqlite/vec` 纯 Go，校正原稿「需 CGO」之误）**；`db.VectorStoreHealthCheck` + `cmd/vector-init`（引导式：自检 vec → 建/验 vec0 → 选 embedding provider[Ollama 本地默认/远程 OpenAI/skip] → 写配置 → **指向 设置→插件** 复核+开启+重建；`semantic_search` 保持默认关）
-- [x] **远程向量库接缝已实现（Qdrant，opt-in + 自动退回本地）**：`internal/search/vectordb` `Store` 接口（`Local`＝sqlite-vec 默认 / `Qdrant`＝REST）+ `Open` 按 `vector_store*` 配置选择、不可达退回本地；`cmd/vector-init -store qdrant` 写入并探测；search_semantic 的 Rebuild/fuse 改走 `Store`；httptest 桩测（未对真实 Qdrant 冒烟，启用前用户自测）。换 Weaviate 只需再加一个实现
+- [x] **远程向量库接缝已实现（Qdrant，opt-in + 自动退回本地）**：`internal/search/vectordb` `Store` 接口（`Local`＝sqlite-vec 默认 / `Qdrant`＝REST）+ `Open` 按 `vector_store*` 配置选择、不可达退回本地；`cmd/vector-init -store qdrant` 写入并探测；search_semantic 的 Rebuild/fuse 改走 `Store`；httptest 桩测 + **build-tag 门控真实冒烟（`ollamalive`/`qdrantlive`/`aelive`，本轮已在本地真 Ollama+真 Qdrant 跑通**，含全链路语义召回；CI 默认不跑）。换 Weaviate 只需再加一个实现
 - [ ] A 面向普通用户上线前：embedding 配置前端 UI（未过门前刻意不做开关）、笔记增删改增量 embed（现全量重建）、一份真实标注 query 集
 
 ### M4: Agent 集成即插即用

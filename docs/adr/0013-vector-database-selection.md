@@ -25,7 +25,7 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 1. **同库同文件**：向量存进既有 `dashboard.db` 的 `vec0` 虚拟表 `note_embeddings`（rowid=note id），与 notes / FTS5 同库、同事务、同备份。
 2. **派生缓存**：向量是可从 `project_notes` 全量重算的缓存（`RebuildEmbeddings`），换 embedding 模型/维度即 drop+重建；SQLite 主库仍是唯一事实源。dim 记在自管 `note_embeddings_meta`，不读 sqlite-vec `_info` 影子表列名（跨版本不稳）。
 3. **默认关**：语义检索仅 `semantic_search=1` 且向量索引就绪且配好 embedding provider 才生效；任何未配/失败一律优雅退回纯 FTS5（ADR-0012）。
-4. **远程向量库经 `VectorStore` 接缝以 Qdrant 实现、默认本地 + 自动退回**：`internal/search/vectordb` 定义 `Store` 接口（`Ensure/Clear/Upsert/Search`），两实现——`Local`（sqlite-vec，默认）与 `Qdrant`（REST：建集合 / 写点 / `points/search`，`api-key` 可选）。`vectordb.Open` 按 `vector_store`(local|qdrant)/`vector_store_url`/`vector_store_api_key`/`vector_store_collection` 选择；**选了 qdrant 但未配/不可达则静默退回本地**。默认仍本地（个人库够用），远程面向 >百万向量/多端共享的 B 端；换 Weaviate 等只需再加一个 `Store` 实现。⚠ REST 契约按 Qdrant 官方文档写、httptest 桩已验证，但**未在 CI 对真实 Qdrant 跑过**，启用前先真实冒烟一次。
+4. **远程向量库经 `VectorStore` 接缝以 Qdrant 实现、默认本地 + 自动退回**：`internal/search/vectordb` 定义 `Store` 接口（`Ensure/Clear/Upsert/Search`），两实现——`Local`（sqlite-vec，默认）与 `Qdrant`（REST：建集合 / 写点 / `points/search`，`api-key` 可选）。`vectordb.Open` 按 `vector_store`(local|qdrant)/`vector_store_url`/`vector_store_api_key`/`vector_store_collection` 选择；**选了 qdrant 但未配/不可达则静默退回本地**。默认仍本地（个人库够用），远程面向 >百万向量/多端共享的 B 端；换 Weaviate 等只需再加一个 `Store` 实现。REST 契约带 build-tag 门控的**真实服务冒烟测试**（`ollamalive`/`qdrantlive`/`aelive`，CI 默认不跑），已在本地真 Ollama + 真 Qdrant 容器跑通（含全链路语义召回）。云端 Qdrant / 其它厂商未测。
 
 ## 安装引导（新增，落地「引导用户到设置」）
 
@@ -39,7 +39,7 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
    - `[3]` 跳过，稍后在设置里配。
    选定后写入 `embedding_*` 配置（**api key 走脱敏存储，不回传前端**）。
 4. 收尾**指向设置页**：打印「去 设置 → 插件 复核/调整 provider、打开 `语义检索` 开关、点『重建索引』」——即用户要的「引导到向量库设置」。`semantic_search` **保持默认关**，由用户在设置里显式开。
-5. 远程向量库：`cmd/vector-init -store qdrant -store-url <url> [-store-api-key <k>]` 写入 `vector_store*` 配置并探测；不可达自动退回本地并如实打印。真实 Qdrant 的端到端冒烟由用户在其环境完成（CI 无真实 Qdrant）。
+5. 远程向量库：`cmd/vector-init -store qdrant -store-url <url> [-store-api-key <k>]` 写入 `vector_store*` 配置并探测；不可达自动退回本地并如实打印。契约正确性由 `qdrantlive`/`aelive` 冒烟测试背书（本地真服务已跑）。
 
 ## 理由
 
@@ -49,5 +49,5 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 ## 后果
 
 - 正面：向量能力零新依赖、零 CGO、与主库同生命周期；安装引导让本地默认开箱可用、设置可发现。
-- 负面：单库向量规模有上限（个人库远未触及）；Qdrant REST 契约未在 CI 对真实服务验证（启用前需真实冒烟）。
+- 负面：单库向量规模有上限（个人库远未触及）；真实服务冒烟测试靠 build-tag 门控、CI 默认不跑（云端 Qdrant 未覆盖，接云端时补验）。
 - 待决：更多远程后端（Weaviate/Pinecone）按同一 `Store` 接缝再加；embedding 与 key 在纯云场景的更严格管理（如系统 keychain）视需求。

@@ -178,7 +178,7 @@ func printNextSteps() {
   1. 打开 设置 → 插件：确认 embedding provider / 维度，以及「向量存储」（本地 sqlite-vec 或远程 Qdrant），必要时改。
   2. 打开「语义检索」开关（默认关，需你先跑 A/B 门：go run ./cmd/abeval -cases queries.jsonl）。
   3. 点「重建索引」把现有笔记写入所选向量存储。
-说明：向量存储默认本地；选远程 Qdrant 时若运行时不可达会自动退回本地。远程向量库要真用，先跑一次真实 Qdrant 冒烟（本引导的远程分支未在 CI 里对真实服务验证）。`)
+说明：向量存储默认本地；选远程 Qdrant 时若运行时不可达会自动退回本地。已带真实服务冒烟测试（build tags 门控，CI 默认不跑）：\n  go test -tags ollamalive ./internal/search/hybrid/ && go test -tags qdrantlive ./internal/search/vectordb/ && go test -tags aelive ./internal/service/`)
 }
 
 func defaultDim(p string) int { return providers[p].dim }
