@@ -79,14 +79,13 @@ func (i *Importer) Import() ([]plugin.ImportDoc, error) {
 		if strings.TrimSpace(body) == "" {
 			continue
 		}
-		if len(body) > db.MaxNoteContentLen {
-			body = body[:db.MaxNoteContentLen]
-		}
 		name := strings.TrimSuffix(e.Name(), ".md")
+		content := "> 由 RepoNest 从 OpenClaw 全局记忆导入（source: openclaw，allowlist: workspace/*.md）\n\n" + body
+		content = memsrc.ClipToBytes(content, db.MaxNoteContentLen)
 		docs = append(docs, plugin.ImportDoc{
 			ProjectID: pid,
 			Title:     "OpenClaw · " + name,
-			Content:   "> 由 RepoNest 从 OpenClaw 全局记忆导入（source: openclaw，allowlist: workspace/*.md）\n\n" + body,
+			Content:   content,
 			Kind:      "knowledge",
 			Tags:      "openclaw",
 			Source:    SourceName,

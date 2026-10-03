@@ -108,9 +108,7 @@ func (i *Importer) docFor(path string, projects []db.Project, repos []db.Reposit
 
 	pid := memsrc.MatchProject(memsrc.LastPathSegment(s.Directory), projects, repos)
 	content := renderNote(s, title, summary)
-	if len(content) > db.MaxNoteContentLen {
-		content = content[:db.MaxNoteContentLen]
-	}
+	content = memsrc.ClipToBytes(content, db.MaxNoteContentLen)
 	return plugin.ImportDoc{
 		ProjectID: pid,
 		Title:     noteTitle(title, s.ID),

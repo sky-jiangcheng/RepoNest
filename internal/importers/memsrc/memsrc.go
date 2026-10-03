@@ -137,3 +137,22 @@ func StripFrontmatter(s string) string {
 	}
 	return strings.TrimLeft(remainder, "\r\n")
 }
+
+// ClipToBytes returns s clipped to at most max BYTES without splitting a UTF-8
+// rune. Importers compose a provenance header with the body, so the final note
+// content must be clipped AFTER composition (not the body alone) to stay within
+// db.MaxNoteContentLen while remaining valid UTF-8.
+func ClipToBytes(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	if max <= 0 {
+		return ""
+	}
+	b := []byte(s)
+	cut := max
+	for cut > 0 && b[cut]&0xC0 == 0x80 { // back off off a multi-byte continuation
+		cut--
+	}
+	return string(b[:cut])
+}

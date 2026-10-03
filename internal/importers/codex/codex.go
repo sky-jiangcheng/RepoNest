@@ -125,9 +125,7 @@ func (i *Importer) docFor(path string, projects []db.Project, repos []db.Reposit
 	pid := memsrc.MatchProject(display, projects, repos) // 0 when unmatched -> skipped
 
 	content := renderNote(p)
-	if len(content) > db.MaxNoteContentLen {
-		content = content[:db.MaxNoteContentLen]
-	}
+	content = memsrc.ClipToBytes(content, db.MaxNoteContentLen)
 	return plugin.ImportDoc{
 		ProjectID: pid,
 		Title:     titleFor(p),

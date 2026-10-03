@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"repo-nest/internal/core/plugin"
+	"repo-nest/internal/db"
 )
 
 func fakeHome(t *testing.T) string {
@@ -79,6 +81,32 @@ func TestImportMissingIsNoop(t *testing.T) {
 	docs, err := New(database).Import()
 	if err != nil || len(docs) != 0 {
 		t.Fatalf("expected noop, got err=%v docs=%d", err, len(docs))
+	}
+}
+
+func TestImportClipsOversizedToValidUTF8(t *testing.T) {
+	home := fakeHome(t)
+	ws := filepath.Join(home, ".openclaw-autoclaw", "workspace")
+	// A body far larger than the note cap (CJK, 3 bytes each).
+	huge := strings.Repeat("漢", db.MaxNoteContentLen)
+	if err := os.MkdirAll(ws, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ws, "SOUL.md"), []byte(huge), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	database, _ := sql.Open("sqlite", ":memory:")
+	defer database.Close()
+	docs, err := New(database).Import()
+	if err != nil || len(docs) != 1 {
+		t.Fatalf("import: err=%v docs=%d", err, len(docs))
+	}
+	c := docs[0].Content
+	if len(c) > db.MaxNoteContentLen {
+		t.Errorf("content %d bytes exceeds cap %d (header added after clip?)", len(c), db.MaxNoteContentLen)
+	}
+	if !utf8.ValidString(c) {
+		t.Error("content clipped mid-rune (invalid UTF-8)")
 	}
 }
 
