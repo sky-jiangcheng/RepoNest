@@ -24,7 +24,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
@@ -34,23 +34,27 @@
   gap: 12px;
 }
 
-/* --- Summary bar --- */
+/* --- Summary bar (right hero card) ---
+   It is a grid item of .hero-row (align-items: stretch), so it must fill the
+   row height and NOT carry its own bottom margin (that made it read as a
+   shorter, mis-aligned card). Stats are an even auto-fit grid so the columns
+   line up across the card width instead of left-packing with ragged gaps. */
 .summary-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  align-content: center;
+  gap: 10px 16px;
   padding: 16px 20px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-  margin-bottom: 16px;
 }
 
 .summary-item {
   display: flex;
   flex-direction: column;
-  min-width: 60px;
+  min-width: 0;
 }
 
 .summary-label {
@@ -335,8 +339,8 @@
 .hero-row {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) 1.4fr;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 16px;
+  margin-bottom: 16px;
   align-items: stretch;
 }
 
