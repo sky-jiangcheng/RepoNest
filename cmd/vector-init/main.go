@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"repo-nest/internal/db"
 	"repo-nest/internal/platform"
@@ -54,7 +55,7 @@ func main() {
 	dim := flag.Int("dim", 0, "override embedding dimension (0 = provider default)")
 	apiKey := flag.String("api-key", "", "API key for a remote embedding provider (stored masked; never shown to the UI)")
 	skipProbe := flag.Bool("skip-probe", false, "don't test the embedding endpoint reachability")
-	store := flag.String("store", "local", "vector store (axis B): local | qdrant")
+	store := flag.String("store", "local", "vector store (axis B); default local; remote opt-in")
 	storeURL := flag.String("store-url", "", "Qdrant base URL when -store=qdrant (e.g. http://localhost:6333)")
 	storeKey := flag.String("store-api-key", "", "Qdrant api-key (stored masked)")
 	storeColl := flag.String("store-collection", "reponest_vecs", "Qdrant collection name")
@@ -157,8 +158,8 @@ func configureStore(svc *service.Service, database *sql.DB, kind, url, key, coll
 	}
 	st := vectordb.Open(database, kind, url, key, coll)
 	if st.Name() == "local-sqlite-vec" {
-		if kind == "qdrant" {
-			fmt.Println("⚠ 远程 Qdrant 未配置/不可达：已自动退回本地 sqlite-vec")
+		if !strings.EqualFold(kind, "local") && kind != "" {
+			fmt.Printf("⚠ 远程向量库 %q 未配置/不可达：已自动退回本地 sqlite-vec（可选后端: %v）\n", kind, vectordb.Kinds())
 		}
 		if err := db.VectorStoreHealthCheck(database, dim); err != nil {
 			log.Fatalf("vector-init: 本地向量存储健康检查失败: %v", err)
@@ -167,18 +168,19 @@ func configureStore(svc *service.Service, database *sql.DB, kind, url, key, coll
 		return
 	}
 	if err := st.Ensure(dim); err != nil {
-		log.Fatalf("vector-init: qdrant ensure failed: %v", err)
+		log.Fatalf("vector-init: %s ensure failed: %v", st.Name(), err)
 	}
-	fmt.Printf("✓ 向量存储: 远程 %s（%s, collection=%s）；不可达时运行时自动退回本地\n", st.Name(), url, coll)
+	fmt.Printf("✓ 向量存储: %s（%s）；运行时不可达会自动退回本地\n", st.Name(), url)
 }
 
 func printNextSteps() {
-	fmt.Println(`
+	fmt.Printf(`
 下一步（引导）：
-  1. 打开 设置 → 插件：确认 embedding provider / 维度，以及「向量存储」（本地 sqlite-vec 或远程 Qdrant），必要时改。
+  1. 打开 设置 → 插件：确认 embedding provider / 维度，以及「向量存储」（当前可选: %s），必要时改。
   2. 打开「语义检索」开关（默认关，需你先跑 A/B 门：go run ./cmd/abeval -cases queries.jsonl）。
   3. 点「重建索引」把现有笔记写入所选向量存储。
-说明：向量存储默认本地；选远程 Qdrant 时若运行时不可达会自动退回本地。已带真实服务冒烟测试（build tags 门控，CI 默认不跑）：\n  go test -tags ollamalive ./internal/search/hybrid/ && go test -tags qdrantlive ./internal/search/vectordb/ && go test -tags aelive ./internal/service/`)
+说明：向量存储默认本地；选远程时若运行时不可达会自动退回本地。已带真实服务冒烟测试（build tags 门控，CI 默认不跑）：
+  go test -tags ollamalive ./internal/search/hybrid/ && go test -tags qdrantlive ./internal/search/vectordb/ && go test -tags aelive ./internal/service/`, strings.Join(vectordb.Kinds(), ", "))
 }
 
 func defaultDim(p string) int { return providers[p].dim }

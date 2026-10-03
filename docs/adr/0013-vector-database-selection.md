@@ -51,3 +51,25 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 - 正面：向量能力零新依赖、零 CGO、与主库同生命周期；安装引导让本地默认开箱可用、设置可发现。
 - 负面：单库向量规模有上限（个人库远未触及）；真实服务冒烟测试靠 build-tag 门控、CI 默认不跑（云端 Qdrant 未覆盖，接云端时补验）。
 - 待决：更多远程后端（Weaviate/Pinecone）按同一 `Store` 接缝再加；embedding 与 key 在纯云场景的更严格管理（如系统 keychain）视需求。
+
+## 候选矩阵与扩展（2026-10-03 复核，回应用户"候选多一点/配置灵活"）
+
+后端经 `vectordb.Register(kind, factory)` 注册为**可插拔 registry**（`Kinds()` 供 vector-init / 设置枚举；未知 kind 或远程不可达一律退回本地）。加一个后端＝一个 `Store` 实现 + 一行 Register，调用方零改动。按是否**守零 CGO** + 嵌入/远程分两类：
+
+| 后端 | 形态 | 零 CGO? | 定位 | 接入成本/备注 |
+|---|---|---|---|---|
+| **sqlite-vec (modernc)** | 本地·同库 | ✅（本仓已验） | 默认 | 已实现；个人库规模绰绰；2026 评测称"pragmatic winner"，未过时 |
+| **chromem-go** | 本地·纯 Go 库 | ✅ | 轻量纯 Go 备选 | 纯 Go、向量入内存，适合小数据；未加（无强需求） |
+| **Bleve** | 本地·纯 Go 引擎 | ✅ | 文本+向量一体 | 纯 Go、久经考验；**可连 FTS5 一起替代**（大改动），1M 规模边际 |
+| **Qdrant** | 远程/自托管 | ✅（HTTP，客户端零 CGO） | 首个远程 | **已实现** + `qdrantlive`/`aelive` 真服务冒烟 |
+| Weaviate / Pinecone / Milvus | 远程 | ✅（HTTP 客户端） | 大规模/多端 | 各需一个 `Store` 适配器（按其真实 API 核验后再写，勿凭记忆） |
+| **LanceDB** | 本地/远程 | ❌ **需 CGO** | 高速 ANN | **与零 CGO 约束冲突**；要用须重开 ADR 讨论，默认不接 |
+| go-libsql | 本地 | ❌ CGO | — | 无 Windows 支持，跨平台出局 |
+
+**2026 复核要点**：sqlite-vec 仍是活跃、被推荐的默认，未过时；上面"CGO"一列是硬筛——LanceDB/go-libsql 破我们零 CGO 前提，故不列默认。
+
+## 展望：对齐开放记忆标准（回应用户"OpenAI/各 IDE 都在公开存储格式"）
+
+- **现状风险**：codex/opencode/openclaw/hermes importer 都是**对各家未公开、随版本漂移的落盘格式**做逆向（已用宽松解析 + golden-file + allowlist 兜底，但仍脆）。
+- **可对齐标准 = OMP（Open Memory Protocol）**：厂商中立的开放 AI 记忆规范（Memory Object：id/content/type∈{episodic,semantic,procedural}/source/tags/created_at；`/v1/handoff`、`/v1/conversations`；可移植 JSON 导入导出；已有 Claude Code/Cursor/Copilot/Codex CLI 等适配宣称）。**若成熟，RepoNest 可把它作为导入/导出契约，取代逐工具逆向**。
+- **但**：OMP 现 **v0.4、pre-1.0、社区早期（~85 star）**，兼容多靠各家适配器。**不现在硬依赖**；记为观察项 + 提供 `handoff`/notes 的可移植 JSON 导出为对接预留（与现有 ImportDoc 天然可映射）。

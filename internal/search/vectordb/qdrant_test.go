@@ -111,3 +111,23 @@ func TestOpenFallsBackToLocal(t *testing.T) {
 		t.Fatalf("default should be local, got %s", got.Name())
 	}
 }
+
+func TestKindsAndUnknownFallsBack(t *testing.T) {
+	ks := Kinds()
+	if len(ks) < 2 || ks[0] != "local" {
+		t.Fatalf("Kinds()=%v, want local first + at least qdrant", ks)
+	}
+	found := false
+	for _, k := range ks {
+		if k == "qdrant" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("Kinds() missing qdrant: %v", ks)
+	}
+	// Unknown kind -> local, no panic.
+	if got := Open(openMem(t), "bogus-store", "", "", ""); got.Name() != "local-sqlite-vec" {
+		t.Fatalf("unknown kind should fall back to local, got %s", got.Name())
+	}
+}
