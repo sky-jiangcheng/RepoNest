@@ -36,24 +36,37 @@ var allowedConfigKeys = map[string]bool{
 	"embedding_model":    true,
 	"embedding_api_key":  true,
 	"embedding_dim":      true,
+	// M3-A axis B (ADR-0013): vector STORE backend. Default local sqlite-vec;
+	// vector_store="qdrant" + url (+api-key) opts into a remote/self-hosted
+	// Qdrant, and any failure to reach it silently falls back to local.
+	// vector_store_api_key is a SECRET and is redacted in GetConfig.
+	"vector_store":            true,
+	"vector_store_url":        true,
+	"vector_store_api_key":    true,
+	"vector_store_collection": true,
 }
 
-// stringConfigKeys are exempt from the numeric-value check: they carry
-// free-text (author name, project name/id, embedding endpoint/model/key).
+// stringConfigKeys are exempt from the numeric-value check: they carry free-text
+// (author name, project name/id, embedding endpoint/model/key, vector store).
 var stringConfigKeys = map[string]bool{
-	"git_author":         true,
-	"openclaw_project":   true,
-	"hermes_project":     true,
-	"embedding_base_url": true,
-	"embedding_model":    true,
-	"embedding_api_key":  true,
+	"git_author":              true,
+	"openclaw_project":        true,
+	"hermes_project":          true,
+	"embedding_base_url":      true,
+	"embedding_model":         true,
+	"embedding_api_key":       true,
+	"vector_store":            true,
+	"vector_store_url":        true,
+	"vector_store_api_key":    true,
+	"vector_store_collection": true,
 }
 
 // secretConfigKeys are never returned in plaintext by GetConfig — a set value
 // is masked so the frontend learns "configured" without seeing the credential.
 // The backend still reads the real value via db.GetConfig directly.
 var secretConfigKeys = map[string]bool{
-	"embedding_api_key": true,
+	"embedding_api_key":    true,
+	"vector_store_api_key": true,
 }
 
 // secretMask replaces a configured secret in responses sent to the frontend.

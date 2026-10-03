@@ -29,6 +29,7 @@ import (
 	"repo-nest/internal/db"
 	"repo-nest/internal/platform"
 	"repo-nest/internal/search/hybrid"
+	"repo-nest/internal/search/vectordb"
 	"repo-nest/internal/service"
 )
 
@@ -53,6 +54,10 @@ func main() {
 	dim := flag.Int("dim", 0, "override embedding dimension (0 = provider default)")
 	apiKey := flag.String("api-key", "", "API key for a remote embedding provider (stored masked; never shown to the UI)")
 	skipProbe := flag.Bool("skip-probe", false, "don't test the embedding endpoint reachability")
+	store := flag.String("store", "local", "vector store (axis B): local | qdrant")
+	storeURL := flag.String("store-url", "", "Qdrant base URL when -store=qdrant (e.g. http://localhost:6333)")
+	storeKey := flag.String("store-api-key", "", "Qdrant api-key (stored masked)")
+	storeColl := flag.String("store-collection", "reponest_vecs", "Qdrant collection name")
 	flag.Parse()
 
 	path := *dbPath
@@ -76,7 +81,7 @@ func main() {
 	switch *provider {
 	case "skip":
 		fmt.Println("• Embedding provider: 跳过（稍后在 设置 → 插件 配置）")
-		healthOrDie(database, defaultDim("ollama")) // still verify the local store works
+		configureStore(svc, database, *store, *storeURL, *storeKey, *storeColl, defaultDim("ollama"))
 		printNextSteps()
 		return
 	case "ollama", "openai":
@@ -99,8 +104,8 @@ func main() {
 		fmt.Println("⚠ 远程 provider 未提供 -api-key/OPENAI_API_KEY；语义检索将无法生效，直到在设置里补上")
 	}
 
-	// 2. Store health check (creates the vec0 index at dim + verifies a KNN round-trip).
-	healthOrDie(database, d)
+	// 2. Vector store (axis B): resolve + verify + persist config, default/fallback local.
+	configureStore(svc, database, *store, *storeURL, *storeKey, *storeColl, d)
 
 	// 3. Embedding provider reachability (best-effort; warn, never hard-fail).
 	if !*skipProbe {
@@ -127,24 +132,53 @@ func main() {
 			log.Fatalf("vector-init: save api key: %v", err)
 		}
 	}
-	fmt.Println("✓ 向量索引: 已就绪（本地 sqlite-vec，存于 dashboard.db）")
+	fmt.Println("✓ Embedding provider 配置已写入（语义检索默认关，需在设置里显式开启）")
 	printNextSteps()
 }
 
-func healthOrDie(database *sql.DB, dim int) {
-	if err := db.VectorStoreHealthCheck(database, dim); err != nil {
-		log.Fatalf("vector-init: 向量存储健康检查失败: %v", err)
+// configureStore records the vector-store choice (axis B) and verifies the
+// resolved store. Default and fallback are local sqlite-vec; -store=qdrant
+// opts into a remote/self-hosted Qdrant, and Open() silently falls back to local
+// if it is unreachable. dim sizes the vec0 collection/index for the probe.
+func configureStore(svc *service.Service, database *sql.DB, kind, url, key, coll string, dim int) {
+	for k, v := range map[string]string{
+		"vector_store":            kind,
+		"vector_store_url":        url,
+		"vector_store_collection": coll,
+	} {
+		if err := svc.UpdateConfig(k, v); err != nil {
+			log.Printf("vector-init: save %s: %v", k, err)
+		}
 	}
-	fmt.Printf("✓ 向量存储: 本地 sqlite-vec 健康检查通过（vec0 建表 + KNN 往返, dim=%d）\n", dim)
+	if key != "" {
+		if err := svc.UpdateConfig("vector_store_api_key", key); err != nil {
+			log.Printf("vector-init: save vector_store_api_key: %v", err)
+		}
+	}
+	st := vectordb.Open(database, kind, url, key, coll)
+	if st.Name() == "local-sqlite-vec" {
+		if kind == "qdrant" {
+			fmt.Println("⚠ 远程 Qdrant 未配置/不可达：已自动退回本地 sqlite-vec")
+		}
+		if err := db.VectorStoreHealthCheck(database, dim); err != nil {
+			log.Fatalf("vector-init: 本地向量存储健康检查失败: %v", err)
+		}
+		fmt.Printf("✓ 向量存储: 本地 sqlite-vec 健康检查通过（vec0 + KNN 往返, dim=%d）\n", dim)
+		return
+	}
+	if err := st.Ensure(dim); err != nil {
+		log.Fatalf("vector-init: qdrant ensure failed: %v", err)
+	}
+	fmt.Printf("✓ 向量存储: 远程 %s（%s, collection=%s）；不可达时运行时自动退回本地\n", st.Name(), url, coll)
 }
 
 func printNextSteps() {
 	fmt.Println(`
 下一步（引导）：
-  1. 打开 设置 → 插件：确认 embedding provider / 维度，必要时改。
+  1. 打开 设置 → 插件：确认 embedding provider / 维度，以及「向量存储」（本地 sqlite-vec 或远程 Qdrant），必要时改。
   2. 打开「语义检索」开关（默认关，需你先跑 A/B 门：go run ./cmd/abeval -cases queries.jsonl）。
-  3. 点「重建索引」把现有笔记写入向量索引。
-远程向量库：当前不实现（本地 sqlite-vec 足够个人库）；确需 >百万向量时再按 ADR-0013 选厂商接 VectorStore 接缝。`)
+  3. 点「重建索引」把现有笔记写入所选向量存储。
+说明：向量存储默认本地；选远程 Qdrant 时若运行时不可达会自动退回本地。远程向量库要真用，先跑一次真实 Qdrant 冒烟（本引导的远程分支未在 CI 里对真实服务验证）。`)
 }
 
 func defaultDim(p string) int { return providers[p].dim }

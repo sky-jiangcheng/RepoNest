@@ -1,6 +1,6 @@
 # ADR-0013: 本地向量存储选型（sqlite-vec）与安装引导
 
-- 状态：Accepted（选型即本仓已落地路线；`cmd/vector-init` 安装引导为落地项）
+- 状态：Accepted（本地 sqlite-vec 默认 + `VectorStore` 接缝已落地；`cmd/vector-init` 引导 + 远程 Qdrant 可选、不可达自动退回本地，均已实现）
 - 日期：2026-10-03
 - 关联：[ADR-0003](0003-fts5-search.md)（FTS5）、[ADR-0012](0012-semantic-search.md)（语义检索：Embedder + RRF 融合）、TODO M3
 
@@ -25,7 +25,7 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 1. **同库同文件**：向量存进既有 `dashboard.db` 的 `vec0` 虚拟表 `note_embeddings`（rowid=note id），与 notes / FTS5 同库、同事务、同备份。
 2. **派生缓存**：向量是可从 `project_notes` 全量重算的缓存（`RebuildEmbeddings`），换 embedding 模型/维度即 drop+重建；SQLite 主库仍是唯一事实源。dim 记在自管 `note_embeddings_meta`，不读 sqlite-vec `_info` 影子表列名（跨版本不稳）。
 3. **默认关**：语义检索仅 `semantic_search=1` 且向量索引就绪且配好 embedding provider 才生效；任何未配/失败一律优雅退回纯 FTS5（ADR-0012）。
-4. **不引入远程向量库**（Qdrant/Weaviate/Milvus 等独立服务）：与本仓「单二进制 + 本地优先 + 零额外进程」冲突，个人知识库量级（数百–数万）远不到 sqlite-vec 上限。若将来确有 >百万向量或多端共享需求，经 `VectorStore` 接口再挂远程实现——**本 ADR 只立本地默认，预留接缝，不预先实现**。
+4. **远程向量库经 `VectorStore` 接缝以 Qdrant 实现、默认本地 + 自动退回**：`internal/search/vectordb` 定义 `Store` 接口（`Ensure/Clear/Upsert/Search`），两实现——`Local`（sqlite-vec，默认）与 `Qdrant`（REST：建集合 / 写点 / `points/search`，`api-key` 可选）。`vectordb.Open` 按 `vector_store`(local|qdrant)/`vector_store_url`/`vector_store_api_key`/`vector_store_collection` 选择；**选了 qdrant 但未配/不可达则静默退回本地**。默认仍本地（个人库够用），远程面向 >百万向量/多端共享的 B 端；换 Weaviate 等只需再加一个 `Store` 实现。⚠ REST 契约按 Qdrant 官方文档写、httptest 桩已验证，但**未在 CI 对真实 Qdrant 跑过**，启用前先真实冒烟一次。
 
 ## 安装引导（新增，落地「引导用户到设置」）
 
@@ -39,7 +39,7 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
    - `[3]` 跳过，稍后在设置里配。
    选定后写入 `embedding_*` 配置（**api key 走脱敏存储，不回传前端**）。
 4. 收尾**指向设置页**：打印「去 设置 → 插件 复核/调整 provider、打开 `语义检索` 开关、点『重建索引』」——即用户要的「引导到向量库设置」。`semantic_search` **保持默认关**，由用户在设置里显式开。
-5. 远程向量库：明确标注为「面向 >百万向量的未来接缝，当前不实现；要用需先定厂商」，不写半吊子配置。
+5. 远程向量库：`cmd/vector-init -store qdrant -store-url <url> [-store-api-key <k>]` 写入 `vector_store*` 配置并探测；不可达自动退回本地并如实打印。真实 Qdrant 的端到端冒烟由用户在其环境完成（CI 无真实 Qdrant）。
 
 ## 理由
 
@@ -49,5 +49,5 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 ## 后果
 
 - 正面：向量能力零新依赖、零 CGO、与主库同生命周期；安装引导让本地默认开箱可用、设置可发现。
-- 负面：单库向量规模有上限（个人库远未触及）；远程向量库暂只有接缝无实现。
-- 待决：**远程向量库真要接时选哪家厂商**（Qdrant/Weaviate/Pinecone）+ 该场景下的 embedding 与 key 管理——本 ADR 只预留接缝，未定厂商不实现。
+- 负面：单库向量规模有上限（个人库远未触及）；Qdrant REST 契约未在 CI 对真实服务验证（启用前需真实冒烟）。
+- 待决：更多远程后端（Weaviate/Pinecone）按同一 `Store` 接缝再加；embedding 与 key 在纯云场景的更严格管理（如系统 keychain）视需求。

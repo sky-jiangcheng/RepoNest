@@ -9,6 +9,7 @@ import (
 	"repo-nest/internal/db"
 	"repo-nest/internal/domain"
 	"repo-nest/internal/search/hybrid"
+	"repo-nest/internal/search/vectordb"
 )
 
 // M3-A semantic search wiring (ADR-0012). Default OFF: nothing here runs unless
@@ -42,6 +43,18 @@ func (s *Service) noteEmbedder() (*hybrid.RemoteEmbedder, bool) {
 	return &hybrid.RemoteEmbedder{BaseURL: base, Model: model, APIKey: key, Dim: dim}, true
 }
 
+// vectorStore resolves the configured vector STORE (axis B, ADR-0013), falling
+// back to local sqlite-vec when remote is unset/unreachable. Reading the real
+// (unmasked) api keys here is intentional: GetConfig masks them for the UI, but
+// the store needs them to connect.
+func (s *Service) vectorStore() vectordb.Store {
+	kind, _ := db.GetConfig(s.db, "vector_store")
+	url, _ := db.GetConfig(s.db, "vector_store_url")
+	key, _ := db.GetConfig(s.db, "vector_store_api_key")
+	coll, _ := db.GetConfig(s.db, "vector_store_collection")
+	return vectordb.Open(s.db, kind, url, key, coll)
+}
+
 // RebuildEmbeddings fully (re)embeds every note into the vector index. Used when
 // the user turns on semantic search or changes the endpoint/model. Returns the
 // number of notes embedded. If embedding_dim is unset it is learned from the
@@ -51,6 +64,7 @@ func (s *Service) RebuildEmbeddings() (int, error) {
 	if !ok {
 		return 0, fmt.Errorf("semantic search: embedding endpoint not configured")
 	}
+	store := s.vectorStore()
 	notes, err := db.ListNoteEmbeddingInputs(s.db)
 	if err != nil {
 		return 0, err
@@ -68,10 +82,10 @@ func (s *Service) RebuildEmbeddings() (int, error) {
 		}
 		emb.Dim = len(probe[0])
 	}
-	if err := db.EnsureVectorIndex(s.db, emb.Dim); err != nil {
+	if err := store.Ensure(emb.Dim); err != nil {
 		return 0, err
 	}
-	if err := db.ClearVectorIndex(s.db); err != nil {
+	if err := store.Clear(emb.Dim); err != nil {
 		return 0, err
 	}
 	embedded := 0
@@ -93,21 +107,24 @@ func (s *Service) RebuildEmbeddings() (int, error) {
 		}
 		for i, vec := range vecs {
 			if i < len(ids) {
-				if err := db.PutNoteEmbedding(s.db, ids[i], vec); err != nil {
+				if err := store.Upsert(ids[i], vec); err != nil {
 					return embedded, err
 				}
 				embedded++
 			}
 		}
 	}
+	log.Printf("semantic rebuild: %s holds %d vectors", store.Name(), embedded)
 	return embedded, nil
 }
 
 // fuseSemantic merges vector recall into the lexical hits via RRF. Returns the
-// input unchanged when semantic search is off, unconfigured, the index is
-// missing, or any embed/KNN step fails — never reducing results.
+// input unchanged when semantic search is off, unconfigured, or any embed/KNN
+// step fails — never reducing results. The KNN runs against the configured
+// vector STORE (local sqlite-vec by default, remote Qdrant if set and
+// reachable; ADR-0013).
 func (s *Service) fuseSemantic(base []domain.SearchHit, query string) []domain.SearchHit {
-	if !s.semanticEnabled() || !db.VectorIndexReady(s.db) {
+	if !s.semanticEnabled() {
 		return base
 	}
 	emb, ok := s.noteEmbedder()
@@ -121,7 +138,7 @@ func (s *Service) fuseSemantic(base []domain.SearchHit, query string) []domain.S
 		}
 		return base
 	}
-	ids, err := db.KnnNoteIDs(s.db, vecs[0], embedRecallK)
+	ids, err := s.vectorStore().Search(vecs[0], embedRecallK)
 	if err != nil || len(ids) == 0 {
 		return base
 	}
