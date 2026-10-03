@@ -25,7 +25,7 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 1. **同库同文件**：向量存进既有 `dashboard.db` 的 `vec0` 虚拟表 `note_embeddings`（rowid=note id），与 notes / FTS5 同库、同事务、同备份。
 2. **派生缓存**：向量是可从 `project_notes` 全量重算的缓存（`RebuildEmbeddings`），换 embedding 模型/维度即 drop+重建；SQLite 主库仍是唯一事实源。dim 记在自管 `note_embeddings_meta`，不读 sqlite-vec `_info` 影子表列名（跨版本不稳）。
 3. **默认关**：语义检索仅 `semantic_search=1` 且向量索引就绪且配好 embedding provider 才生效；任何未配/失败一律优雅退回纯 FTS5（ADR-0012）。
-4. **远程向量库经 `VectorStore` 接缝以 Qdrant 实现、默认本地 + 自动退回**：`internal/search/vectordb` 定义 `Store` 接口（`Ensure/Clear/Upsert/Search`），两实现——`Local`（sqlite-vec，默认）与 `Qdrant`（REST：建集合 / 写点 / `points/search`，`api-key` 可选）。`vectordb.Open` 按 `vector_store`(local|qdrant)/`vector_store_url`/`vector_store_api_key`/`vector_store_collection` 选择；**选了 qdrant 但未配/不可达则静默退回本地**。默认仍本地（个人库够用），远程面向 >百万向量/多端共享的 B 端；换 Weaviate 等只需再加一个 `Store` 实现。REST 契约带 build-tag 门控的**真实服务冒烟测试**（`ollamalive`/`qdrantlive`/`aelive`，CI 默认不跑），已在本地真 Ollama + 真 Qdrant 容器跑通（含全链路语义召回）。云端 Qdrant / 其它厂商未测。
+4. **远程向量库经 `VectorStore` 接缝以 Qdrant 实现、默认本地 + 自动退回**：`internal/search/vectordb` 定义 `Store` 接口（`Ensure/Clear/Upsert/Search`），两实现——`Local`（sqlite-vec，默认）与 `Qdrant`（REST：建集合 / 写点 / `points/search`，`api-key` 可选）。`vectordb.Open` 按 `vector_store`(local|qdrant)/`vector_store_url`/`vector_store_api_key`/`vector_store_collection` 选择；**选了 qdrant 但未配/不可达则静默退回本地**。默认仍本地（个人库够用），远程面向 >百万向量/多端共享的 B 端；**Qdrant 与 Weaviate 均已实现**，再换 Pinecone/Milvus 只需再加一个 `Store` 实现。REST 契约带 build-tag 门控的**真实服务冒烟测试**（`ollamalive`/`qdrantlive`/`aelive`，CI 默认不跑），已在本地真 Ollama + 真 Qdrant 容器跑通（含全链路语义召回）。云端 Qdrant / 其它厂商未测。
 
 ## 安装引导（新增，落地「引导用户到设置」）
 
@@ -62,7 +62,8 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 | **chromem-go** | 本地·纯 Go 库 | ✅ | 轻量纯 Go 备选 | 纯 Go、向量入内存，适合小数据；未加（无强需求） |
 | **Bleve** | 本地·纯 Go 引擎 | ✅ | 文本+向量一体 | 纯 Go、久经考验；**可连 FTS5 一起替代**（大改动），1M 规模边际 |
 | **Qdrant** | 远程/自托管 | ✅（HTTP，客户端零 CGO） | 首个远程 | **已实现** + `qdrantlive`/`aelive` 真服务冒烟 |
-| Weaviate / Pinecone / Milvus | 远程 | ✅（HTTP 客户端） | 大规模/多端 | 各需一个 `Store` 适配器（按其真实 API 核验后再写，勿凭记忆） |
+| **Weaviate** | 远程/自托管 | ✅（HTTP，客户端零 CGO） | 第二远程 | **已实现**（REST 建类+`note_id`属性/GraphQL nearVector/UUID 幂等 upsert）+ `weavialive` 真服务冒烟（容器跑通） |
+| Pinecone / Milvus | 远程 | ✅（HTTP 客户端） | 大规模 | 各需一个 `Store` 适配器（按真实 API 核验后再写，勿凭记忆） |
 | **LanceDB** | 本地/远程 | ❌ **需 CGO** | 高速 ANN | **与零 CGO 约束冲突**；要用须重开 ADR 讨论，默认不接 |
 | go-libsql | 本地 | ❌ CGO | — | 无 Windows 支持，跨平台出局 |
 

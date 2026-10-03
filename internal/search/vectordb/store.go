@@ -31,9 +31,19 @@ var registry = map[string]factory{
 		}
 		return q, nil
 	},
-	// Future backends register here: "weaviate", "lancedb" (NOTE: CGO → breaks
-	// the zero-CGO build constraint), "bleve" (pure-Go, also subsumes text).
+	// Future backends register here: "lancedb" (NOTE: CGO → breaks the
+	// zero-CGO build constraint), "bleve" (pure-Go, also subsumes text).
 	// See ADR-0013 candidate matrix.
+	"weaviate": func(_ *sql.DB, rc remoteConfig) (Store, error) {
+		w, err := NewWeaviate(rc.url, rc.apiKey, rc.collection)
+		if err != nil {
+			return nil, err
+		}
+		if !w.Reachable() {
+			return nil, fmt.Errorf("weaviate %s unreachable", w.Base)
+		}
+		return w, nil
+	},
 }
 
 // Register adds a named store backend to the selectable set (used by
