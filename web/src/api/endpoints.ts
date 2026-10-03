@@ -416,6 +416,16 @@ export function exportNoteAsMarkdown(noteId: number): Promise<string> {
   }).then(d => d ?? '')
 }
 
+// exportMemoryJSON returns the knowledge base as an OMP-style portable memory
+// JSON string (ADR-0013 interop seam). limit<=0 = all notes.
+export function exportMemoryJSON(limit: number): Promise<string> {
+  return call<string>({
+    method: 'ExportMemoryJSON',
+    args: [limit],
+    path: `/memory/export.json?limit=${limit}`,
+  }).then(d => d ?? '[]')
+}
+
 // --- Plugins -------------------------------------------------------------------------------
 
 export function getPluginStatuses(): Promise<PluginStatus[]> {

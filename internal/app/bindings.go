@@ -29,7 +29,7 @@ import (
 //                    RestoreNoteVersion, DiffNoteVersions
 //   Todos: ListTodos, CreateTodo, ToggleTodo, DeleteTodo, ReorderTodos
 //   Config: GetConfig, UpdateConfig, UpdateScanRoots
-//   Exports: GenerateLLMsTxt, ExportNoteAsMarkdown
+//   Exports: GenerateLLMsTxt, ExportNoteAsMarkdown, ExportMemoryJSON
 //   Plugins/knowledge sources: GetPluginStatuses, GetKnowledgeSources,
 //                              TriggerKnowledgeImport, TriggerAllKnowledgeImports,
 //                              ReloadPlugins, ImportClaudeMemory, CaptureClaudeHandoff
@@ -220,6 +220,10 @@ func (a *App) GenerateLLMsTxt() string { return a.svc.GenerateLLMsTxt() }
 
 // ExportNoteAsMarkdown returns a single note as Markdown with YAML frontmatter.
 func (a *App) ExportNoteAsMarkdown(noteID int64) string { return a.svc.ExportNoteAsMarkdown(noteID) }
+
+// ExportMemoryJSON returns the knowledge base as an OMP-style portable memory
+// JSON array (ADR-0013 interop seam; provisional, OMP is pre-v1). limit<=0 = all.
+func (a *App) ExportMemoryJSON(limit int64) string { return a.svc.ExportMemoryJSON(int(limit)) }
 
 // --- Plugins / knowledge sources ----------------------------------------------
 

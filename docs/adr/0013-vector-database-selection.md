@@ -73,4 +73,11 @@ M3 语义检索需要「把向量存起来 + 做相似度检索」的存储层�
 
 - **现状风险**：codex/opencode/openclaw/hermes importer 都是**对各家未公开、随版本漂移的落盘格式**做逆向（已用宽松解析 + golden-file + allowlist 兜底，但仍脆）。
 - **可对齐标准 = OMP（Open Memory Protocol）**：厂商中立的开放 AI 记忆规范（Memory Object：id/content/type∈{episodic,semantic,procedural}/source/tags/created_at；`/v1/handoff`、`/v1/conversations`；可移植 JSON 导入导出；已有 Claude Code/Cursor/Copilot/Codex CLI 等适配宣称）。**若成熟，RepoNest 可把它作为导入/导出契约，取代逐工具逆向**。
-- **但**：OMP 现 **v0.4、pre-1.0、社区早期（~85 star）**，兼容多靠各家适配器。**不现在硬依赖**；记为观察项 + 提供 `handoff`/notes 的可移植 JSON 导出为对接预留（与现有 ImportDoc 天然可映射）。
+- **但**：OMP 现 **v0.4、pre-1.0、社区早期（~85 star）**，兼容多靠各家适配器。**不现在硬依赖**。
+- **导出接缝已实现（provisional）**：`service.ExportMemoryJSON` 把知识库导出为 OMP 风格 Memory Object 数组（id=`urn:reponest:note:<id>`、content=标题+正文、type 由 kind/handoff 投影为 episodic/procedural/semantic、source.tool=reponest、tags、created_at/updated_at），desktop binding `App.ExportMemoryJSON` + 前端 `exportMemoryJSON`。**仅导出向**，OMP 导入向 + 字段映射待其 v1 稳定再对齐（type 映射是尽力投影、非规范）。
+
+## 后端接入现状（截至本次）
+
+- 已实现并验证：`local`(sqlite-vec) · `qdrant` · `weaviate`（后两者对真容器 `qdrantlive`/`weavialive` 冒烟通过）。
+- 接缝就绪、**待依赖可拉取**：`chromem-go`、`bleve` 均需 `go get` 新模块——本会话环境**离线**（proxy 不可达），故未加；联网后 `vectordb.Register` 一处即接入（Bleve 另需评估"是否替代 FTS5"的架构决策）。
+- 接缝就绪、**待凭据/集群**：`pinecone`（需云账号 key）、`milvus`（需起集群）——按"先核真 API 再写、不凭记忆"原则未盲写客户端；有可用环境时同 `weaviate` 流程补。
