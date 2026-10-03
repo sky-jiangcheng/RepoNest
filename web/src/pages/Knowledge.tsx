@@ -38,7 +38,7 @@ function KnowledgePage() {
   if (loading) {
     return (
       <div className="knowledge">
-        <h1>{t('knowledge.title')}</h1>
+        <h1 className="visually-hidden">{t('knowledge.title')}</h1>
         <div className="skeleton skeleton-text" style={{ width: '100%', height: 48, marginBottom: 12 }} />
         <div className="skeleton skeleton-text" style={{ width: '100%', height: 80 }} />
         <div className="skeleton skeleton-text" style={{ width: '100%', height: 80, marginTop: 12 }} />
@@ -49,7 +49,7 @@ function KnowledgePage() {
   if (error) {
     return (
       <div className="knowledge">
-        <h1>{t('knowledge.title')}</h1>
+        <h1 className="visually-hidden">{t('knowledge.title')}</h1>
         <ErrorBanner message={error} onRetry={() => void fetchAll()} />
       </div>
     )
@@ -59,7 +59,7 @@ function KnowledgePage() {
     <div className="knowledge">
       <div className="page-head">
         <div>
-          <h1>{t('knowledge.title')}</h1>
+          <h1 className="visually-hidden">{t('knowledge.title')}</h1>
           <p className="page-sub">{t('knowledge.desc', { count: notes.length })}</p>
         </div>
         <div className="page-head-actions">

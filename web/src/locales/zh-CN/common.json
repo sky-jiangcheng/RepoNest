@@ -187,7 +187,11 @@
     "targetProjectPlaceholder": "项目名或数字 ID",
     "targetProjectHint": "全局记忆导入器把笔记挂到此项目；留空则跳过。",
     "targetSaved": "已保存 {{source}} 的目标项目",
-    "save": "保存"
+    "save": "保存",
+    "groupImport": "知识导入",
+    "groupTargets": "全局记忆源 · 目标项目",
+    "groupCapture": "Claude 会话捕捉",
+    "captureProjectLabel": "按项目 ID 捕捉"
   },
   "project": {
     "title": "项目详情",

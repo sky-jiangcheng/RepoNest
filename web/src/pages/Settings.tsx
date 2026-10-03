@@ -51,7 +51,7 @@ function Settings() {
   if (loading) {
     return (
       <div className="settings">
-        <h1>{t('settings.title')}</h1>
+        <h1 className="visually-hidden">{t('settings.title')}</h1>
         <div className="skeleton skeleton-text" style={{width: '100%', height: 24, marginBottom: 12}} />
         <div className="skeleton skeleton-text" style={{width: '100%', height: 64, marginBottom: 8}} />
         <div className="skeleton skeleton-text" style={{width: '100%', height: 64, marginBottom: 8}} />
@@ -62,7 +62,7 @@ function Settings() {
   if (error) {
     return (
       <div className="settings">
-        <h1>{t('settings.title')}</h1>
+        <h1 className="visually-hidden">{t('settings.title')}</h1>
         <ErrorBanner message={error} onRetry={loadConfig} />
       </div>
     )
@@ -70,7 +70,7 @@ function Settings() {
 
   return (
     <div className="settings">
-      <h1>{t('settings.title')}</h1>
+      <h1 className="visually-hidden">{t('settings.title')}</h1>
 
       {message && <div className="message-banner">{message}</div>}
 

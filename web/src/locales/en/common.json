@@ -187,7 +187,11 @@
     "targetProjectPlaceholder": "project name or numeric id",
     "targetProjectHint": "Global-memory importers attach notes to this project; leave empty to skip.",
     "targetSaved": "Target project saved for {{source}}",
-    "save": "Save"
+    "save": "Save",
+    "groupImport": "Knowledge import",
+    "groupTargets": "Global-memory sources · target project",
+    "groupCapture": "Claude session capture",
+    "captureProjectLabel": "Capture by project ID"
   },
   "project": {
     "title": "Project Details",

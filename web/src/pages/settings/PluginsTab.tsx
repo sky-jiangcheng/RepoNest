@@ -92,101 +92,114 @@ export default function PluginsTab({ initialAutoImport, initialClaudeCapture, in
     <div className="settings-section">
       <p className="section-desc" dangerouslySetInnerHTML={{ __html: t('settings.pluginDesc') }} />
 
-      <div className="form-group">
-        <label id="settings-auto-import-label">{t('settings.autoImportLabel')}</label>
-        <div className="toggle-row">
-          <button
-            className={`toggle ${autoImport ? 'toggle-on' : ''}`}
-            onClick={() => handleAutoImportToggle(!autoImport)}
-            disabled={saving}
-            aria-pressed={autoImport}
-            aria-labelledby="settings-auto-import-label"
-          >
-            <span className="toggle-knob" />
-          </button>
-          <span className="form-hint" style={{ marginTop: 0 }}>
-            {autoImport ? t('settings.autoImportOnHint') : t('settings.autoImportOffHint')}
-          </span>
+      {/* --- Knowledge import --- */}
+      <section className="settings-group">
+        <h2 className="settings-group-title">{t('settings.groupImport')}</h2>
+        <div className="form-group">
+          <label id="settings-auto-import-label">{t('settings.autoImportLabel')}</label>
+          <div className="toggle-row">
+            <button
+              className={`toggle ${autoImport ? 'toggle-on' : ''}`}
+              onClick={() => handleAutoImportToggle(!autoImport)}
+              disabled={saving}
+              aria-pressed={autoImport}
+              aria-labelledby="settings-auto-import-label"
+            >
+              <span className="toggle-knob" />
+            </button>
+            <span className="form-hint" style={{ marginTop: 0 }}>
+              {autoImport ? t('settings.autoImportOnHint') : t('settings.autoImportOffHint')}
+            </span>
+          </div>
         </div>
-      </div>
+        {sources.length === 0 ? (
+          <div className="empty-hint">{t('settings.noSources')}</div>
+        ) : (
+          <ul className="plugin-list">
+            {sources.map((s) => (
+              <li key={s.name} className="plugin-item plugin-ok">
+                <div className="plugin-info">
+                  <span className="plugin-name">{s.name}</span>
+                  <span className="plugin-path">{t('settings.fromPlugin', { name: s.plugin || 'builtin' })}</span>
+                </div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => handleImportSource(s.name)}
+                  disabled={importingSource !== '' || !s.enabled}
+                >
+                  {importingSource === s.name ? t('settings.importing') : t('settings.importNow')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <div className="form-group">
-        <label id="settings-claude-capture-label">{t('settings.claudeCapLabel')}</label>
-        <div className="toggle-row">
-          <button
-            className={`toggle ${claudeCapture ? 'toggle-on' : ''}`}
-            onClick={() => handleClaudeCaptureToggle(!claudeCapture)}
-            disabled={saving}
-            aria-pressed={claudeCapture}
-            aria-labelledby="settings-claude-capture-label"
-          >
-            <span className="toggle-knob" />
-          </button>
-          <span className="form-hint" style={{ marginTop: 0 }}>
-            {claudeCapture ? t('settings.claudeCapOnHint') : t('settings.claudeCapOffHint')}
-          </span>
-        </div>
-        <div className="toggle-row" style={{ marginTop: 8 }}>
-          <input
-            className="input"
-            type="number"
-            min={1}
-            inputMode="numeric"
-            placeholder={t('settings.captureProjectPlaceholder')}
-            value={captureProjectId}
-            onChange={(e) => setCaptureProjectId(e.target.value)}
-            disabled={!claudeCapture || capturing}
-            aria-label={t('settings.captureProjectPlaceholder')}
-          />
-          <button className="btn btn-secondary btn-sm" onClick={handleCapture} disabled={!claudeCapture || capturing}>
-            {capturing ? t('settings.capturing') : t('settings.captureBtn')}
-          </button>
-        </div>
-      </div>
+      {/* --- Global-memory sources: target project --- */}
+      <section className="settings-group">
+        <h2 className="settings-group-title">{t('settings.groupTargets')}</h2>
+        <p className="form-hint" style={{ marginTop: 0, marginBottom: 12 }}>{t('settings.targetProjectHint')}</p>
+        {TARGET_PROJECT_KEYS.map((key) => (
+          <div className="form-group" key={key}>
+            <label htmlFor={`target-${key}`}>{t('settings.targetProjectLabel', { source: key.replace('_project', '') })}</label>
+            <div className="toggle-row">
+              <input
+                id={`target-${key}`}
+                className="input"
+                type="text"
+                placeholder={t('settings.targetProjectPlaceholder')}
+                value={targets[key] ?? ''}
+                onChange={(e) => setTargets((prev) => ({ ...prev, [key]: e.target.value }))}
+                disabled={saving}
+              />
+              <button className="btn btn-secondary btn-sm" onClick={() => handleTargetSave(key)} disabled={saving}>
+                {t('settings.save')}
+              </button>
+            </div>
+          </div>
+        ))}
+      </section>
 
-      {TARGET_PROJECT_KEYS.map((key) => (
-        <div className="form-group" key={key}>
-          <label htmlFor={`target-${key}`}>{t('settings.targetProjectLabel', { source: key.replace('_project', '') })}</label>
+      {/* --- Claude session capture --- */}
+      <section className="settings-group">
+        <h2 className="settings-group-title">{t('settings.groupCapture')}</h2>
+        <div className="form-group">
+          <label id="settings-claude-capture-label">{t('settings.claudeCapLabel')}</label>
+          <div className="toggle-row">
+            <button
+              className={`toggle ${claudeCapture ? 'toggle-on' : ''}`}
+              onClick={() => handleClaudeCaptureToggle(!claudeCapture)}
+              disabled={saving}
+              aria-pressed={claudeCapture}
+              aria-labelledby="settings-claude-capture-label"
+            >
+              <span className="toggle-knob" />
+            </button>
+            <span className="form-hint" style={{ marginTop: 0 }}>
+              {claudeCapture ? t('settings.claudeCapOnHint') : t('settings.claudeCapOffHint')}
+            </span>
+          </div>
+        </div>
+        <div className="form-group">
+          <label htmlFor="capture-project-id">{t('settings.captureProjectLabel')}</label>
           <div className="toggle-row">
             <input
-              id={`target-${key}`}
+              id="capture-project-id"
               className="input"
-              type="text"
-              placeholder={t('settings.targetProjectPlaceholder')}
-              value={targets[key] ?? ''}
-              onChange={(e) => setTargets((prev) => ({ ...prev, [key]: e.target.value }))}
-              disabled={saving}
+              type="number"
+              min={1}
+              inputMode="numeric"
+              placeholder={t('settings.captureProjectPlaceholder')}
+              value={captureProjectId}
+              onChange={(e) => setCaptureProjectId(e.target.value)}
+              disabled={!claudeCapture || capturing}
             />
-            <button className="btn btn-secondary btn-sm" onClick={() => handleTargetSave(key)} disabled={saving}>
-              {t('settings.save')}
+            <button className="btn btn-secondary btn-sm" onClick={handleCapture} disabled={!claudeCapture || capturing}>
+              {capturing ? t('settings.capturing') : t('settings.captureBtn')}
             </button>
           </div>
-          <span className="form-hint" style={{ marginTop: 0 }}>{t('settings.targetProjectHint')}</span>
         </div>
-      ))}
-
-      <h2 style={{ marginTop: 24 }}>{t('settings.tabs.plugins')}</h2>
-      {sources.length === 0 ? (
-        <div className="empty-hint">{t('settings.noSources')}</div>
-      ) : (
-        <ul className="plugin-list">
-          {sources.map((s) => (
-            <li key={s.name} className="plugin-item plugin-ok">
-              <div className="plugin-info">
-                <span className="plugin-name">{s.name}</span>
-                <span className="plugin-path">{t('settings.fromPlugin', { name: s.plugin || 'builtin' })}</span>
-              </div>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => handleImportSource(s.name)}
-                disabled={importingSource !== '' || !s.enabled}
-              >
-                {importingSource === s.name ? t('settings.importing') : t('settings.importNow')}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      </section>
     </div>
   )
 }
