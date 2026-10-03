@@ -31,9 +31,13 @@ Light / Dark / Follow system — pick one; changes apply immediately and are rem
 
 ## Plugins
 
-- **Auto-import toggle**: whether to run all knowledge source imports automatically at startup
-- **Loaded plugins**: load status and error messages for each plugin directory; the **Reload** button hot-reloads
-- **Knowledge import sources**: built-in (Claude memory) and plugin-registered importers, each with an **Import Now** action
+- **Auto-import toggle**: whether to run **auto-eligible** knowledge sources at startup (default on). Only "curated" sources (Claude memory) run in that pass.
+- **Claude session auto-capture (M1, off by default)**: a `claude_session_capture` toggle plus a "capture latest session by project ID" action — on-demand capture of a project's newest Claude Code session transcript into a handoff note. Nothing is read until you enable it; B-end users get a `reponest-capture` SessionEnd hook for automatic capture (see [ADR-0010](../adr/0010-session-auto-capture.md)).
+- **Global-memory source target project**: OpenClaw / Hermes memory is **cross-project global**, so you pick which RepoNest project to attach it to (`openclaw_project` / `hermes_project` — name or ID); unset → that source skips, never mis-attached.
+- **Knowledge import sources**: built-in + plugin-registered importers, each with an **Import Now** action. Five built-ins now — **claude** (auto on startup) and **codex / opencode / openclaw / hermes** as **opt-in manual** sources (transcripts / global memory are sensitive → excluded from startup auto-import, triggered here or via config). Remote vector stores (Qdrant / Weaviate) and the embedding provider are advanced config; see [ADR-0012](../adr/0012-semantic-search.md) / [ADR-0013](../adr/0013-vector-database-selection.md).
+- **Loaded plugins**: load status and error messages per plugin directory; **Reload** hot-reloads.
+
+> Privacy posture: transcript / global-memory sources are **off by default, explicit opt-in, directory-allowlisted** (never traversing parent dirs that hold keys/private material); semantic search is off by default and gated behind an A/B eval.
 
 For plugin development, see the [Plugin Handbook](../plugins/overview.md).
 

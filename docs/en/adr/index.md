@@ -16,9 +16,13 @@ order: 21
 | [0007](0007-session-memory-protocol.md) | Session memory protocol (context / handoff dual tools) | Accepted |
 | [0008](0008-pwa-removal.md) | PWA removed from the desktop main build (implements the deferred tier of ADR-0006) | Accepted |
 | [0009](0009-ide-presence.md) | IDE presence — thin-client distribution strategy (one-command registration → VS Code extension → JetBrains deferred) | Accepted |
+| [0010](0010-session-auto-capture.md) | Session auto-capture — zero-touch Claude Code session handoff (M1) | Accepted-in-principle |
+| [0011](0011-multi-agent-memory-importers.md) | Multi-agent memory importers — reusable pipeline + per-source feasibility (M2) | Proposed |
+| [0012](0012-semantic-search.md) | Semantic search — vector recall over FTS5, stay zero-CGO (M3) | Accepted-in-principle |
+| [0013](0013-vector-database-selection.md) | Vector store selection (sqlite-vec) and onboarding guide | Accepted |
 
 ## Conventions
 
 - One ADR per major irreversible decision: Background → Decision → Consequences
 - Superseded ADRs keep their original text and banner; they are never deleted
-- New ADRs increment from `0009`, file name `NNNN-kebab-title.md`
+- New ADRs increment from `0013`, file name `NNNN-kebab-title.md`

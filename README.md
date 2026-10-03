@@ -103,6 +103,10 @@ The project detail page auto-extracts: README summary, tech stack list (20+ mani
 | `reponest_handoff` | Structured handoff at session end: summary / changes / decisions / gotchas / next_steps rendered into a unified template and stored; the next session (any agent) reads it automatically |
 | llms.txt | `GenerateLLMsTxt` emits an LLM-oriented knowledge base overview in Markdown |
 | Note export | Export any note as `.md` with YAML frontmatter |
+| Knowledge importers | Bring other agents' memory in: **Claude** memory files auto-imported on startup; **Codex** / **OpenCode** sessions and **OpenClaw** / **Hermes** (Nous) global memory as **opt-in, manually-triggered** sources (allowlist-scoped; global-memory sources attach to a project you pick in Settings). Idempotent upsert. |
+| Session auto-capture (M1) | On-demand capture of a project's latest Claude Code session transcript into a handoff note; a `reponest-capture` CLI covers the B-end SessionEnd-hook automation. **Off by default** (`claude_session_capture`), privacy-gated. |
+| Semantic search (M3) | Optional hybrid FTS5 + vector recall (RRF-fused) with a **pluggable vector store**: local **sqlite-vec** (default, pure-Go/zero-CGO) or remote **Qdrant** / **Weaviate** (auto-falls-back to local if unreachable). **Off by default**, gated behind an A/B eval (`cmd/abeval`). See [ADR-0012](docs/adr/0012-semantic-search.md) / [ADR-0013](docs/adr/0013-vector-database-selection.md). |
+| Portable memory export | `ExportMemoryJSON` emits the knowledge base as [Open Memory Protocol](https://github.com/SMJAI/open-memory-protocol)-style memory objects (provisional; OMP is pre-1.0). |
 | Claude memory import | One-click idempotent import of `~/.claude/projects/*/memory/*.md` as knowledge notes (**Support**) |
 | Data integrity audit | `reponest_integrity`, 6 read-only checks: FTS index drift, orphan rows, schema shape vs version stamp, scan coverage, knowledge-cache freshness, version-snapshot orphans. Index drift makes search **silently miss results** with no other mechanism to catch it — this is the only way to detect it |
 
@@ -168,6 +172,8 @@ Launch opens a desktop window directly (a Wails app — no browser needed):
 > **Only want the AI side?** No desktop app needed: install `reponest-mcp`, then have your agent call `reponest_scan` once to bootstrap the knowledge base.
 
 More in [Getting Started](docs/en/getting-started.md).
+
+> **CLI tools** (opt-in, advanced): `reponest vector-init` — guided setup of the vector store (local default / remote Qdrant/Weaviate) + embedding provider; `reponest-capture` — the Claude Code SessionEnd hook target that auto-captures a closed session; `go run ./cmd/abeval -cases queries.jsonl` — the A/B gate that decides whether semantic search earns enabling. All read the same local database; see [ADR-0013](docs/adr/0013-vector-database-selection.md).
 
 ### Set Up the AI Execution Interface (`reponest-mcp`)
 

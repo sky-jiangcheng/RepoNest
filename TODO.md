@@ -273,6 +273,9 @@
 
 ## 📋 遗留项
 
+- [ ] **性能（M3-A 审核发现）**：`service.vectorStore()` 每次语义检索都重读 5 个 config + 对远程库做 `Reachable()` 探测 → 应按配置签名缓存 store（配置变更失效），避免每次查询的额外 SQL + 远程探测。默认关，优先级低
+- [ ] **文档**：`ai-integration` / `knowledge` 功能文档尚未提及新能力（捕捉/语义检索/向量库/CLI/OMP）；后续同步（本轮已补 README + settings 中英 + ADR 中英对齐）
+
 - [ ] 桌面 GUI 回归测试：建议在真机跑一轮冒烟（扫描→收藏→刷新历史→笔记 CRUD→版本恢复→知识库搜索→MCP 问答）
 - [ ] **D25 仪表盘生产力门面收缩（2.0 候选，非现在）**：首屏讲记忆环、打开是仪表盘，定位纯度持续被消耗。收敛方向：仪表盘退化为「项目列表 + 最近活动」；目标环 / 每日代码量标准 / 工作日告警沉入插件或删除（GitBoard/GitBuddy 时代遗产，见 [ADR-0008](docs/adr/0008-pwa-removal.md) 遗留项）
 - [x] `reponest_context` brief/full 档位评估（v1.9.4 收敛：中等优先，缓做——当前固定 10 notes × 1200 字符 + 8 commits 对单会话偏充裕）
