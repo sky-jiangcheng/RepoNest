@@ -38,13 +38,18 @@ function wail<T>(method: string, ...args: unknown[]): Promise<T> {
 
 const BASE = '/api'
 
-async function http<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + url, options)
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }))
-    throw new Error(err.error || `HTTP ${res.status}`)
-  }
-  return res.json()
+// Browser/standalone transport: a single JSON-RPC bridge to the bound App
+// (httpapi /api/rpc), so every Wails binding works over HTTP without a REST
+// route per method. Desktop mode uses window.go.app.App directly (wail()).
+async function rpc<T>(method: string, args: unknown[]): Promise<T> {
+  const res = await fetch(BASE + '/rpc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ method, args }),
+  })
+  const data = await res.json().catch(() => ({ error: 'HTTP ' + res.status }))
+  if (!res.ok || data.error) throw new Error(data.error || `RPC ${method} failed`)
+  return data.result as T
 }
 
 /** A single call routed through whichever transport is active. */
@@ -53,13 +58,13 @@ export function call<T>(opts: {
   method: string
   /** Arguments for the Wails binding call. */
   args?: unknown[]
-  /** HTTP path (relative to /api) for standalone mode. */
-  path: string
-  /** HTTP request options for standalone mode. */
+  /** HTTP path (relative to /api) — unused in RPC mode, kept for compatibility. */
+  path?: string
+  /** HTTP request options — unused in RPC mode. */
   init?: RequestInit
 }): Promise<T> {
   if (isWails()) return wail<T>(opts.method, ...(opts.args ?? []))
-  return http<T>(opts.path, opts.init)
+  return rpc<T>(opts.method, opts.args ?? [])
 }
 
 // --- Connection health tracking ------------------------------------------------

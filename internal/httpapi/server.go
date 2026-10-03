@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -33,21 +34,25 @@ import (
 // New returns an http.Handler (ServeMux) that serves RepoNest's capabilities
 // as JSON endpoints. The supplied service must already be constructed with a
 // valid database; callers do not need to invoke service.Startup for read-only
-// endpoints. The handler is wrapped in loopbackGuard — see the package trust
-// boundary comment.
-func New(svc *service.Service) http.Handler {
+// endpoints. `bound` is the same object the desktop Wails App binds (its
+// exported methods are reachable via /api/rpc for the browser/standalone
+// frontend); pass nil to disable RPC. The handler is wrapped in loopbackGuard —
+// see the package trust boundary comment.
+func New(svc *service.Service, bound any) http.Handler {
 	mux := http.NewServeMux()
-	h := &handler{svc: svc}
+	h := &handler{svc: svc, bound: reflect.ValueOf(bound)}
 
 	mux.HandleFunc("/health", h.health)
 	mux.HandleFunc("/api/ai_context", h.aiContext)
 	mux.HandleFunc("/api/search", h.search)
 	mux.HandleFunc("/api/project/", h.project)
+	mux.HandleFunc("/api/rpc", h.rpc)
 	return loopbackGuard(mux)
 }
 
 type handler struct {
-	svc *service.Service
+	svc   *service.Service
+	bound reflect.Value
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

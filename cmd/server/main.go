@@ -19,6 +19,7 @@ import (
 	"os"
 	"time"
 
+	"repo-nest/internal/app"
 	"repo-nest/internal/db"
 	"repo-nest/internal/httpapi"
 	"repo-nest/internal/platform"
@@ -46,7 +47,9 @@ func main() {
 	gitUser := platform.GetGitUserName()
 	svc := service.New(database, gitUser)
 
-	mux := httpapi.New(svc)
+	// Bind the same App object the desktop Wails layer exposes, so the browser
+	// frontend can reach every capability via /api/rpc (see httpapi/rpc.go).
+	mux := httpapi.New(svc, app.New(svc))
 	// ReadHeaderTimeout bounds how long a local process can hold a half-open
 	// connection before sending a request; without it, slowloris-style hangs
 	// accumulate unbounded goroutines.
